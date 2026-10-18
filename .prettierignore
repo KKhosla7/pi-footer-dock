@@ -1,0 +1,4 @@
+node_modules
+.task_logs
+package-lock.json
+docs/preview

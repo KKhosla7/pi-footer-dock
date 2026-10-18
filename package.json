@@ -1,0 +1,76 @@
+{
+  "name": "pi-footer-dock",
+  "version": "0.1.0",
+  "description": "A two-row status footer for Pi: Git, model, context, tokens, cache, speed, provider limits and cost, with explanations behind every value.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Karan Khosla",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi",
+    "footer",
+    "statusline",
+    "git",
+    "quota",
+    "tokens",
+    "cost"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KKhosla7/pi-footer-dock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KKhosla7/pi-footer-dock/issues"
+  },
+  "homepage": "https://github.com/KKhosla7/pi-footer-dock#readme",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "SETUP.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "LICENSE",
+    "NOTICE",
+    "docs/extending-footer-dock.md",
+    "docs/images"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "architecture": "depcruise src --config .dependency-cruiser.cjs",
+    "test": "tsx --test tests/*.test.ts",
+    "test:usage-ledger": "tsx scripts/validate-usage-ledger.ts",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run architecture && npm test",
+    "preview": "tsx scripts/preview.ts",
+    "pack:check": "tsx scripts/check-package.ts",
+    "screenshots": "tsx scripts/screenshots.ts"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^1.2.0",
+    "@earendil-works/pi-tui": "^1.2.0",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "dependency-cruiser": "^17.0.0",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.0.0",
+    "prettier": "^3.6.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.46.0"
+  }
+}

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="906" height="522" viewBox="0 0 906 522" role="img" aria-label="A diff with line numbers">
+  <title>A diff with line numbers</title>
+  <rect width="906" height="522" rx="10" fill="#14161a"/>
+  <circle cx="22" cy="19" r="5" fill="#f07178"/><circle cx="40" cy="19" r="5" fill="#e5c07b"/><circle cx="58" cy="19" r="5" fill="#7ed38b"/>
+  <g font-family="'DejaVu Sans Mono','JetBrains Mono',Menlo,Consolas,monospace" font-size="14">
+  <text x="18" y="59" xml:space="preserve"><tspan fill="rgb(72,78,90)">────────────────────────────────────────────────────────────────────────────────────────────────────</tspan></text>
+  <text x="18" y="79" xml:space="preserve"><tspan fill="rgb(180,160,229)" font-weight="bold"> Footer Dock › Changed files › Diff</tspan></text>
+  <text x="18" y="99" xml:space="preserve"></text>
+  <text x="18" y="119" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(229,192,123)">M</tspan><tspan fill="#d4d6da"> src/auth/login.ts  </tspan><tspan fill="rgb(126,211,139)">+142</tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(240,113,120)">−9</tspan></text>
+  <text x="18" y="139" xml:space="preserve"><tspan fill="rgb(160,166,176)"> Changed lines: 42–43</tspan></text>
+  <text x="18" y="159" xml:space="preserve"><tspan fill="rgb(105,112,124)"> First change: src/auth/login.ts:42</tspan></text>
+  <text x="18" y="179" xml:space="preserve"></text>
+  <text x="18" y="199" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">   </tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">diff --git a/src/auth/login.ts b/src/auth/login.ts</tspan></text>
+  <text x="18" y="219" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">   </tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">--- a/src/auth/login.ts</tspan></text>
+  <text x="18" y="239" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">   </tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">+++ b/src/auth/login.ts</tspan></text>
+  <text x="18" y="259" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">   </tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(180,160,229)">@@ -40,7 +40,9 @@ export async function login(</tspan></text>
+  <text x="18" y="279" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 40</tspan><tspan fill="#d4d6da">  ) {</tspan></text>
+  <text x="18" y="299" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 41</tspan><tspan fill="#d4d6da">    const user = await find(email);</tspan></text>
+  <text x="18" y="319" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)">   </tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(240,113,120)">-  if (user.password === password) {</tspan></text>
+  <text x="18" y="339" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 42</tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(126,211,139)">+  if (!user) return fail("unknown user");</tspan></text>
+  <text x="18" y="359" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 43</tspan><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(126,211,139)">+  if (await verify(password, user.hash)) {</tspan></text>
+  <text x="18" y="379" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 44</tspan><tspan fill="#d4d6da">      return session(user);</tspan></text>
+  <text x="18" y="399" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 45</tspan><tspan fill="#d4d6da">    }</tspan></text>
+  <text x="18" y="419" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 46</tspan><tspan fill="#d4d6da">    return fail("bad password");</tspan></text>
+  <text x="18" y="439" xml:space="preserve"><tspan fill="#d4d6da"> </tspan><tspan fill="rgb(105,112,124)"> 47</tspan><tspan fill="#d4d6da">  }</tspan></text>
+  <text x="18" y="459" xml:space="preserve"></text>
+  <text x="18" y="479" xml:space="preserve"><tspan fill="rgb(105,112,124)">  ↑/↓ scroll · Esc to close</tspan></text>
+  <text x="18" y="499" xml:space="preserve"><tspan fill="rgb(72,78,90)">────────────────────────────────────────────────────────────────────────────────────────────────────</tspan></text>
+  </g>
+</svg>
