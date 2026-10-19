@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -22,13 +24,17 @@ export const quotaHeaders = {
 export function quotaIdentity(name = 'account-a'): string {
   return createHash('sha256').update(name).digest('hex');
 }
-/** A throw-away folder; `stopWriters` runs first so nothing is still writing when it is removed. */
+/**
+ * A throw-away folder. `stopWriters` runs first, and the folder is removed without blocking the event
+ * loop: a write that is still finishing needs the loop to run, and a blocking removal would keep the
+ * folder non-empty for as long as it retries.
+ */
 export function quotaRoot(t: TestContext, stopWriters: () => void = () => undefined): string {
   const root = mkdtempSync(join(tmpdir(), 'pi-footer-dock-quota-test-'));
-  t.after(() => {
+  t.after(async () => {
     stopWriters();
-    // A background write may land while the folder is being removed; retry instead of failing the test.
-    rmSync(root, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
+    await delay(50);
+    await rm(root, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
   });
   return root;
 }
