@@ -106,7 +106,10 @@ async function createFixtureRuntime(
 }
 
 /** Capture the actual extension footer; only terminal I/O is headless. */
-export async function captureFooter(session: AgentSession) {
+export async function captureFooter(
+  session: AgentSession,
+  statuses: ReadonlyMap<string, string> = new Map(),
+) {
   initTheme('dark');
   const runner = session.extensionRunner;
   const baseUI = runner.getUIContext();
@@ -122,7 +125,7 @@ export async function captureFooter(session: AgentSession) {
         footer?.dispose?.();
         footer = factory?.(tui, baseUI.theme, {
           getGitBranch: () => null,
-          getExtensionStatuses: () => new Map(),
+          getExtensionStatuses: () => statuses,
           getAvailableProviderCount: () => 0,
           onBranchChange: () => () => {
             /* No git in fixture. */

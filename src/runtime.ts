@@ -86,6 +86,7 @@ export class DockRuntime {
       return new DockFooter({
         paint: createPaint(theme),
         requestRender: tui.requestRender.bind(tui),
+        statuses: () => footerData.getExtensionStatuses(),
         glyphs: this.settings.glyphs,
         snapshot: () => this.snapshot(),
         ...this.interactions.bindings(),

@@ -4,6 +4,10 @@ All notable changes to Footer Dock are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+### Fixed
+
+- Status lines that other extensions set with `ctx.ui.setStatus` were hidden once Footer Dock replaced Pi's footer. They are now shown on a last line, as Pi's own footer does (sorted by key, cut to the width; colours kept, other terminal escape sequences removed). Nothing changes for extensions: no registration is needed.
+
 ## [0.1.0] - 2026-10-19
 
 ### Added

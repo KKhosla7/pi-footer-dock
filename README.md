@@ -127,6 +127,10 @@ Other providers show no limits (`quota unsupported`); OpenAI-style APIs that sen
 
 The Git items watch the repository for changes. If a repository is too large to watch (thousands of directories), Footer Dock falls back to reading Git after each Pi action and says so in the item's explanation; it never shows a number it did not read.
 
+## Other extensions' status lines
+
+Extensions that show a status with Pi's `setStatus` keep working: Footer Dock shows those texts on one extra line at the bottom, exactly where Pi's own footer would, and the line is absent while nothing sets a status. Extensions that want proper places, settings and explanations register with Footer Dock instead (next section).
+
 ## For other extensions
 
 Extensions can have Footer Dock manage their footer items, settings and explanations, and Footer Dock needs to know nothing about them: see **[docs/extending-footer-dock.md](docs/extending-footer-dock.md)**.

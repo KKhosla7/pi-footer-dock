@@ -5,6 +5,7 @@ import { layoutFooter } from './layout.js';
 import { hitRegion, pointerRejection } from './pointer.js';
 import type { FooterConfig } from '../core/footer-config.js';
 import { QuotaAnimation } from './quota-animation.js';
+import { statusLine } from './statuses.js';
 
 export interface FooterOptions extends LayoutOptions {
   snapshot: () => Snapshot;
@@ -16,6 +17,8 @@ export interface FooterOptions extends LayoutOptions {
   trace?: (metadata: Record<string, unknown>) => void;
   traceEnabled?: () => boolean;
   requestRender?: () => void;
+  /** What other extensions set with `ctx.ui.setStatus`: shown on a last line, as Pi's own footer does. */
+  statuses?: () => ReadonlyMap<string, string>;
 }
 
 /** Footer-only component: owns neither a context widget nor editor input. */
@@ -65,7 +68,12 @@ export class DockFooter implements Component {
         width: this.renderedWidth,
         regions: this.regions.map((region) => ({ ...region })),
       });
-    return layout.lines;
+    return this.withStatuses(layout.lines, width);
+  }
+
+  private withStatuses(lines: string[], width: number): string[] {
+    const others = statusLine(this.options.statuses?.() ?? new Map(), width);
+    return others === undefined ? lines : [...lines, others];
   }
 
   handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {

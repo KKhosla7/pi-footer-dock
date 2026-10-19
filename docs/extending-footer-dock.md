@@ -15,6 +15,8 @@ Footer Dock is a **registry, not an owner**:
 
 There is no import in either direction. All messages travel on Pi's event bus: `pi.events.on(channel, handler)` and `pi.events.emit(channel, data)`.
 
+**Extensions that already use `ctx.ui.setStatus(key, text)` need to change nothing.** Footer Dock shows those texts on one last line (sorted by key, cut to the width; colour codes kept, other terminal escape sequences removed), as Pi's own footer does. Register with the protocol below when you want a place among the items, a settings sub-menu, clicks and an explanation.
+
 ## The five-minute version
 
 ```ts
