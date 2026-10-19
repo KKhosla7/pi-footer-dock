@@ -1,6 +1,8 @@
 # Contributing
 
-Thank you for helping. Footer Dock is small on purpose; please read this first.
+Thank you for helping. Footer Dock is open source under the Apache License 2.0, and contributions are welcome: bug reports, documentation, tests and small fixes are as valuable as features. It is small on purpose, so please read this first. It is maintained by one person in spare time: a review may take a few days, and a feature that does not fit may be declined with a reason.
+
+**Where to start:** an issue for a bug or an idea; a pull request for a fix, a test or a documentation change. For a new feature, open an issue first (see "Design first" below).
 
 ## Setup
 
@@ -29,7 +31,7 @@ Prettier (format), ESLint (types-aware), `tsc`, dependency-cruiser (architecture
 
 ## Pictures
 
-The images in the README are drawn from the real code by `npm run screenshots`. If you change what a screen looks like, run it and commit the new pictures.
+The pictures in the README are real: `npm run screenshots` runs Pi in a pseudo-terminal against a local stand-in provider and a throw-away project (your own settings and accounts are never touched), reads the screen and draws it with a Nerd Font in headless Chromium. It needs `nix develop` (for Python and `pyte`), a Chromium or Chrome on the path, and the JetBrainsMono Nerd Font installed; pass picture names to redo only some (`npm run screenshots -- footer-wide diff`). If you change what a screen looks like, run it and commit the new pictures.
 
 ## Licence
 

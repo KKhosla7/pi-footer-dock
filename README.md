@@ -2,9 +2,9 @@
 
 **A two-row status footer for [Pi](https://pi.dev) that tells you what is going on.** Git, model, context, tokens, cache, speed, provider limits and cost, in two rows that fit your terminal, with an explanation behind every value.
 
-![Footer Dock on a wide terminal](docs/images/footer-wide.svg)
+![Footer Dock on a wide terminal](docs/images/footer-wide.png)
 
-![Footer Dock on a narrow terminal](docs/images/footer-narrow.svg)
+![Footer Dock on a narrow terminal](docs/images/footer-narrow.png)
 
 The footer chooses what to show for the width you have. Nothing is cut in the middle of a value: items drop out whole, least important first, and the project name goes last.
 
@@ -37,23 +37,23 @@ Then restart Pi (or run `/reload`). That is all. Full instructions, updating, re
 
 Click the text of any item. The explanation is a live screen, not a paragraph: it updates while it is open, scrolls with the wheel and the arrow keys, and always says **what the value reports** and **when it can be missing**.
 
-![The cache explanation](docs/images/explain-cache.svg)
+![The cache explanation](docs/images/explain-cache.png)
 
 Limit usage shows, for each window, whether you are **ahead of or behind the pace** that would last until the reset, and what every marker means:
 
-![The limit usage explanation](docs/images/explain-limits.svg)
+![The limit usage explanation](docs/images/explain-limits.png)
 
 Cost shows where the money went, by category and by model, and over days, weeks and months (press `d`, `w` or `m`):
 
-![The cost explanation](docs/images/explain-cost.svg)
+![The cost explanation](docs/images/explain-cost.png)
 
 ## Look at your changes
 
 Click the changed-files icon. Move with the arrows, search by typing, press Enter for the diff. The diff carries the line numbers the file has now, and lists the changed lines at the top, so you can find them in your editor.
 
-![Changed files](docs/images/changed-files.svg)
+![Changed files](docs/images/changed-files.png)
 
-![A diff with line numbers](docs/images/diff.svg)
+![A diff with line numbers](docs/images/diff.png)
 
 The list and the diff look again every couple of seconds while they are open, so new changes appear by themselves.
 
@@ -61,11 +61,13 @@ The list and the diff look again every couple of seconds while they are open, so
 
 Click the robot or the brain icon. Type to search, Enter to choose, Esc to close; the same icon closes it again.
 
-![Choosing a model](docs/images/model-picker.svg)
+![Choosing a model](docs/images/model-picker.png)
 
 ## Settings
 
 Run `/dock-settings`. Hide any item (at every width or only on narrow ones), choose which limit windows stay when the footer is tight, show limits as percent left or used, choose the period of the footer cost, switch icon sets, and more. Settings are saved in Pi's folder and shared by every Pi window.
+
+![The settings menu](docs/images/settings.png)
 
 ## Provider limits: what it asks, and how to turn it off
 
@@ -109,6 +111,15 @@ The Git items watch the repository for changes. If a repository is too large to 
 
 Extensions can have Footer Dock manage their footer items, settings and explanations, and Footer Dock needs to know nothing about them: see **[docs/extending-footer-dock.md](docs/extending-footer-dock.md)**.
 
-## Contributing, security, license
+## Contributing
 
-[CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CHANGELOG.md](CHANGELOG.md) · Apache License 2.0, see [LICENSE](LICENSE).
+Footer Dock is open source (Apache License 2.0) and contributions are welcome, small ones included.
+
+- **Found a bug, or have an idea?** Open an [issue](https://github.com/KKhosla7/pi-footer-dock/issues). For a bug, paste the output of `/dock-debug`: it holds counters and settings only, no messages, no secrets and no paths.
+- **Want to change something?** Send a pull request. Fixes, tests and documentation improvements can go straight to a pull request; for a new feature or a new data source, open an issue first so we can agree what it should do. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to set up, what the checks are, and what to keep in mind.
+- **Writing an extension?** Let Footer Dock draw its footer items: [docs/extending-footer-dock.md](docs/extending-footer-dock.md).
+- **Found a security problem?** Please report it privately, see [SECURITY.md](SECURITY.md).
+
+By contributing you agree that your work is licensed under the same Apache License 2.0; there is no contributor agreement to sign.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) · [CHANGELOG.md](CHANGELOG.md) · [LICENSE](LICENSE)

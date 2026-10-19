@@ -35,13 +35,13 @@
     "SECURITY.md",
     "LICENSE",
     "NOTICE",
-    "docs/extending-footer-dock.md",
-    "docs/images"
+    "docs/extending-footer-dock.md"
   ],
   "pi": {
     "extensions": [
       "./src/index.ts"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/KKhosla7/pi-footer-dock/main/docs/images/footer-wide.png"
   },
   "scripts": {
     "format": "prettier --write .",
@@ -54,7 +54,7 @@
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run architecture && npm test",
     "preview": "tsx scripts/preview.ts",
     "pack:check": "tsx scripts/check-package.ts",
-    "screenshots": "tsx scripts/screenshots.ts"
+    "screenshots": "scripts/capture/make-screens.sh"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
