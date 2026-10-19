@@ -107,6 +107,27 @@ def run_pi(*args):
     return subprocess.run([pi, *args], cwd=project, env=env, capture_output=True, text=True, timeout=180)
 
 
+def reload_seconds():
+    """How long `/reload` takes to settle with the installed package (it was 1.3 s with 180 TypeScript files)."""
+    import time
+    term = Terminal([pi, '--no-session', '--no-context-files'], str(project), env, 130, 34)
+    try:
+        term.pump(8)
+        term.type('/reload')
+        term.pump(0.3)
+        start = last = time.time()
+        previous = term.text()
+        os.write(term.fd, b'\r')
+        while time.time() - last < 1.5 and time.time() - start < 30:
+            term.pump(0.05)
+            now = term.text()
+            if now != previous:
+                last, previous = time.time(), now
+        return round(last - start, 2)
+    finally:
+        term.close()
+
+
 def start_and_look(seconds=12):
     term = Terminal([pi, '--no-session', '--no-context-files'], str(project), env, 130, 34)
     try:
@@ -125,6 +146,9 @@ try:
     screen = start_and_look()
     check('Package Updates Available' not in screen, 'no update notice while 0.1.0 is the latest')
     check('cache pending' in screen, 'the footer is Footer Dock\'s (its own text is on the screen), drawn by the installed package')
+
+    seconds = reload_seconds()
+    check(seconds < 1.0, f'/reload settles quickly with the installed package ({seconds} s; it took 1.3 s before bundling)')
 
     publish('0.1.1')
     screen = start_and_look()

@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
-  { ignores: ['node_modules/**', '.task_logs/**', 'docs/preview/**'] },
+  { ignores: ['node_modules/**', '.task_logs/**', 'docs/preview/**', 'dist/**'] },
   js.configs.recommended,
   {
     files: ['**/*.ts'],

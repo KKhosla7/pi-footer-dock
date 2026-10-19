@@ -8,12 +8,14 @@ import {
   Throttle,
   coverageName,
   failureName,
+  isNotRepository,
+  publishedState,
   isCoverageFailure,
 } from './git-coverage.js';
 import { bootstrapWatches } from './git-bootstrap.js';
 import type { GitWatchFactory } from './git-watch-set.js';
 
-type GitHealth = 'initializing' | 'ready' | 'unknown' | 'unavailable';
+type GitHealth = 'initializing' | 'ready' | 'unknown' | 'unavailable' | 'none';
 export interface GitMonitorOptions {
   read?: (cwd: string, signal: AbortSignal) => Promise<GitState>;
   watch?: GitWatchFactory;
@@ -113,7 +115,7 @@ export class GitMonitor {
         if (this.disposed || this.active !== controller) return;
         if (!controller.signal.aborted) this.failure = failureName(error);
         this.ready = false;
-        this.accept(unknownGit, 'unavailable');
+        this.accept(unknownGit, isNotRepository(error) ? 'none' : 'unavailable');
       })
       .finally(() => {
         if (this.active === controller) this.active = undefined;
@@ -179,8 +181,7 @@ export class GitMonitor {
     if (this.disposed || this.unchanged(value, health)) return;
     if (health === 'ready' && !this.eventsOnly) this.failure = undefined;
     if (health === 'unknown') this.failure = 'git-status-unavailable';
-    const next: GitState =
-      health === 'ready' ? { ...value } : { ...unknownGit, monitoring: 'unavailable' };
+    const next = publishedState(health, value);
     try {
       this.publish({ ...next }, health);
       this.value = next;

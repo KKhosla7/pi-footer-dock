@@ -28,7 +28,7 @@ assert.ok(
   (manifest.keywords as string[]).includes('pi-package'),
   'the pi-package keyword lists it on pi.dev',
 );
-assert.deepEqual((manifest.pi as { extensions: string[] }).extensions, ['./src/index.ts']);
+assert.deepEqual((manifest.pi as { extensions: string[] }).extensions, ['./dist/index.js']);
 const peers = manifest.peerDependencies as Record<string, string>;
 assert.equal(
   peers['@earendil-works/pi-coding-agent'],
@@ -49,7 +49,7 @@ const packed = JSON.parse(
 }[];
 const files = (packed[0]?.files ?? []).map((file) => file.path);
 for (const required of [
-  'src/index.ts',
+  'dist/index.js',
   'package.json',
   'README.md',
   'SETUP.md',
@@ -61,6 +61,7 @@ for (const required of [
 ])
   assert.ok(files.includes(required), `missing from the package: ${required}`);
 const forbidden = [
+  /^src\//u, // the package ships the one bundled file, not the sources
   /^tests\//u,
   /^scripts\//u,
   /^\.github\//u,
@@ -71,6 +72,13 @@ const forbidden = [
   /^docs\/(?!extending-footer-dock\.md$)/u, // adding-a-provider.md stays in the repository only
   /node_modules/u,
 ];
+// The entry is one file: Pi would otherwise transpile and resolve every module on each reload.
+const entry = readFileSync(join(root, 'dist/index.js'), 'utf8');
+assert.doesNotMatch(
+  entry,
+  /(?:from|import|require\()\s*\(?['"]\.{1,2}\//u,
+  'dist/index.js must not import other files of the package',
+);
 for (const path of files)
   for (const pattern of forbidden) assert.ok(!pattern.test(path), `must not be published: ${path}`);
 assert.ok((packed[0]?.size ?? 0) < 400_000, `package is ${packed[0]?.size} bytes`);
@@ -90,7 +98,7 @@ try {
   // The host provides Pi's packages; give the extracted copy the same ones.
   symlinkSync(join(root, 'node_modules'), join(scratch, 'package', 'node_modules'));
   const loaded = await discoverAndLoadExtensions(
-    [join(scratch, 'package', 'src', 'index.ts')],
+    [join(scratch, 'package', 'dist', 'index.js')],
     scratch,
     scratch,
   );

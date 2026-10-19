@@ -80,6 +80,8 @@ export class DockRuntime {
       const revision = ++this.footerRevision;
       this.tui = tui;
       this.trackers.quotas.resume();
+      this.trackers.git.branchHint = () => footerData.getGitBranch();
+      if (this.live) this.live = { ...this.live, git: this.trackers.git.shown };
       const unsubscribe = footerData.onBranchChange(() => {
         this.refreshGit();
       });
@@ -129,7 +131,7 @@ export class DockRuntime {
     if (this.trackers.git.moved(ctx.cwd)) this.refreshGit();
     this.trackers.quotas.updateContext(ctx);
     const state = this.trackers.quotas.snapshot();
-    const snapshot = this.usage.capture(ctx, this.pi, this.trackers.git.state, state.limits);
+    const snapshot = this.usage.capture(ctx, this.pi, this.trackers.git.shown, state.limits);
     this.live = {
       ...snapshot,
       ...this.trackers.history.fields(ctx, snapshot),

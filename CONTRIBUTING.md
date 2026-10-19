@@ -29,9 +29,13 @@ Use Node.js 24 for `npm run check` (CI also runs the tests on Node 22). Try your
 
 A provider's limit windows are one small module and one line in a registry. Read [docs/adding-a-provider.md](docs/adding-a-provider.md); it lists what a source must and must not do.
 
+## The bundled file
+
+Pi loads the extension from `dist/index.js`, one file built from `src/` (`npm run build`). It is committed so that installs from Git and from a folder work, and `npm run check` fails when it is out of date: after changing `src/`, run `npm run build` and commit the result. Develop against the sources with `pi -e ./src/index.ts`.
+
 ## What `npm run check` runs
 
-Prettier (format), ESLint (types-aware), `tsc`, dependency-cruiser (architecture), and the test suite (`node:test` through `tsx`). Tests that need Git create throwaway repositories; none touches your real Pi folder or network.
+Prettier (format), ESLint (types-aware), `tsc`, dependency-cruiser (architecture), a check that `dist/index.js` is up to date, and the test suite (`node:test` through `tsx`). Tests that need Git create throwaway repositories; none touches your real Pi folder or network.
 
 ## Pictures
 

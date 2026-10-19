@@ -4,8 +4,16 @@ All notable changes to Footer Dock are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-19
+
+### Changed
+
+- The branch is shown from the first draw (Pi already knows it); the file and commit counts follow as soon as Git has been read.
+- The extension now loads from one bundled JavaScript file (`dist/index.js`) instead of about 180 TypeScript modules that Pi had to transpile on every start and `/reload`. `/reload` went from about 1.3 s to under 0.1 s, and the footer first appears in about 0.3 to 0.8 s after start instead of 2.3 s (measured in an isolated Pi). The package is smaller (9 files, about 110 kB).
+
 ### Fixed
 
+- A folder that is not a Git repository no longer shows "Git unavailable": there is nothing to show, so the Git items are simply absent and the space is free. "Git unavailable" is kept for the real failures (Git missing, or a repository too large to read).
 - Status lines that other extensions set with `ctx.ui.setStatus` were hidden once Footer Dock replaced Pi's footer. They are now shown on a last line, as Pi's own footer does (sorted by key, cut to the width; colours kept, other terminal escape sequences removed). Nothing changes for extensions: no registration is needed.
 
 ## [0.1.0] - 2026-10-19

@@ -1,6 +1,6 @@
 {
   "name": "pi-footer-dock",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A two-row status footer for Pi: Git, model, context, tokens, cache, speed, provider limits and cost, with explanations behind every value.",
   "type": "module",
   "license": "Apache-2.0",
@@ -28,7 +28,7 @@
     "node": ">=22.19.0"
   },
   "files": [
-    "src",
+    "dist",
     "README.md",
     "SETUP.md",
     "CHANGELOG.md",
@@ -39,7 +39,7 @@
   ],
   "pi": {
     "extensions": [
-      "./src/index.ts"
+      "./dist/index.js"
     ],
     "image": "https://raw.githubusercontent.com/KKhosla7/pi-footer-dock/main/docs/images/footer-wide.png"
   },
@@ -50,11 +50,12 @@
     "typecheck": "tsc --noEmit",
     "architecture": "depcruise src --config .dependency-cruiser.cjs",
     "test": "tsx --test tests/*.test.ts",
-    "test:usage-ledger": "tsx scripts/validate-usage-ledger.ts",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run architecture && npm test",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run architecture && npm run build:check && npm test",
     "preview": "tsx scripts/preview.ts",
-    "pack:check": "tsx scripts/check-package.ts",
-    "screenshots": "scripts/capture/make-screens.sh"
+    "pack:check": "npm run build && tsx scripts/check-package.ts",
+    "screenshots": "scripts/capture/make-screens.sh",
+    "build": "tsx scripts/build.ts",
+    "build:check": "tsx scripts/build.ts --check"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
@@ -66,6 +67,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
     "dependency-cruiser": "^17.0.0",
+    "esbuild": "0.28.2",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.0.0",
     "prettier": "^3.6.0",

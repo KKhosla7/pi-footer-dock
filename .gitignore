@@ -2,3 +2,6 @@ node_modules/
 .task_logs/
 coverage/
 *.tsbuildinfo
+auth.json
+models-store.json
+.env

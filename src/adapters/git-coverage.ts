@@ -1,3 +1,5 @@
+import { unknownGit } from './git.js';
+import type { GitState } from '../core/model.js';
 /** Failures of the watch set, by the message that reports them, and what they are called in stats. */
 export const failures = new Map([
   ['Git watcher budget exceeded', 'watch-budget'],
@@ -13,9 +15,26 @@ export const isCoverageFailure = (error: unknown): boolean =>
   error instanceof Error &&
   (failures.has(error.message) || ('code' in error && SYSTEM_LIMITS.has(String(error.code))));
 
+/** The folder is not inside a Git repository (Git answers with exit code 128): nothing to show, nothing wrong. */
+export const isNotRepository = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.message === 'Git metadata query failed' &&
+  error.cause instanceof Error &&
+  'code' in error.cause &&
+  error.cause.code === 128;
+
+/** What is published for a health: the value when read, nothing for a folder without Git, "unavailable" otherwise. */
+export const publishedState = (health: string, value: GitState): GitState =>
+  health === 'ready'
+    ? { ...value }
+    : health === 'none'
+      ? { ...unknownGit }
+      : { ...unknownGit, monitoring: 'unavailable' };
+
 /** What any monitor failure is called in the statistics. */
 export const failureName = (error: unknown): string =>
-  (error instanceof Error ? failures.get(error.message) : undefined) ?? 'source-unavailable';
+  (error instanceof Error ? failures.get(error.message) : undefined) ??
+  (isNotRepository(error) ? 'not-repository' : 'source-unavailable');
 
 /** What a coverage failure is called in the monitor's statistics. */
 export const coverageName = (error: unknown): string =>

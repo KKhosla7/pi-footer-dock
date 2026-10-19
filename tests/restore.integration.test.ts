@@ -26,12 +26,16 @@ await test('streamed response survives persisted session reopen and footer rebin
     );
     const restoredFooter = await captureFooter(restored.session);
     try {
-      // Compare settled Git health, not a newly bound frame still awaiting its initial I/O.
-      await waitForGit(
-        () =>
-          originalFooter.render().join('\n').includes('Git unavailable') &&
-          restoredFooter.render().join('\n').includes('Git unavailable'),
-      );
+      // Compare settled frames, not a newly bound frame still awaiting its initial I/O: the folder
+      // has no Git, so settled means both footers drew the same thing for about 300 ms.
+      let steady = 0;
+      let previous = '';
+      await waitForGit(() => {
+        const now = originalFooter.render().join('\n') + restoredFooter.render().join('\n');
+        steady = now === previous ? steady + 1 : 0;
+        previous = now;
+        return steady >= 30;
+      });
       const original = originalFooter.render().map(stripVTControlCharacters).join('\n');
       assert.match(original, /\uf0e4 \d+\.\d+ tok\/s/u);
       // Latest live-turn telemetry is deliberately cleared on reopen; totals/layout restore.
