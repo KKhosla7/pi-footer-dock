@@ -4,7 +4,7 @@ All notable changes to Footer Dock are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
-## [0.1.0] - first public release
+## [0.1.0] - 2026-10-19
 
 ### Added
 
