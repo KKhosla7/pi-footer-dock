@@ -1,8 +1,8 @@
 name: Release
 # Publishes to npm when a version tag is pushed, with a provenance statement that links the
 # package to this repository and this run, then creates the GitHub release from CHANGELOG.md.
-# Needs the repository secret NPM_TOKEN (an npm token) or npm trusted publishing set up for this
-# workflow; see RELEASING.md.
+# Publishing uses npm trusted publishing (OIDC): there is no npm token or secret anywhere. npm must
+# list this repository and this workflow as the package's trusted publisher; see RELEASING.md.
 on:
   push:
     tags: ['v*']
@@ -29,9 +29,11 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" 'index($0, "## [" v "]") == 1 {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           test -s "$RUNNER_TEMP/notes.md"
+      - name: npm is new enough for trusted publishing (11.5.1 or later)
+        run: |
+          npm --version
+          node -e "const [a,b,c]=process.argv[1].split('.').map(Number); process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)" "$(npm --version)"
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: GitHub release
         run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "Footer Dock ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" --latest
         env:
