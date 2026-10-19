@@ -3,9 +3,13 @@ name: Release
 # package to this repository and this run, then creates the GitHub release from CHANGELOG.md.
 # Publishing uses npm trusted publishing (OIDC): there is no npm token or secret anywhere. npm must
 # list this repository and this workflow as the package's trusted publisher; see RELEASING.md.
+# Started by hand (Actions → Release → Run workflow) it publishes nothing: it runs the same steps and an
+# `npm publish --dry-run`, which also performs the OIDC exchange with npm, so the trusted-publisher entry
+# can be proven without releasing. Only the OIDC lines of npm's log are shown.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 permissions:
   contents: write # to create the GitHub release
   id-token: write
@@ -23,18 +27,27 @@ jobs:
       - run: npm run check
       - run: npm run pack:check
       - name: The tag must match package.json
+        if: github.ref_type == 'tag'
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
       - name: The changelog has notes for this version
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
           awk -v v="$version" 'index($0, "## [" v "]") == 1 {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
           test -s "$RUNNER_TEMP/notes.md"
       - name: npm is new enough for trusted publishing (11.5.1 or later)
         run: |
           npm --version
           node -e "const [a,b,c]=process.argv[1].split('.').map(Number); process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)" "$(npm --version)"
-      - run: npm publish --provenance --access public
+      - name: Publish (a dry run when started by hand)
+        run: |
+          flags=""
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then flags="--dry-run"; fi
+          status=0
+          npm publish --provenance --access public $flags --loglevel verbose > "$RUNNER_TEMP/publish.log" 2>&1 || status=$?
+          grep -E "oidc|npm notice (Publishing|publish)|npm error|npm warn|^\+ " "$RUNNER_TEMP/publish.log" || true
+          exit $status
       - name: GitHub release
+        if: github.ref_type == 'tag'
         run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "Footer Dock ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" --latest
         env:
           GH_TOKEN: ${{ github.token }}
