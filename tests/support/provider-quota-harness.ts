@@ -42,7 +42,10 @@ export function harness(
   t: TestContext,
   respond: (call: number, clock: number) => Response | Error,
 ) {
-  const root = quotaRoot(t);
+  const services: ProviderQuotaService[] = [];
+  const root = quotaRoot(t, () => {
+    for (const service of services) service.dispose();
+  });
   let clock = 1_800_000_000_000;
   const now = () => clock;
   const gate = new SharedGate({ root, now, flightMs: 45_000 });
@@ -57,10 +60,6 @@ export function harness(
     return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
   }) as typeof fetch;
   const states: QuotaState[] = [];
-  const services: ProviderQuotaService[] = [];
-  t.after(() => {
-    for (const service of services) service.dispose();
-  });
   return {
     root,
     states,

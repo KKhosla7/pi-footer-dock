@@ -22,9 +22,11 @@ export const quotaHeaders = {
 export function quotaIdentity(name = 'account-a'): string {
   return createHash('sha256').update(name).digest('hex');
 }
-export function quotaRoot(t: TestContext): string {
+/** A throw-away folder; `stopWriters` runs first so nothing is still writing when it is removed. */
+export function quotaRoot(t: TestContext, stopWriters: () => void = () => undefined): string {
   const root = mkdtempSync(join(tmpdir(), 'pi-footer-dock-quota-test-'));
   t.after(() => {
+    stopWriters();
     // A background write may land while the folder is being removed; retry instead of failing the test.
     rmSync(root, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
   });
