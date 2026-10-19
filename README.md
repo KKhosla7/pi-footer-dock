@@ -1,5 +1,13 @@
 # Footer Dock
 
+[![Check](https://github.com/KKhosla7/pi-footer-dock/actions/workflows/check.yml/badge.svg)](https://github.com/KKhosla7/pi-footer-dock/actions/workflows/check.yml)
+[![npm version](https://img.shields.io/npm/v/pi-footer-dock)](https://www.npmjs.com/package/pi-footer-dock)
+[![npm downloads](https://img.shields.io/npm/dm/pi-footer-dock)](https://www.npmjs.com/package/pi-footer-dock)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Node 22.19+](https://img.shields.io/badge/node-%E2%89%A5%2022.19-339933)](#requirements)
+[![Pi 1.2 and 1.3](https://img.shields.io/badge/Pi-1.2%20%7C%201.3-b4befe)](#requirements)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
+
 **A two-row status footer for [Pi](https://pi.dev) that tells you what is going on.** Git, model, context, tokens, cache, speed, provider limits and cost, in two rows that fit your terminal, with an explanation behind every value.
 
 ![Footer Dock on a wide terminal](docs/images/footer-wide.png)
