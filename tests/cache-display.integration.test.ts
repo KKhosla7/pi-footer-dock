@@ -51,7 +51,8 @@ await test('default zero-read cache has readable wording without claiming a miss
     await session.prompt('Synthetic normalized-zero cache response.');
     const text = capture.render().map(stripVTControlCharacters).join('\n');
     assert.match(text, /last not reported/u);
-    assert.doesNotMatch(text, /R0|W0|cache miss/u);
+    // Whole words only: the footer also carries the (random) folder name, which may contain "R0".
+    assert.doesNotMatch(text, /\bR0\b|\bW0\b|cache miss/u);
     assert.equal(server.requests(), 1);
     assert.deepEqual(capture.errors, []);
   } finally {

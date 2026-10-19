@@ -1,0 +1,30 @@
+name: Release rehearsal
+# Run by hand (Actions → Release rehearsal → Run workflow) before tagging a release. It does everything
+# the release does except publish: the checks, the package inspection, a check that the publish token is
+# accepted by npm, and an `npm publish --dry-run`. The token is never printed.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rehearse:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run pack:check
+      - name: The npm token is accepted
+        run: npm whoami > /dev/null && echo "npm accepts the token"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: The name is free, or already ours
+        run: npm view "$(node -p "require('./package.json').name")" version 2>&1 | head -1 || true
+      - run: npm publish --dry-run --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
