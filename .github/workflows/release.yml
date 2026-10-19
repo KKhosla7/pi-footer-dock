@@ -1,12 +1,13 @@
 name: Release
 # Publishes to npm when a version tag is pushed, with a provenance statement that links the
-# package to this repository and this run. Needs the repository secret NPM_TOKEN (an npm
-# automation token) or npm trusted publishing set up for this workflow; see RELEASING.md.
+# package to this repository and this run, then creates the GitHub release from CHANGELOG.md.
+# Needs the repository secret NPM_TOKEN (an npm token) or npm trusted publishing set up for this
+# workflow; see RELEASING.md.
 on:
   push:
     tags: ['v*']
 permissions:
-  contents: read
+  contents: write # to create the GitHub release
   id-token: write
 jobs:
   publish:
@@ -23,6 +24,15 @@ jobs:
       - run: npm run pack:check
       - name: The tag must match package.json
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      - name: The changelog has notes for this version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" 'index($0, "## [" v "]") == 1 {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          test -s "$RUNNER_TEMP/notes.md"
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "Footer Dock ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" --latest
+        env:
+          GH_TOKEN: ${{ github.token }}

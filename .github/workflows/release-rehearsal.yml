@@ -25,6 +25,19 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: The name is free, or already ours
         run: npm view "$(node -p "require('./package.json').name")" version 2>&1 | head -1 || true
-      - run: npm publish --dry-run --access public
+      - name: The changelog has notes for the version in package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          awk -v v="$version" 'index($0, "## [" v "]") == 1 {f=1; next} /^## \[/ {f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          test -s "$RUNNER_TEMP/notes.md" && echo "release notes found for $version"
+      - name: Publish dry run (skipped when this version is already on npm)
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "$name@$version" version > /dev/null 2>&1; then
+            echo "$name@$version is already published; bump the version to rehearse the next release"
+          else
+            npm publish --dry-run --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
