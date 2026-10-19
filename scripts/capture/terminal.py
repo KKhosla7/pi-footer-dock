@@ -2,15 +2,23 @@
 import fcntl, os, pty, select, struct, subprocess, termios, time, html
 import pyte
 
-# A dark palette for the 16 ANSI colours (the programme may use truecolour instead).
+# A soft dark palette with lavender accents (the Catppuccin Mocha colours) for the 16 ANSI colours.
 ANSI = {
-    'black': '#1e2127', 'red': '#e06c75', 'green': '#98c379', 'brown': '#e5c07b',
-    'blue': '#61afef', 'magenta': '#c678dd', 'cyan': '#56b6c2', 'white': '#abb2bf',
-    'brightblack': '#5c6370', 'brightred': '#e06c75', 'brightgreen': '#98c379',
-    'brightbrown': '#e5c07b', 'brightyellow': '#e5c07b', 'brightblue': '#61afef',
-    'brightmagenta': '#c678dd', 'brightcyan': '#56b6c2', 'brightwhite': '#ffffff',
+    'black': '#45475a', 'red': '#f38ba8', 'green': '#a6e3a1', 'brown': '#f9e2af',
+    'blue': '#89b4fa', 'magenta': '#cba6f7', 'cyan': '#94e2d5', 'white': '#bac2de',
+    'brightblack': '#6c7086', 'brightred': '#f38ba8', 'brightgreen': '#a6e3a1',
+    'brightbrown': '#f9e2af', 'brightyellow': '#f9e2af', 'brightblue': '#b4befe',
+    'brightmagenta': '#f5c2e7', 'brightcyan': '#94e2d5', 'brightwhite': '#cdd6f4',
 }
-BACKGROUND, FOREGROUND = '#1b1e24', '#d7dae0'
+# pyte turns the first 16 colours of the 256-colour table into fixed xterm values; a real terminal
+# would show its own palette there, so map them back to the names above.
+XTERM16 = {
+    '000000': 'black', 'cd0000': 'red', '00cd00': 'green', 'cdcd00': 'brown', '0000ee': 'blue',
+    'cd00cd': 'magenta', '00cdcd': 'cyan', 'e5e5e5': 'white', '7f7f7f': 'brightblack',
+    'ff0000': 'brightred', '00ff00': 'brightgreen', 'ffff00': 'brightbrown', '5c5cff': 'brightblue',
+    'ff00ff': 'brightmagenta', '00ffff': 'brightcyan', 'ffffff': 'brightwhite',
+}
+BACKGROUND, FOREGROUND = '#1e1e2e', '#cdd6f4'
 CELL_W, CELL_H, FONT = 9, 20, 15
 
 
@@ -99,6 +107,8 @@ class Terminal:
         def colour(value, default):
             if value == 'default':
                 return default
+            if value in XTERM16:
+                value = XTERM16[value]
             if value in ANSI:
                 return ANSI[value]
             return '#' + value if len(value) == 6 else default

@@ -13,12 +13,16 @@ port=$((20000 + $$ % 20000))
 server=$!
 
 mkdir -p "$work/home/projects" "$work/agent" "$work/remote.git"
-echo '{"quietStartup":true}' > "$work/agent/settings.json"
 cat > "$work/agent/models.json" <<JSON
 {"providers":{"example":{"baseUrl":"http://127.0.0.1:$port/v1","api":"openai-completions","apiKey":"demo",
 "models":[{"id":"example-coder","name":"Example Coder","contextWindow":200000,"maxTokens":8192,"reasoning":false,
 "cost":{"input":1.5,"output":6,"cacheRead":0.15,"cacheWrite":1.9}}]}}}
 JSON
+
+# Install the package the way a user gets it: pack it, unpack the tarball, and let Pi install that.
+(cd "$repo" && npm pack --silent --pack-destination "$work" >/dev/null)
+mkdir -p "$work/pkg" && tar -xzf "$work"/pi-footer-dock-*.tgz -C "$work/pkg" --strip-components=1
+HOME="$work/home" PI_CODING_AGENT_DIR="$work/agent" PI_OFFLINE=1 PI_TELEMETRY=0 "${PI_BIN:-$repo/node_modules/.bin/pi}" install "$work/pkg" >/dev/null
 
 git() { command git -c user.name=Demo -c user.email=demo@example.com -c init.defaultBranch=main "$@"; }
 git init -q --bare "$work/remote.git"

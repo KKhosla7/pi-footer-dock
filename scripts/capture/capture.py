@@ -15,8 +15,7 @@ ICON = {'changed': '\uf040', 'robot': '\U000f06a9'}
 
 
 def start(cols=130, rows=34):
-    return Terminal([pi, '-e', f'{repo}/src/index.ts', '--no-extensions', '--no-skills', '--no-prompt-templates',
-                     '--no-context-files', '--model', 'example/example-coder', '--no-session'],
+    return Terminal([pi, '--no-context-files', '--model', 'example/example-coder', '--no-session'],
                     f'{work}/home/projects/my-app', env, cols, rows)
 
 

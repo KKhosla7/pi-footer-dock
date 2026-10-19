@@ -31,7 +31,7 @@ Prettier (format), ESLint (types-aware), `tsc`, dependency-cruiser (architecture
 
 ## Pictures
 
-The pictures in the README are real: `npm run screenshots` runs Pi in a pseudo-terminal against a local stand-in provider and a throw-away project (your own settings and accounts are never touched), reads the screen and draws it with a Nerd Font in headless Chromium. It needs `nix develop` (for Python and `pyte`), a Chromium or Chrome on the path, and the JetBrainsMono Nerd Font installed; pass picture names to redo only some (`npm run screenshots -- footer-wide diff`). If you change what a screen looks like, run it and commit the new pictures.
+The pictures in the README are real: `npm run screenshots` packs the package and installs it into a throw-away Pi folder the way a user would, runs Pi in a pseudo-terminal against a local stand-in provider and a throw-away project (your own settings and accounts are never touched), reads the screen and draws it with a Nerd Font and a soft lavender palette (the 16 terminal colours are mapped to it) in headless Chromium. It needs `nix develop` (for Python and `pyte`), a Chromium or Chrome on the path, and the JetBrainsMono Nerd Font installed; pass picture names to redo only some (`npm run screenshots -- footer-wide diff`). If you change what a screen looks like, run it and commit the new pictures.
 
 ## Licence
 
