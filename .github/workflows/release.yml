@@ -3,6 +3,9 @@ name: Release
 # package to this repository and this run, then creates the GitHub release from CHANGELOG.md.
 # Publishing uses npm trusted publishing (OIDC): there is no npm token or secret anywhere. npm must
 # list this repository and this workflow as the package's trusted publisher; see RELEASING.md.
+# The workflow only STAGES the release (`npm stage publish`, the one action a trusted publisher may
+# always do). Nothing is public until the maintainer approves the staged version on npm with
+# two-factor authentication: a human decision for every release.
 # Started by hand (Actions → Release → Run workflow) it publishes nothing: it runs the same steps and an
 # `npm publish --dry-run`, which also performs the OIDC exchange with npm, so the trusted-publisher entry
 # can be proven without releasing. Only the OIDC lines of npm's log are shown.
@@ -47,16 +50,16 @@ jobs:
             for (const key of ["repository", "repository_owner", "repository_id", "repository_owner_id", "workflow_ref", "job_workflow_ref", "ref", "ref_type", "environment", "sub"])
               console.log(`${key}: ${claims[key]}`);
           '
-      - name: Publish (a dry run when started by hand)
+      - name: Stage the release on npm (a dry run when started by hand)
         run: |
           flags=""
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then flags="--dry-run"; fi
           status=0
-          npm publish --provenance --access public $flags --loglevel verbose > "$RUNNER_TEMP/publish.log" 2>&1 || status=$?
+          npm stage publish . --provenance --access public $flags --loglevel verbose > "$RUNNER_TEMP/publish.log" 2>&1 || status=$?
           grep -E "oidc|npm notice (Publishing|publish)|npm error|npm warn|^\+ " "$RUNNER_TEMP/publish.log" || true
           exit $status
-      - name: GitHub release
+      - name: GitHub release as a draft (publish it after approving the version on npm)
         if: github.ref_type == 'tag'
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "Footer Dock ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" --latest
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "Footer Dock ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md" --latest --draft
         env:
           GH_TOKEN: ${{ github.token }}
