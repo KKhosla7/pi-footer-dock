@@ -69,15 +69,27 @@ Run `/dock-settings`. Hide any item (at every width or only on narrow ones), cho
 
 ![The settings menu](docs/images/settings.png)
 
-## Provider limits: what it asks, and how to turn it off
+## Provider limits (off until you turn them on)
 
-For **ClinePass**, **OpenCode Go** and **OpenAI Codex**, Footer Dock shows the limit windows the provider itself reports, with their reset times. To do that it asks the provider's own usage service, with the credential Pi already holds for that provider (obtained through Pi's public API; Footer Dock never reads credential files), at most once every 30 seconds across all your Pi windows. These usage services are **not documented as stable**: if one changes, the windows disappear rather than being guessed.
+Some providers publish how much of a subscription is left (a 5-hour window, a weekly one, a monthly one). Footer Dock can show those windows with their reset times, and whether you are ahead of or behind the pace that would last until the reset. **This is off by default**: it needs a request you did not make, so you choose. With a supported provider and the setting off, the footer says `limits off`.
 
-Prefer to send nothing? Set **Ask providers for limits** to **off** in `/dock-settings`. Other providers show no limits, because there is nothing to ask.
+**Supported providers**
+
+| Provider     | Pi provider id | Windows shown             | Asks (HTTPS)                                          |
+| ------------ | -------------- | ------------------------- | ----------------------------------------------------- |
+| ClinePass    | `clinepass`    | 5h, week, month           | `api.cline.bot`, `/api/v1/users/me/plan/usage-limits` |
+| OpenCode Go  | `opencode-go`  | 5h, week, month           | `opencode.ai`, `/zen/go/v1/usage`                     |
+| OpenAI Codex | `openai-codex` | the windows Codex reports | `chatgpt.com`, `/backend-api/wham/usage`              |
+
+Other providers show no limits (`quota unsupported`); OpenAI-style APIs that send rate-limit headers show those, which needs no extra request. **Your provider is missing?** Adding one is a small, self-contained change: see [docs/adding-a-provider.md](docs/adding-a-provider.md).
+
+**To turn it on:** `/dock-settings` → **Limit usage** → **Ask providers for limits** → **on**.
+
+**What turning it on does:** Footer Dock asks the provider's own usage service, at the address in the table, with the credential Pi already holds for that provider (obtained through Pi's public API; Footer Dock never reads credential files), at most once every 30 seconds across all your Pi windows. Nothing else is sent. These usage services are **not documented as stable**: if one changes, the windows disappear rather than being guessed. Turn the setting off and the requests stop at once.
 
 ## Privacy and safety
 
-- **No telemetry, no accounts, no servers of ours.** Footer Dock makes no network request except the provider limit check above, and that only for the three providers named there.
+- **No telemetry, no accounts, no servers of ours.** Footer Dock makes no network request except the provider limit check above, and that only if you turned it on, only for the providers in the table.
 - **Credentials:** obtained from Pi at the moment of a request, sent only to the provider's fixed address, never stored, never logged, never shown.
 - **Git is read-only and inert.** Footer Dock only reads. It switches off every program a repository's own configuration could make Git run (`core.fsmonitor`, textconv, external diff, filters and so on), so opening a hostile repository cannot run code. It never switches branches itself: choosing a branch only prepares the `git switch` command in your message box for you to run.
 - **Your history stays on your machine.** The cost history is built from Pi's own session logs and cached under your user cache folder; only numbers and folder names are kept, never messages.

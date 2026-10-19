@@ -68,7 +68,7 @@ const forbidden = [
   /^MVP1-/u,
   /^\.task_logs/u,
   /\.test\.ts$/u,
-  /^docs\/(?!extending-footer-dock\.md$)/u,
+  /^docs\/(?!extending-footer-dock\.md$)/u, // adding-a-provider.md stays in the repository only
   /node_modules/u,
 ];
 for (const path of files)

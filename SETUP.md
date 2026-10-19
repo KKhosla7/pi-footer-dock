@@ -35,7 +35,7 @@ Other ways, if you need them:
 3. Run `/dock-settings` to hide items, change the cost period, or switch the icon set.
 4. If you see boxes instead of icons, run `/dock-glyphs`.
 
-Nothing else to configure. Provider limits appear by themselves for ClinePass, OpenCode Go and OpenAI Codex when you use them.
+Nothing else to configure. If you use ClinePass, OpenCode Go or OpenAI Codex and want to see your limit windows, turn on _Ask providers for limits_ in `/dock-settings`: it is off until you do (see [README.md](README.md#provider-limits-off-until-you-turn-them-on)).
 
 ## Update
 
@@ -80,8 +80,8 @@ This removes the package. Two small things stay behind and can be deleted by han
 | No footer after installing                     | Start a new Pi session or `/reload`. `pi list` should show `pi-footer-dock`. Check you are in Pi's interactive mode.                                                          |
 | Icons are boxes or question marks              | `/dock-glyphs`, or install a Nerd Font in your terminal.                                                                                                                      |
 | Clicks do nothing                              | Your terminal may not send mouse events to Pi. Use the keyboard path: `/dock-info cache`, `/dock-settings`.                                                                   |
-| Limits show `quota unsupported`                | Your provider has no limit source. Only ClinePass, OpenCode Go and OpenAI Codex have one.                                                                                     |
-| Limits show `limits off`                       | You turned off _Ask providers for limits_ in `/dock-settings`. Turn it on to see them.                                                                                        |
+| Limits show `quota unsupported`                | Your provider has no limit source. Only ClinePass, OpenCode Go and OpenAI Codex have one; to add yours see `docs/adding-a-provider.md`.                                       |
+| Limits show `limits off`                       | Asking providers for limits is off (the default). Turn on _Ask providers for limits_ in `/dock-settings` to see them.                                                         |
 | Limits show `quota auth rejected`              | Sign in again with `/login` for that provider.                                                                                                                                |
 | Git items say `refreshed after each Pi action` | The repository is too large to watch. Values are still real; they refresh after each tool call and turn.                                                                      |
 | Cost shows `≈$12.40 mo`, not my session        | That is the month across all sessions. Change _Cost period_ in `/dock-settings`.                                                                                              |

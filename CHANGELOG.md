@@ -13,6 +13,6 @@ All notable changes to Footer Dock are listed here. The format follows [Keep a C
 - Cost across sessions by day, week or month, built from Pi's own session logs, with a chart and tables by project and model.
 - Click actions: open the project folder; model and thinking pickers with search; branch list that prepares a switch command; changed-files list with a diff that shows line numbers.
 - `/dock-settings` menu with per-item visibility, limit windows, wording, cost period and icon set; settings shared by every Pi window.
-- Provider limits for ClinePass, OpenCode Go and OpenAI Codex, with a switch to turn the requests off.
+- Provider limits for ClinePass, OpenCode Go and OpenAI Codex. Off by default (nothing is sent until the user turns on _Ask providers for limits_); the footer says `limits off` meanwhile. A guide for adding a provider: `docs/adding-a-provider.md`.
 - Git reads are inert (a repository's own configuration cannot make Git run a program) and fall back to events mode on very large repositories.
 - A registration protocol so other extensions can have Footer Dock manage their footer items, settings and explanations (`docs/extending-footer-dock.md`).

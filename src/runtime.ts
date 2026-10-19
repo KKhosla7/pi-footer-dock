@@ -44,7 +44,7 @@ export class DockRuntime {
     settingsStore: SettingsStore = { load: loadSettings, save: saveSettings },
   ) {
     this.settings = new SettingsController(settingsStore);
-    this.trackers = new Trackers(pi, this.changed, () => this.settings.current.limits !== 'off');
+    this.trackers = new Trackers(pi, this.changed, () => this.settings.current.limits === 'on');
     this.pointerTrace.enabled = process.env[NAMES.pointerDebugEnv] === '1';
     this.interactions = new FooterInteractions(
       pi,

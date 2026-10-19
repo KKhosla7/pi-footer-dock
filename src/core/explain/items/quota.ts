@@ -177,6 +177,7 @@ export const quota: Explainer = {
   ],
   missingWhen: [
     'The provider has no limit source yet: the footer says quota unsupported.',
+    'Asking providers for limits is off, which is the default: the footer says limits off. Turn it on in /dock-settings.',
     'The first reply has not arrived (quota loading), or the sign-in was rejected (quota auth rejected).',
     'The last successful check is older than five minutes, or the endpoint changed shape: windows are hidden rather than guessed.',
     'A window the provider does not report is simply not listed.',

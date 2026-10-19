@@ -5,22 +5,23 @@ import { defaultSettings, parseSettings } from '../src/core/settings.js';
 import { QuotaController } from '../src/quota-controller.js';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 
-await test('asking providers for limits is on by default, saved only when off, and refused for other values', () => {
+await test('asking providers for limits is off by default, saved only when on, and refused for other values', () => {
   const row = menuRows(defaultSettings(), []).find((entry) => entry.id === 'limits');
-  assert.equal(row?.current, 'on');
-  const off = choose(defaultSettings(), 'limits', 'off');
-  assert.equal(off.limits, 'off');
-  assert.deepEqual(parseSettings(JSON.parse(JSON.stringify(off))).limits, 'off');
+  assert.equal(row?.current, 'off');
+  const on = choose(defaultSettings(), 'limits', 'on');
+  assert.equal(on.limits, 'on');
+  assert.deepEqual(parseSettings(JSON.parse(JSON.stringify(on))).limits, 'on');
   assert.equal(
-    'limits' in choose(off, 'limits', 'on'),
+    'limits' in choose(on, 'limits', 'off'),
     false,
-    'on is the default: nothing is stored',
+    'off is the default: nothing is stored',
   );
+  assert.equal(parseSettings({ version: 1, limits: 'off', slots: {} }).limits, 'off');
   assert.throws(() => parseSettings({ version: 1, limits: 'maybe', slots: {} }));
 });
 
-await test('with the switch off a provider that has a limit source is not asked and the footer says limits off', () => {
-  let enabled = false;
+await test('with the switch off (the default) a provider that has a limit source is not asked and the footer says limits off', () => {
+  let enabled = false; // the default
   const pi = {
     appendEntry: () => undefined,
     events: { on: () => () => undefined, emit: () => undefined },

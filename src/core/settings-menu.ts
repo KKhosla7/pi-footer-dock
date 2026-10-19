@@ -25,7 +25,7 @@ const choices: Record<string, string[]> = {
   meter: ['lavender', 'theme'],
   glyphs: ['nerd', 'portable'],
   clicks: ['do things', 'explain only'],
-  limits: ['on', 'off'],
+  limits: ['off', 'on'],
 };
 const isPeriod = (value: string): value is CostPeriod =>
   (COST_PERIODS as readonly string[]).includes(value);
@@ -68,7 +68,7 @@ function limitsRow(settings: Settings): MenuRow {
     row(
       'limits',
       'Ask providers for limits',
-      settings.limits === 'off' ? 'off' : 'on',
+      settings.limits === 'on' ? 'on' : 'off',
       choices.limits ?? [],
     ),
     quotaText.network,
@@ -193,10 +193,10 @@ function globalChoice(settings: Settings, id: string, value: string): Settings {
       return quotaChoice(settings, id, value);
   }
 }
-/** The provider-limits switch: stored only when it is off, so the default leaves the file alone. */
+/** The provider-limits switch: stored only when it is on; off is the default and leaves the file alone. */
 function withLimits(settings: Settings, value: string): Settings {
   const next = { ...settings };
-  if (value === 'off') next.limits = 'off';
+  if (value === 'on') next.limits = 'on';
   else delete next.limits;
   return next;
 }

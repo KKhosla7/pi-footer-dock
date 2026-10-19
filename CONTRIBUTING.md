@@ -25,6 +25,10 @@ Use Node.js 24 for `npm run check` (CI also runs the tests on Node 22). Try your
 - **Files and functions stay small** (the lint limits are the rule, not a suggestion): 220 lines per file, 65 per function, low complexity.
 - **Security matters.** Text from outside (repository content, model names, provider data) is untrusted: strip it before drawing it. Do not add a network request, a stored credential, a repository write or a new place files are written without discussing it first. See [SECURITY.md](SECURITY.md).
 
+## Adding a provider
+
+A provider's limit windows are one small module and one line in a registry. Read [docs/adding-a-provider.md](docs/adding-a-provider.md); it lists what a source must and must not do.
+
 ## What `npm run check` runs
 
 Prettier (format), ESLint (types-aware), `tsc`, dependency-cruiser (architecture), and the test suite (`node:test` through `tsx`). Tests that need Git create throwaway repositories; none touches your real Pi folder or network.

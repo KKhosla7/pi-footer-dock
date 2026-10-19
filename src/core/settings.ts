@@ -14,7 +14,7 @@ export interface Settings {
   clicks?: 'actions' | 'explain';
   /** The user's own app for opening the project folder, as a command with `{path}`. */
   openWith?: string[];
-  /** `off` sends no request to any provider for its limits; the default asks (about every 30 s, shared by all Pi windows). */
+  /** `on` asks the provider's own usage service for its limits (about every 30 s, shared by all Pi windows); the default is off and sends nothing. */
   limits?: 'on' | 'off';
   slots: Record<string, SlotOptions>;
 }
