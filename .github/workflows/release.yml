@@ -41,15 +41,6 @@ jobs:
         run: |
           npm --version
           node -e "const [a,b,c]=process.argv[1].split('.').map(Number); process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)" "$(npm --version)"
-      - name: Show who GitHub says is publishing (the public identity claims npm compares; never the token)
-        run: |
-          node --input-type=module -e '
-            const url = `${process.env.ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org`;
-            const response = await fetch(url, { headers: { Authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` } });
-            const claims = JSON.parse(Buffer.from((await response.json()).value.split(".")[1], "base64url").toString());
-            for (const key of ["repository", "repository_owner", "repository_id", "repository_owner_id", "workflow_ref", "job_workflow_ref", "ref", "ref_type", "environment", "sub"])
-              console.log(`${key}: ${claims[key]}`);
-          '
       - name: Stage the release on npm (a dry run when started by hand)
         run: |
           flags=""
