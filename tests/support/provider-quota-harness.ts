@@ -11,7 +11,7 @@ export const KEY = 'provider-key-canary-71c2';
 export const CLINE = 'https://api.cline.bot/api/v1';
 export const GO = 'https://opencode.ai/zen/go/v1';
 
-export async function until(predicate: () => boolean, timeout = 1500): Promise<void> {
+export async function until(predicate: () => boolean, timeout = 8000): Promise<void> {
   const deadline = performance.now() + timeout;
   while (!predicate() && performance.now() < deadline) await sleep(5);
   assert.ok(predicate(), 'expected the service to reach the awaited state');

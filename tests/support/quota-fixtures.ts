@@ -26,7 +26,7 @@ export function quotaRoot(t: TestContext): string {
   const root = mkdtempSync(join(tmpdir(), 'pi-footer-dock-quota-test-'));
   t.after(() => {
     // A background write may land while the folder is being removed; retry instead of failing the test.
-    rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+    rmSync(root, { recursive: true, force: true, maxRetries: 30, retryDelay: 100 });
   });
   return root;
 }
