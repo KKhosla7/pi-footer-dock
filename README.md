@@ -8,6 +8,10 @@
 [![Pi 1.2 and 1.3](https://img.shields.io/badge/Pi-1.2%20%7C%201.3-b4befe)](#requirements)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
+https://github.com/user-attachments/assets/2f7eab93-210e-40e2-8736-d7cc64520ccc
+
+_The 30-second tour, also [on YouTube](https://youtu.be/fkBa8wB2_YI)._
+
 **A two-row status footer for [Pi](https://pi.dev) that tells you what is going on.** Git, model, context, tokens, cache, speed, provider limits and cost, in two rows that fit your terminal, with an explanation behind every value.
 
 ![Footer Dock on a wide terminal](docs/images/footer-wide.png)
@@ -23,6 +27,8 @@ pi install npm:pi-footer-dock
 ```
 
 Then restart Pi (or run `/reload`). That is all. Full instructions, updating, removing and troubleshooting: **[SETUP.md](SETUP.md)**.
+
+**Icons need a [Nerd Font](https://www.nerdfonts.com/) in your terminal.** If the icons show up as empty boxes, your font does not have them: run `/dock-glyphs` for plain symbols that every font has, or install a Nerd Font. Footer Dock mentions this once, the first time it starts.
 
 ## What the footer shows
 

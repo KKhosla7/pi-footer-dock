@@ -364,6 +364,9 @@ function say(ctx, text, level = "info") {
   } catch {
   }
 }
+var sayAt = (ctx, level = "info") => (text) => {
+  say(ctx, text, level);
+};
 
 // src/open-with-command.ts
 function runOpenWith(args, ctx, settings) {
@@ -4554,7 +4557,16 @@ var ownOption = (id, key) => {
   if (id === "quota") return QUOTA_ONLY.includes(key);
   return id === "compaction" && key === "unit" || id === "cost" && key === "period";
 };
-var KEYS = ["version", "glyphs", "quotaExpanded", "clicks", "openWith", "limits", "slots"];
+var KEYS = [
+  "version",
+  "glyphs",
+  "glyphHintShown",
+  "quotaExpanded",
+  "clicks",
+  "openWith",
+  "limits",
+  "slots"
+];
 var defaultSettings = () => ({ version: 1, slots: {} });
 var settingsItems = () => [...slotHelp.keys()].filter((id) => id !== QUOTA_TOGGLE);
 function slots(value) {
@@ -4579,15 +4591,19 @@ function parseSettings(value) {
   if (data.slots !== void 0) result.slots = slots(data.slots);
   return result;
 }
+function readFlags(data, result) {
+  for (const key of ["glyphHintShown", "quotaExpanded"]) {
+    if (data[key] === void 0) continue;
+    if (typeof data[key] !== "boolean") throw new Error(`${key} must be boolean`);
+    result[key] = data[key];
+  }
+}
 function readChoices(data, result) {
   if (data.glyphs !== void 0) {
     if (data.glyphs !== "nerd" && data.glyphs !== "portable") throw new Error("Invalid glyph set");
     result.glyphs = data.glyphs;
   }
-  if (data.quotaExpanded !== void 0) {
-    if (typeof data.quotaExpanded !== "boolean") throw new Error("quotaExpanded must be boolean");
-    result.quotaExpanded = data.quotaExpanded;
-  }
+  readFlags(data, result);
   if (data.limits !== void 0) {
     if (data.limits !== "on" && data.limits !== "off") throw new Error("limits must be on or off");
     result.limits = data.limits;
@@ -7370,7 +7386,7 @@ var cost = {
           sessionFact(estimate, priced),
           ...headlineFact(snapshot.history, period ?? "month", new Date(now))
         ),
-        ...priced ? [categoryBar(breakdown)] : []
+        ...priced ? [gap, categoryBar(breakdown)] : []
       ],
       body: [
         ...priced ? pricedBody(breakdown) : [],
@@ -8424,6 +8440,7 @@ var FooterInteractions = class {
 };
 
 // src/settings-controller.ts
+var GLYPH_HINT = `${PRODUCT}: if the icons look like empty boxes, your terminal font has no Nerd Font symbols. Run /dock-glyphs for plain symbols, or install a Nerd Font.`;
 var SettingsController = class {
   constructor(store) {
     this.store = store;
@@ -8441,11 +8458,25 @@ var SettingsController = class {
   followSavedGlyphs() {
     this.toggled = void 0;
   }
+  /** Set while the file on disk was ignored: it must not be overwritten with defaults. */
+  ignored = false;
   /** Re-reads the file; says why through `report` if it had to be ignored. */
   load(report) {
     const { settings, problem } = this.store.load();
     this.current = settings;
+    this.ignored = problem !== void 0;
     if (problem) report(`${PRODUCT} settings ignored: ${problem}.`);
+  }
+  /**
+   * Once, for a user who never chose an icon set: what to do if the icons are not drawn (a
+   * terminal cannot tell us its font). Never touches a file that was ignored; a failed save only
+   * means the note may come again.
+   */
+  announceGlyphs(report) {
+    const { glyphs, glyphHintShown } = this.current;
+    if (this.ignored || glyphs !== void 0 || glyphHintShown) return;
+    report(GLYPH_HINT);
+    this.update({ ...this.current, glyphHintShown: true });
   }
   /** Applies a change in memory first, so the footer follows even if saving fails. */
   update(next) {
@@ -9359,9 +9390,8 @@ var DockRuntime = class {
     this.stop();
     if (ctx.mode !== "tui") return;
     ctx.ui.setFooter(void 0);
-    this.settings.load((message) => {
-      say(ctx, message, "warning");
-    });
+    this.settings.load(sayAt(ctx, "warning"));
+    this.settings.announceGlyphs(sayAt(ctx));
     this.ctx = ctx;
     this.trackers.start(ctx);
     this.live = this.usage.capture(

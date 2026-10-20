@@ -174,7 +174,7 @@ export const cost: Explainer = {
           sessionFact(estimate, priced),
           ...headlineFact(snapshot.history, period ?? 'month', new Date(now)),
         ),
-        ...(priced ? [categoryBar(breakdown)] : []),
+        ...(priced ? [gap, categoryBar(breakdown)] : []),
       ],
       body: [
         ...(priced ? pricedBody(breakdown) : []),
