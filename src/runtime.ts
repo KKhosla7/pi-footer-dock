@@ -18,7 +18,7 @@ import { runSettingsCommand } from './settings-command.js';
 import type { SettingsStore } from './settings-controller.js';
 import { DockFooter } from './ui/footer.js';
 import { createPaint } from './ui/palette.js';
-import { say } from './notify.js';
+import { say, sayAt } from './notify.js';
 
 export class DockRuntime {
   private ctx: ExtensionContext | undefined;
@@ -58,9 +58,8 @@ export class DockRuntime {
     this.stop();
     if (ctx.mode !== 'tui') return;
     ctx.ui.setFooter(undefined);
-    this.settings.load((message) => {
-      say(ctx, message, 'warning');
-    });
+    this.settings.load(sayAt(ctx, 'warning'));
+    this.settings.announceGlyphs(sayAt(ctx));
     this.ctx = ctx;
     this.trackers.start(ctx);
     this.live = this.usage.capture(

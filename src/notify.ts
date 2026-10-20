@@ -31,3 +31,10 @@ export function say(ctx: Pick<ExtensionContext, 'ui'>, text: string, level: Leve
     /* Nowhere to show it. */
   }
 }
+
+/** `say` at one level, as a callback for code that only has a message to give. */
+export const sayAt =
+  (ctx: Pick<ExtensionContext, 'ui'>, level: Level = 'info') =>
+  (text: string): void => {
+    say(ctx, text, level);
+  };

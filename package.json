@@ -1,6 +1,6 @@
 {
   "name": "pi-footer-dock",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A two-row status footer for Pi: Git, model, context, tokens, cache, speed, provider limits and cost, with explanations behind every value.",
   "type": "module",
   "license": "Apache-2.0",
@@ -41,7 +41,8 @@
     "extensions": [
       "./dist/index.js"
     ],
-    "image": "https://raw.githubusercontent.com/KKhosla7/pi-footer-dock/main/docs/images/footer-wide.png"
+    "image": "https://raw.githubusercontent.com/KKhosla7/pi-footer-dock/main/docs/images/footer-wide.png",
+    "video": "https://github.com/user-attachments/assets/2f7eab93-210e-40e2-8736-d7cc64520ccc"
   },
   "scripts": {
     "format": "prettier --write .",

@@ -4,6 +4,17 @@ All notable changes to Footer Dock are listed here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-20
+
+### Added
+
+- The first time Footer Dock starts for a user who never chose an icon set, it says once what to do if the icons look like empty boxes (`/dock-glyphs`, or install a Nerd Font). It is remembered in the settings file as `glyphHintShown`; a settings file that had to be ignored is never rewritten for this. The README now says in the Install section that the icons need a Nerd Font. **New setting:** `glyphHintShown` (written automatically; you never need to set it). Versions before 0.1.2 reject a settings file that contains it, so after going back to 0.1.1 or 0.1.0 delete that line.
+- The package manifest now names the launch video (`pi.video`), so the package page on pi.dev can play it. The video is hosted by GitHub as an attachment (the same one the README plays); it is not part of the npm package.
+
+### Fixed
+
+- The cost screen's bar of dollars by category sat directly under the "This session" and "This month" lines; there is now a blank row between them, as on the other screens.
+
 ## [0.1.1] - 2026-10-19
 
 ### Changed

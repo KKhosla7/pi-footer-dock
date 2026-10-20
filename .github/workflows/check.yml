@@ -29,3 +29,13 @@ jobs:
         if: matrix.node != '24'
       - run: npm run pack:check
         if: matrix.node == '24'
+  hygiene:
+    # No personal details in the public repository: commit addresses and trailers, emails and home-folder paths in files.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: scripts/check-hygiene.sh "$BASE"
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}

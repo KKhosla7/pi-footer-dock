@@ -5,6 +5,8 @@ import type { Glyphs } from './ui/glyphs.js';
 import type { Settings } from './core/settings.js';
 import type { SettingsLoad } from './adapters/settings-file.js';
 
+const GLYPH_HINT = `${PRODUCT}: if the icons look like empty boxes, your terminal font has no Nerd Font symbols. Run /dock-glyphs for plain symbols, or install a Nerd Font.`;
+
 export interface SettingsStore {
   load: () => SettingsLoad;
   save: (settings: Settings) => void;
@@ -26,11 +28,25 @@ export class SettingsController {
   followSavedGlyphs(): void {
     this.toggled = undefined;
   }
+  /** Set while the file on disk was ignored: it must not be overwritten with defaults. */
+  private ignored = false;
   /** Re-reads the file; says why through `report` if it had to be ignored. */
   load(report: (message: string) => void): void {
     const { settings, problem } = this.store.load();
     this.current = settings;
+    this.ignored = problem !== undefined;
     if (problem) report(`${PRODUCT} settings ignored: ${problem}.`);
+  }
+  /**
+   * Once, for a user who never chose an icon set: what to do if the icons are not drawn (a
+   * terminal cannot tell us its font). Never touches a file that was ignored; a failed save only
+   * means the note may come again.
+   */
+  announceGlyphs(report: (message: string) => void): void {
+    const { glyphs, glyphHintShown } = this.current;
+    if (this.ignored || glyphs !== undefined || glyphHintShown) return;
+    report(GLYPH_HINT);
+    this.update({ ...this.current, glyphHintShown: true });
   }
   /** Applies a change in memory first, so the footer follows even if saving fails. */
   update(next: Settings): string | undefined {

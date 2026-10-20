@@ -5,3 +5,4 @@ coverage/
 auth.json
 models-store.json
 .env
+__pycache__/

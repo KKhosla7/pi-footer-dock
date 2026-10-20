@@ -40,6 +40,16 @@ await test('cost: categories and models add up to the total, and the latest resp
   assert.match(text, /2,000 uncached input × \$12\.50\/M = \$0\.03/u);
 });
 
+await test('cost: the category bar has a blank row above it, so it does not sit on the totals', () => {
+  const estimate = estimateApiCost([response('a', price(1_000, 10_000, 500, 0.04))]);
+  const lines = show(cost, { ...demoSnapshot, apiCostEstimate: estimate }).split('\n');
+  const bar = lines.findIndex((line) => /^ [█▓▒░]{6,}$/u.test(line));
+  assert.ok(bar > 1, 'the bar is drawn');
+  assert.equal(lines[bar - 1], '', 'a blank row above the bar');
+  assert.match(lines[bar - 2] ?? '', /This (session|month)/u, 'the totals sit above that');
+  assert.match(lines[bar + 1] ?? '', /^ █ uncached input .*%/u, 'the legend follows at once');
+});
+
 await test('cost: a repriced response is split by category with the same arithmetic as the total', () => {
   const unrecorded = {
     provider: 'openai-codex',

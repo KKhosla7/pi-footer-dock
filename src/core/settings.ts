@@ -9,6 +9,8 @@ import { record } from './validation.js';
 export interface Settings {
   version: 1;
   glyphs?: 'nerd' | 'portable';
+  /** The one-time note about icons that are not drawn has been shown. */
+  glyphHintShown?: boolean;
   quotaExpanded?: boolean;
   /** `explain` keeps the old click on items (an explanation); the default acts (opens, picks). */
   clicks?: 'actions' | 'explain';
@@ -34,7 +36,16 @@ const ownOption = (id: string, key: string): boolean => {
   if (id === 'quota') return QUOTA_ONLY.includes(key);
   return (id === 'compaction' && key === 'unit') || (id === 'cost' && key === 'period');
 };
-const KEYS = ['version', 'glyphs', 'quotaExpanded', 'clicks', 'openWith', 'limits', 'slots'];
+const KEYS = [
+  'version',
+  'glyphs',
+  'glyphHintShown',
+  'quotaExpanded',
+  'clicks',
+  'openWith',
+  'limits',
+  'slots',
+];
 
 export const defaultSettings = (): Settings => ({ version: 1, slots: {} });
 /** Items that can be configured: every stock item except the chevron, which follows the quota. */
@@ -64,16 +75,21 @@ export function parseSettings(value: unknown): Settings {
   if (data.slots !== undefined) result.slots = slots(data.slots);
   return result;
 }
+/** The settings that are on or off. */
+function readFlags(data: Record<string, unknown>, result: Settings): void {
+  for (const key of ['glyphHintShown', 'quotaExpanded'] as const) {
+    if (data[key] === undefined) continue;
+    if (typeof data[key] !== 'boolean') throw new Error(`${key} must be boolean`);
+    result[key] = data[key];
+  }
+}
 /** The settings that are one of a few fixed values. */
 function readChoices(data: Record<string, unknown>, result: Settings): void {
   if (data.glyphs !== undefined) {
     if (data.glyphs !== 'nerd' && data.glyphs !== 'portable') throw new Error('Invalid glyph set');
     result.glyphs = data.glyphs;
   }
-  if (data.quotaExpanded !== undefined) {
-    if (typeof data.quotaExpanded !== 'boolean') throw new Error('quotaExpanded must be boolean');
-    result.quotaExpanded = data.quotaExpanded;
-  }
+  readFlags(data, result);
   if (data.limits !== undefined) {
     if (data.limits !== 'on' && data.limits !== 'off') throw new Error('limits must be on or off');
     result.limits = data.limits;
