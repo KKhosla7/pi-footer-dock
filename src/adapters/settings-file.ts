@@ -12,6 +12,10 @@ import {
 import { join } from 'node:path';
 import { getAgentDir } from '@earendil-works/pi-coding-agent';
 import { NAMES } from '../core/product.js';
+import { homedir } from 'node:os';
+import { invalidValue, problem } from '../core/problems.js';
+import type { Problem } from '../core/problems.js';
+import { checkSettings } from '../core/settings-problems.js';
 import { defaultSettings, parseSettings } from '../core/settings.js';
 import type { Settings } from '../core/settings.js';
 
@@ -20,6 +24,8 @@ export interface SettingsLoad {
   settings: Settings;
   /** Why the file was ignored; absent when it was read, or simply does not exist yet. */
   problem?: string;
+  /** Every problem found in the file; present exactly when `problem` is. */
+  problems?: Problem[];
 }
 
 export const settingsPath = (): string => join(getAgentDir(), NAMES.settingsFile);
@@ -50,10 +56,38 @@ function readSafely(path: string): string | undefined {
   }
 }
 
-/** Never throws: a missing or unsafe file yields the defaults and, if unsafe, a reason. */
+/** The path as the user knows it: `~` for the home folder. */
+const tidy = (path: string): string => {
+  const home = homedir();
+  return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+};
+/** A problem with the file itself (not with a setting in it), with what to do about it. */
+function fileProblem(error: unknown, path: string): Problem {
+  const where = tidy(path);
+  if (error instanceof SyntaxError)
+    return problem(
+      where,
+      '(file)',
+      `The file is not valid JSON: ${error.message}`,
+      'Fix the syntax (a missing comma, quote or brace is the usual cause), or move the file away to start again.',
+    );
+  const message = error instanceof Error ? error.message : 'The file cannot be read';
+  const fix = message.includes('mode 600')
+    ? `Run: chmod 600 ${tidy(path)}`
+    : message.includes('symbolic link')
+      ? 'Replace the link with a regular file that only you can read and write.'
+      : 'Make it a regular file of at most 16 KiB that only you can read and write.';
+  return problem(where, '(file)', message, fix);
+}
+
+/**
+ * Never throws: a missing file yields the defaults; a file with any problem yields the defaults
+ * and every problem found, and is not applied in part.
+ */
 export function loadSettings(path = settingsPath()): SettingsLoad {
+  let text: string | undefined;
   try {
-    const text =
+    text =
       readSafely(path) ??
       (path === settingsPath()
         ? legacyPaths().reduce<string | undefined>(
@@ -61,12 +95,29 @@ export function loadSettings(path = settingsPath()): SettingsLoad {
             undefined,
           )
         : undefined);
-    return { settings: text === undefined ? defaultSettings() : parseSettings(JSON.parse(text)) };
   } catch (error) {
-    const reason = error instanceof SyntaxError ? 'not valid JSON' : (error as Error).message;
-    return { settings: defaultSettings(), problem: reason };
+    return refused([fileProblem(error, path)]);
+  }
+  if (text === undefined) return { settings: defaultSettings() };
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    return refused([fileProblem(error, path)]);
+  }
+  const problems = checkSettings(value, tidy(path));
+  if (problems.length > 0) return refused(problems);
+  try {
+    return { settings: parseSettings(value) };
+  } catch (error) {
+    return refused([invalidValue(tidy(path), '(settings)', undefined, error)]);
   }
 }
+const refused = (problems: Problem[]): SettingsLoad => ({
+  settings: defaultSettings(),
+  problem: problems[0]?.reason ?? 'The settings are not valid.',
+  problems,
+});
 
 /** Complete-or-nothing: the previous file stays until the new one is fully written. */
 export function saveSettings(settings: Settings, path = settingsPath()): void {

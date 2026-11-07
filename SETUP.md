@@ -79,6 +79,7 @@ This removes the package. Two small things stay behind and can be deleted by han
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | No footer after installing                     | Start a new Pi session or `/reload`. `pi list` should show `pi-footer-dock`. Check you are in Pi's interactive mode.                                                          |
 | Icons are boxes or question marks              | `/dock-glyphs`, or install a Nerd Font in your terminal.                                                                                                                      |
+| The limit meter looks different or broken      | The terminal's font draws it, not Footer Dock. See [The meter or icons look wrong](#the-meter-or-icons-look-wrong).                                                           |
 | Clicks do nothing                              | Your terminal may not send mouse events to Pi. Use the keyboard path: `/dock-info cache`, `/dock-settings`.                                                                   |
 | Limits show `quota unsupported`                | Your provider has no limit source. Only ClinePass, OpenCode Go and OpenAI Codex have one; to add yours see `docs/adding-a-provider.md`.                                       |
 | Limits show `limits off`                       | Asking providers for limits is off (the default). Turn on _Ask providers for limits_ in `/dock-settings` to see them.                                                         |
@@ -86,6 +87,42 @@ This removes the package. Two small things stay behind and can be deleted by han
 | Git items say `refreshed after each Pi action` | The repository is too large to watch. Values are still real; they refresh after each tool call and turn.                                                                      |
 | Cost shows `≈$12.40 mo`, not my session        | That is the month across all sessions. Change _Cost period_ in `/dock-settings`.                                                                                              |
 | Something else                                 | Run `/dock-debug` and include its output in a bug report. It holds counters and settings only: no messages, no secrets, and no file paths (your home folder is shown as `~`). |
+
+### The meter or icons look wrong
+
+Footer Dock prints plain text characters. Your terminal and its font decide how they look, and a terminal cannot tell Footer Dock which font it uses. So the same footer can look different in two terminals, or after a font or terminal change: the limit meter (`▰▱`) can come out as thick and dotted lines instead of slanted blocks, or an icon can show as an empty box.
+
+**Find out whether it is the terminal.** In the same terminal window, outside Pi, run:
+
+```bash
+printf '5h ▰▰▰▱▱▱▱ 36%% ◌ resets in 4h\n'
+```
+
+- It looks wrong here too: the terminal's font is the cause. Use one of the fixes below. Nothing in Footer Dock needs to change.
+- It looks right here, but wrong inside Pi: run `/dock-debug` and include its output in a bug report.
+
+**Fix 1: use a font that has the characters.** List the installed fonts that contain the meter characters, then set one of them as your terminal font (or its fallback):
+
+```bash
+fc-list ':charset=25b0 25b1 25cc' family
+```
+
+**Fix 2: map only those characters to a font you like.** This leaves everything else as it is.
+
+- Ghostty (`~/.config/ghostty/config.ghostty`; `ghostty +validate-config` checks the syntax, then restart Ghostty):
+
+  ```
+  font-codepoint-map = U+25B0-U+25B1=Your Font Name
+  font-codepoint-map = U+25CC=Your Font Name
+  ```
+
+- kitty (`kitty.conf`):
+
+  ```
+  symbol_map U+25B0-U+25B1,U+25CC Your Font Name
+  ```
+
+Icons that show as boxes are a different case: they need a Nerd Font, or `/dock-glyphs` for plain symbols (see the table above). `/dock-glyphs` does not change the limit meter.
 
 ## Where Footer Dock keeps things
 

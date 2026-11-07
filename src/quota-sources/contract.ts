@@ -1,6 +1,7 @@
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import type { Credential } from '../adapters/authorized-fetch.js';
 import type { RateLimitWindow } from '../core/rate-limits.js';
+import type { ObserveWindow } from '../core/window-report.js';
 
 /** What a source needs from the session: the model in use and Pi's auth registry. */
 export type QuotaContext = Pick<ExtensionContext, 'model' | 'modelRegistry'>;
@@ -32,8 +33,11 @@ export interface ProviderQuotaSource {
   /** The only origin that may ever receive this provider's credential (HTTPS). */
   origin: string;
   path: string;
-  /** Strict parser: the windows the provider published, or undefined for anything unexpected. */
-  parse: (body: unknown) => RateLimitWindow[] | undefined;
+  /**
+   * Strict parser: the windows the provider published, or undefined for anything unexpected. It
+   * tells `observe` what became of each window (for `/dock-debug`); that changes nothing else.
+   */
+  parse: (body: unknown, observe?: ObserveWindow) => RateLimitWindow[] | undefined;
   /** How to obtain the credential; absent means Pi's token for this provider (`shared/bearer.ts`). */
   credential?: CredentialResolver;
 }

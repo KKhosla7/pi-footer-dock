@@ -50,7 +50,12 @@ export class DockRuntime {
       pi,
       () => this.snapshot(),
       this.pointerTrace.record,
-      footerHost(() => this.tui, this.settings, this.trackers.extensions),
+      footerHost(
+        () => this.tui,
+        this.settings,
+        this.trackers.extensions,
+        () => this.interactions,
+      ),
     );
   }
 
@@ -62,12 +67,7 @@ export class DockRuntime {
     this.settings.announceGlyphs(sayAt(ctx));
     this.ctx = ctx;
     this.trackers.start(ctx);
-    this.live = this.usage.capture(
-      ctx,
-      this.pi,
-      this.trackers.git.state,
-      this.trackers.quotas.snapshot().limits,
-    );
+    this.live = this.usage.capture(ctx, this.pi, this.trackers.git.state, this.trackers.limits());
     this.installFooter(ctx);
     this.interactions.start(ctx);
     this.clock.start(() => this.tui?.requestRender());
@@ -179,8 +179,7 @@ export class DockRuntime {
       bound: this.ctx,
       cached: this.live,
       source: import.meta.url,
-      ...this.trackers.quotas.diagnostics(),
-      gitMonitor: this.trackers.git.stats(),
+      ...this.trackers.diagnostics(),
       footerSlots: this.interactions.config.rows.flatMap((row) => [...row.left, ...row.right]),
     });
   }

@@ -4,6 +4,7 @@ import type { HitRegion, LayoutOptions } from './layout.js';
 import { layoutFooter } from './layout.js';
 import { hitRegion, pointerRejection } from './pointer.js';
 import type { FooterConfig } from '../core/footer-config.js';
+import { ProblemBlink } from './problem-blink.js';
 import { QuotaAnimation } from './quota-animation.js';
 import { statusLine } from './statuses.js';
 
@@ -12,6 +13,8 @@ export interface FooterOptions extends LayoutOptions {
   dispose: () => void;
   isInteractive?: (target: string) => boolean;
   isQuotaExpanded?: () => boolean;
+  /** Configuration problems and whether the user has looked at them; absent or empty means none. */
+  problemState?: () => { count: number; alerting: boolean };
   onActivate?: (target: string) => void;
   configuration?: () => FooterConfig;
   trace?: (metadata: Record<string, unknown>) => void;
@@ -29,28 +32,46 @@ export class DockFooter implements Component {
   private renderVersion = 0;
 
   private readonly animation: QuotaAnimation;
+  private readonly blink: ProblemBlink;
 
   constructor(private readonly options: FooterOptions) {
     this.animation = new QuotaAnimation(() => this.options.requestRender?.());
+    this.blink = new ProblemBlink(() => this.options.requestRender?.());
   }
 
-  private layoutOptions(config: FooterConfig | undefined): LayoutOptions {
+  private layoutOptions(
+    config: FooterConfig | undefined,
+    problems: { count: number } | undefined,
+  ): LayoutOptions {
     return {
       ...this.options,
       quotaFrame: this.animation.frame,
+      ...(problems && problems.count > 0
+        ? { problems: { count: problems.count, bright: this.blink.bright } }
+        : {}),
       quotaExpanded: this.options.isQuotaExpanded?.() ?? false,
       ...(config ? { config } : {}),
     };
   }
 
+  /** The quota's highlight and the problem marker's blink: both follow the animation setting. */
+  private animate(
+    snapshot: Snapshot,
+    config: FooterConfig | undefined,
+    problems: { alerting: boolean } | undefined,
+  ): void {
+    const enabled =
+      !this.disposed && !!this.options.requestRender && config?.slots.quota?.animation !== false;
+    this.animation.update(snapshot, enabled);
+    this.blink.update(!!problems?.alerting && enabled);
+  }
+
   render(width: number): string[] {
     const snapshot = this.options.snapshot();
     const config = this.options.configuration?.();
-    this.animation.update(
-      snapshot,
-      !this.disposed && !!this.options.requestRender && config?.slots.quota?.animation !== false,
-    );
-    const layout = layoutFooter(snapshot, width, this.layoutOptions(config));
+    const problems = this.options.problemState?.();
+    this.animate(snapshot, config, problems);
+    const layout = layoutFooter(snapshot, width, this.layoutOptions(config, problems));
     const regions = this.disposed ? [] : layout.hitRegions;
     const nextWidth = Math.max(0, Math.floor(width));
     const changed =
@@ -133,6 +154,7 @@ export class DockFooter implements Component {
     if (this.disposed) return;
     this.disposed = true;
     this.animation.stop();
+    this.blink.stop();
     this.invalidate();
     this.options.dispose();
   }

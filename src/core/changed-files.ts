@@ -85,7 +85,7 @@ export function parseNumstat(output: string): Map<string, Numstat> {
   const tokens = output.split('\0');
   const stats = new Map<string, Numstat>();
   for (let index = 0; index < tokens.length; index += 1) {
-    const match = /^(\d+|-)\t(\d+|-)\t([^]*)$/u.exec(tokens[index] ?? '');
+    const match = /^(\d+|-)\t(\d+|-)\t(.*)$/su.exec(tokens[index] ?? '');
     if (!match) continue;
     let path = match[3] ?? '';
     if (path === '') {

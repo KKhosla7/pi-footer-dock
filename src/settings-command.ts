@@ -32,6 +32,9 @@ export async function runSettingsCommand(
   settings.load((message) => {
     say(ctx, message, 'warning');
   });
+  // With a problem in the file the screen could not save: show the problems (and apply a fixed file).
+  interactions.problems.load();
+  if (interactions.problems.state.count > 0) return interactions.problems.open(ctx);
   const iconsBefore = settings.current.glyphs;
   await openSettingsScreen(ctx, {
     current: () => settings.current,

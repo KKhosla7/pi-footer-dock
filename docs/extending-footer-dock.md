@@ -15,6 +15,8 @@ Footer Dock is a **registry, not an owner**:
 
 There is no import in either direction. All messages travel on Pi's event bus: `pi.events.on(channel, handler)` and `pi.events.emit(channel, data)`.
 
+**What "managed" means.** Footer Dock never knows in advance which extensions exist or what they show. When you register, your items get Footer Dock's design language (the icon sets, the tones, the spacing) and its layout engine: when the window shrinks, your `at` forms are the shorter wordings and `hide` removes the item, after the least important built-in items have given way (see `docs/footer-configuration.md`, "How the footer gives way"). You can also have your own sub-menu in `/dock-settings`, which is where a user sees that your extension is managed by Footer Dock. It is a choice: an extension may stay unmanaged (below), or draw its own footer and not use Footer Dock at all.
+
 **Extensions that already use `ctx.ui.setStatus(key, text)` need to change nothing.** Footer Dock shows those texts on one last line (sorted by key, cut to the width; colour codes kept, other terminal escape sequences removed), as Pi's own footer does. Register with the protocol below when you want a place among the items, a settings sub-menu, clicks and an explanation.
 
 ## The five-minute version

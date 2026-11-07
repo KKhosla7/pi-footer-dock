@@ -62,7 +62,7 @@ export function diagnosticReport(options: {
   return withoutPersonalPaths(
     JSON.stringify(
       {
-        diagnosticVersion: 3,
+        diagnosticVersion: 4,
         capabilities: {
           footer: 'configurable-slots-v1',
           quotaSources: [

@@ -6,6 +6,7 @@ import type { RateLimitWindow } from '../core/rate-limits.js';
 import { quotaSuffix } from '../core/quota-freshness.js';
 import type { SlotOptions } from '../core/footer-config.js';
 import type { Paint } from './palette.js';
+import { layerOn } from '../core/layers.js';
 import { lookIndex } from '../core/looks.js';
 import type { Look } from '../core/looks.js';
 import type { RenderOptions } from './render-options.js';
@@ -31,13 +32,16 @@ export function quotaMeter(percent: number, options: RenderOptions, slot: SlotOp
 }
 
 const SEPARATOR = '   │   ';
+const SLIM_SEPARATOR = ' │ ';
 const TIERS = 5;
 
 /**
- * One window at a shrink tier. Tier 0 spells everything out; 1 keeps the reset icon and time;
- * 2 drops the reset; 3 drops the meter; 4 is the bare percentage. A window the provider reports
- * as blocking is distinguished by colour (red), not by extra width; its status word is in the
- * quota help.
+ * One window at a shrink tier. Tiers 0 and 1 spell it out (`5h ▰▰▰▱▱▱▱ 78% ◌ 2h`; they differ only
+ * in the separator between windows); 2 drops the meter and keeps the reset; 3 drops the reset; 4 is
+ * the same as 3. A meter or reset the user switched off (the layers setting) is never printed. There
+ * are no words: the explainer says whether the number is left or used. A window the provider reports
+ * as blocking is distinguished by colour (red), not by extra width; its status word is in the quota
+ * help.
  */
 function windowText(
   window: RateLimitWindow,
@@ -51,17 +55,18 @@ function windowText(
   const tone = blocked ? 'red' : window.remainingPercent <= 25 ? 'yellow' : 'text';
   const reset = formatReset(window.resetAt, options.now);
   // "used" mirrors the number and the meter; the colour still follows what is left.
-  const used = slot.wording === 'used';
-  const shown = used ? 100 - window.remainingPercent : window.remainingPercent;
+  const shown = slot.wording === 'used' ? 100 - window.remainingPercent : window.remainingPercent;
   return (
     p(`${safeLabel(window.label)} `, 'muted') +
-    (level <= 2 ? quotaMeter(shown, options, slot) + p(' ') : '') +
+    (level <= 1 && layerOn(slot, 'meter') ? quotaMeter(shown, options, slot) + p(' ') : '') +
     p(formatPercent(shown), tone, 'bold') +
-    (level <= 3 ? p(used ? ' used' : ' left', 'muted') : '') +
-    (level <= 1 ? p(' ') + p(options.glyphs.reset, 'cyan') : '') +
-    (level === 0 ? p(` resets in ${reset}`, 'muted') : level === 1 ? p(` ${reset}`, 'muted') : '')
+    (level <= 2 && layerOn(slot, 'reset')
+      ? p(' ') + p(options.glyphs.reset, 'cyan') + p(` ${reset}`, 'muted')
+      : '')
   );
 }
+/** The separator between windows: wide at the fullest tier, slim from the next one on. */
+const separatorAt = (tier: number): string => (tier === 0 ? SEPARATOR : SLIM_SEPARATOR);
 
 interface Entry {
   blocked: boolean;
@@ -91,8 +96,13 @@ function prepare(snapshot: Snapshot, options: RenderOptions, settings: { icon: s
     live: liveWindows(snapshot, options),
   };
 }
-function compose(p: Paint, parts: { prefix: string; suffix: string }, texts: string[]): string {
-  return p(parts.prefix, 'cyan') + texts.join(p(SEPARATOR, 'muted')) + p(parts.suffix, 'muted');
+function compose(
+  p: Paint,
+  parts: { prefix: string; suffix: string },
+  shape: { texts: string[]; tier: number },
+): string {
+  const separator = p(separatorAt(shape.tier), 'muted');
+  return p(parts.prefix, 'cyan') + shape.texts.join(separator) + p(parts.suffix, 'muted');
 }
 
 /** From this look on the quota collapses (hides its last window) unless the user expanded it. */
@@ -123,7 +133,7 @@ export function quotaForLook(
   const shown = collapsed ? collapsedView(parts.live, settings.slot) : parts.live;
   if (shown.length === 0) return '';
   const texts = shown.map((window) => windowText(window, tier, options, settings.slot));
-  return compose(options.paint, parts, texts);
+  return compose(options.paint, parts, { texts, tier });
 }
 
 /** The click target that expands or collapses the quota; empty where nothing is collapsed. */
@@ -145,22 +155,22 @@ export function renderQuota(
   settings: Settings,
 ): string {
   const parts = prepare(snapshot, options, settings);
-  const fits = (texts: string[]) =>
+  const fits = (texts: string[], tier: number) =>
     texts.length > 0 &&
-    visibleWidth(parts.prefix + texts.join(SEPARATOR) + parts.suffix) <= settings.budget;
-  const shapes = Array.from({ length: TIERS }, (_, tier) =>
-    parts.live.map((window) => windowText(window, tier, options, settings.slot)),
-  );
-  const chosen = shapes.find(fits);
-  if (chosen) return compose(options.paint, parts, chosen);
+    visibleWidth(parts.prefix + texts.join(separatorAt(tier)) + parts.suffix) <= settings.budget;
+  for (let tier = 0; tier < TIERS; tier += 1) {
+    const texts = parts.live.map((window) => windowText(window, tier, options, settings.slot));
+    if (fits(texts, tier)) return compose(options.paint, parts, { texts, tier });
+  }
+  const last = TIERS - 1;
   const texts = keepThatFit(
     parts.live.map((window) => ({
       blocked: window.badge !== undefined,
-      text: windowText(window, TIERS - 1, options, settings.slot),
+      text: windowText(window, last, options, settings.slot),
     })),
-    fits,
+    (kept) => fits(kept, last),
   );
   return texts.length > 0
-    ? compose(options.paint, parts, texts)
+    ? compose(options.paint, parts, { texts, tier: last })
     : options.paint(snapshot.quotaStatus ?? 'quota unavailable', 'muted');
 }

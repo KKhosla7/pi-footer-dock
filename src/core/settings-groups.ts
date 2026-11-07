@@ -1,4 +1,5 @@
 import { isCollapsedRow } from './settings-collapse.js';
+import { layerItem } from './settings-layers.js';
 import { menuRows } from './settings-menu.js';
 import type { MenuRow } from './settings-menu.js';
 import { quotaText } from './settings-text.js';
@@ -104,7 +105,7 @@ export function menuEntries(settings: Settings, published: readonly string[]): M
       spec,
       take(
         (row) =>
-          spec.items.some((item) => row.id === `item:${item}`) ||
+          spec.items.some((item) => row.id === `item:${item}` || layerItem(row.id) === item) ||
           (spec.rows ?? []).includes(row.id),
       ),
     ),
@@ -112,6 +113,7 @@ export function menuEntries(settings: Settings, published: readonly string[]): M
   const limits = take(
     (row) =>
       row.id === 'item:quota' ||
+      layerItem(row.id) === 'quota' ||
       row.id.startsWith('window:') ||
       QUOTA_ROWS.includes(row.id) ||
       isCollapsedRow(row.id),
@@ -122,7 +124,11 @@ export function menuEntries(settings: Settings, published: readonly string[]): M
   return [
     ...entries,
     group(
-      { id: 'quota', label: 'Limit usage', note: 'Visibility, windows, collapse, wording, meter.' },
+      {
+        id: 'quota',
+        label: 'Limit usage',
+        note: 'Visibility, windows, collapse, left or used, meter.',
+      },
       limits,
     ),
     ...take((row) => row.id === 'clicks' || row.id === 'glyphs'),

@@ -36,8 +36,13 @@ export function renderBlocks(
     .flatMap((block, index) => {
       const lines = (drawers[block.kind] as (b: Block, c: Ctx) => string[])(block, ctx);
       const next = blocks[index + 1];
-      // A table or chart followed straight by a sentence needs a blank row between them.
-      const air = lines.length > 0 && DATA.has(block.kind) && next && PROSE.has(next.kind);
+      // A table or chart followed straight by a sentence needs a blank row between them. A stacked
+      // bar with its legend has air after it whatever follows, unless a gap already provides it.
+      const needsAir = (following: Block): boolean =>
+        block.kind === 'stack'
+          ? following.kind !== 'gap'
+          : DATA.has(block.kind) && PROSE.has(following.kind);
+      const air = lines.length > 0 && next !== undefined && needsAir(next);
       return air ? [...lines, ''] : lines;
     })
     .map((line) => fit(line, ctx.width));

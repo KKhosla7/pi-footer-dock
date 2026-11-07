@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { mkdir, open, rename, rm, writeFile } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { parseCache, serializeCache } from '../../core/history/cache-format.js';
 import type { FileEntry } from '../../core/history/cache-format.js';
@@ -9,7 +10,7 @@ const MAX_BYTES = 32 * 1024 * 1024;
 
 /** The saved rollup, or nothing when it is missing, unsafe, too large or not exactly our format. */
 export async function loadCache(path: string): Promise<FileEntry[]> {
-  let handle;
+  let handle: FileHandle | undefined;
   try {
     handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
     const info = await handle.stat();

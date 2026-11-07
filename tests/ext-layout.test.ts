@@ -49,8 +49,11 @@ await test('the footer draws registered items at every width, gives them up befo
   assert.equal(wide.lines.length, 3);
   assert.match(plainText(wide.lines[1] ?? ''), /• Acme: 3 jobs running\s*$/u);
   assert.match(plainText(wide.lines[2] ?? ''), /a third row/u);
-  const medium = plainText(draw(120).lines.join('\n'));
-  assert.match(medium, /• 3 jobs/u, 'a narrower look picks the form declared for it');
+  const shortened = Array.from({ length: 140 }, (_, index) => 100 + index).filter((width) => {
+    const text = plainText(draw(width).lines.join('\n'));
+    return text.includes('• 3 jobs') && !text.includes('Acme');
+  });
+  assert.ok(shortened.length > 0, 'a narrower row picks the shorter form the item declared');
   for (let width = 16; width <= 260; width += 1)
     for (const line of draw(width).lines) assert.ok(visibleWidth(line) <= width, `width ${width}`);
   const tight = plainText(draw(48).lines.join('\n'));

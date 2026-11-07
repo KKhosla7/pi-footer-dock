@@ -47,3 +47,28 @@ export function collapsedChoice(
   const next = value === SHOWN ? [...others, label] : others;
   return next.length > MAX_LABELS ? settings : withSlot(settings, 'quota', { collapsedShow: next });
 }
+
+/** One row per limit window, published or already hidden: shown, or hidden for good. */
+export function windowRows(settings: Settings, published: readonly string[]): MenuRow[] {
+  const hidden = settings.slots.quota?.hideWindows ?? [];
+  return [...new Set([...published, ...hidden])]
+    .filter(savable)
+    .map((label) =>
+      withNote(
+        row(`window:${label}`, `Limit window: ${label}`, hidden.includes(label) ? HIDDEN : SHOWN, [
+          SHOWN,
+          HIDDEN,
+        ]),
+        quotaText.window(label),
+      ),
+    );
+}
+
+/** The settings after a window was shown or hidden for good; the list is bounded. */
+export function windowChoice(settings: Settings, label: string, value: string): Settings {
+  const others = (settings.slots.quota?.hideWindows ?? []).filter((item) => item !== label);
+  const next = value === HIDDEN ? [...others, label] : others;
+  return next.length > MAX_LABELS
+    ? settings
+    : withSlot(settings, 'quota', { hideWindows: next.length ? next : undefined });
+}

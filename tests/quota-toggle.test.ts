@@ -83,7 +83,10 @@ function footer(width: number, expanded: boolean) {
 const plain = (lines: string[]) => lines.map((line) => stripVTControlCharacters(line));
 
 await test('an expanded quota never disappears where the collapsed one is shown', () => {
-  for (let width = 16; width <= 260; width += 1) {
+  // Below 34 columns even the shortest form of all three windows (`5h 100% │ week 80% │ month 0%`)
+  // does not fit, while the collapsed two-window form still does down to 20: the expanded quota
+  // then gives way whole, like any item that does not fit.
+  for (let width = 34; width <= 260; width += 1) {
     const collapsed = new Set(footer(width, false).hitRegions.map((region) => region.target));
     const expanded = new Set(footer(width, true).hitRegions.map((region) => region.target));
     if (collapsed.has('quota')) assert.ok(expanded.has('quota'), `quota kept at ${width}`);

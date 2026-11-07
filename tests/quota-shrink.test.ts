@@ -31,27 +31,27 @@ const healthy: RateLimitWindow[] = [
   { label: 'month', remainingPercent: 53, resetAt: NOW + 1_641_000 },
 ];
 
-await test('the full form reads in words, in 5h, week, month order', () => {
+await test('the full form has no words, in 5h, week, month order', () => {
   const text = render(blocked, Infinity);
   assert.equal(
     text,
-    '5h ▰▰▰▰▰▰▰ 100% left ◌ resets in 5h 0m   │   ' +
-      'week ▰▰▰▰▰▰▰ 100% left ◌ resets in 19h 9m   │   ' +
-      'month ▱▱▱▱▱▱▱ 0% left ◌ resets in 5d 4h',
+    '5h ▰▰▰▰▰▰▰ 100% ◌ 5h 0m   │   ' +
+      'week ▰▰▰▰▰▰▰ 100% ◌ 19h 9m   │   ' +
+      'month ▱▱▱▱▱▱▱ 0% ◌ 5d 4h',
   );
   assert.equal(
     render(healthy, Infinity),
-    '5h ▰▰▰▰▰▰▰ 94% left ◌ resets in 1h 59m   │   ' +
-      'week ▰▰▰▱▱▱▱ 48% left ◌ resets in 3d 6h   │   ' +
-      'month ▰▰▰▰▱▱▱ 53% left ◌ resets in 18d 23h',
+    '5h ▰▰▰▰▰▰▰ 94% ◌ 1h 59m   │   ' +
+      'week ▰▰▰▱▱▱▱ 48% ◌ 3d 6h   │   ' +
+      'month ▰▰▰▰▱▱▱ 53% ◌ 18d 23h',
   );
 });
 
-await test('at the budget a 140-column footer leaves, all three windows keep their bars and "left"', () => {
+await test('at the budget a 140-column footer leaves, all three windows keep their bars', () => {
   const text = render(blocked, 98);
-  assert.match(text, /5h ▰{7} 100% left/u);
-  assert.match(text, /week ▰{7} 100% left/u);
-  assert.match(text, /month ▱{7} 0% left/u);
+  assert.match(text, /5h ▰{7} 100% ◌/u);
+  assert.match(text, /week ▰{7} 100% ◌/u);
+  assert.match(text, /month ▱{7} 0% ◌/u);
   assert.ok(visibleWidth(text) <= 98);
 });
 
@@ -79,14 +79,21 @@ await test('the blocking window survives every width that shows anything', () =>
   }
 });
 
-await test('healthy windows give up detail first: reset words, then reset, meter and wording', () => {
-  const widths = [200, 120, 100, 70, 48];
+await test('healthy windows give up detail first: the wide separator, then the meter, then the reset', () => {
+  const widths = [200, 120, 100, 85, 70, 48];
   const seen = widths.map((budget) => render(healthy, budget));
-  assert.ok((seen[0] ?? '').includes('resets in'));
-  assert.ok(seen.some((text) => /◌ \d/u.test(text) && !text.includes('resets in')));
-  assert.ok(seen.some((text) => text.includes('▰') && !text.includes('◌')));
-  assert.ok(seen.some((text) => !/▰|▱/u.test(text) && text.includes('left')));
-  assert.ok(seen.every((text) => visibleWidth(text) <= 200));
+  const [wide = '', , , slim = '', noMeter = '', bare = ''] = seen;
+  assert.match(wide, /▰.* ◌ .* {3}│ {3}/u);
+  assert.match(slim, /▰.* │ /u);
+  assert.doesNotMatch(slim, / {3}│ {3}/u);
+  assert.doesNotMatch(noMeter, /▰|▱/u);
+  assert.match(noMeter, /◌ \d/u, 'the reset outlives the meter');
+  assert.doesNotMatch(bare, /▰|▱|◌/u);
+  assert.match(bare, /94%/u);
+  for (const [index, text] of seen.entries()) {
+    assert.doesNotMatch(text, /\b(?:left|used|resets in)\b/u, `${widths[index]}`);
+    assert.ok(visibleWidth(text) <= (widths[index] ?? 0));
+  }
 });
 
 const line = (layout: ReturnType<typeof layoutFooter>, row: number) =>
@@ -134,7 +141,7 @@ await test('no value is cut mid-value while the essentials fit, and the project 
 });
 
 await test('each row picks its own look: the short first row stays rich while row two shortens', () => {
-  const layout = footerAt(180);
+  const layout = footerAt(160);
   assert.match(line(layout, 0), /opencode-go\/deepseek-v4\.1-flash/u, 'row one keeps the provider');
   assert.doesNotMatch(line(layout, 1), /compacts in/u, 'row two already dropped compaction');
 });

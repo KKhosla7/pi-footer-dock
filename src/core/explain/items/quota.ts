@@ -10,6 +10,7 @@ import { safeLabel } from '../../model.js';
 import { bullets, facts, gap, heading, meters, note, table } from '../blocks.js';
 import type { Block, MeterRow, Tone } from '../blocks.js';
 import type { ExplainContext, Explained, Explainer, Status } from '../explainer.js';
+import { inTheFooter } from './quota-footer.js';
 
 const LOW = 25;
 
@@ -182,7 +183,7 @@ export const quota: Explainer = {
     'The last successful check is older than five minutes, or the endpoint changed shape: windows are hidden rather than guessed.',
     'A window the provider does not report is simply not listed.',
   ],
-  build({ snapshot, now, quotaLabel }: ExplainContext): Explained {
+  build({ snapshot, now, quotaLabel, quotaShows, layers }: ExplainContext): Explained {
     const windows = snapshot.rateLimits?.windows ?? [];
     const rows = windows.map((window) => ({ window, pace: paceOf(window, now) }));
     const heads =
@@ -193,6 +194,8 @@ export const quota: Explainer = {
         windows.length === 0
           ? [note(quotaHelp(snapshot, quotaLabel))]
           : [
+              ...inTheFooter(quotaShows ?? 'left', layers),
+              gap,
               heading('Pace'),
               table(
                 ['Window', 'Left', 'Resets in', 'Clock', 'Pace'],

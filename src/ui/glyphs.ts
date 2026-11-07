@@ -10,7 +10,7 @@ export const nerdGlyphs = {
   robot: '󰚩',
   reasoning: '󰧑',
   hourglass: '\uf252',
-  reset: '◌',
+  reset: '\u{f0453}',
   speed: '\uf0e4',
   expand: '›',
   collapse: '‹',

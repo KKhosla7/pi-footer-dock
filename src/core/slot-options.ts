@@ -26,6 +26,8 @@ export interface SlotOptions {
   collapsedShow?: string[];
   /** Quota only: window labels, as the provider publishes them, that are not shown. */
   hideWindows?: string[];
+  /** Parts of the item that are switched on or off (model: provider, name; quota: meter, reset). */
+  layers?: Record<string, boolean>;
 }
 
 function validClick(value: unknown): NonNullable<SlotOptions['click']> {
@@ -67,6 +69,17 @@ function windowLabels(value: unknown): string[] {
   if (!Array.isArray(value) || value.length > 8) throw new Error('At most 8 window labels');
   return value.map((label) => boundedText(label, 24));
 }
+function layerFlags(value: unknown): Record<string, boolean> {
+  const entries = Object.entries(record(value));
+  if (entries.length > 8) throw new Error('At most 8 layers');
+  return Object.fromEntries(
+    entries.map(([name, flag]) => {
+      if (typeof flag !== 'boolean')
+        throw new Error(`Layer ${safeLabel(name)} must be true or false`);
+      return [name, flag];
+    }),
+  );
+}
 function validLook(value: unknown): Look {
   if (!isLook(value)) throw new Error('hideAt must be xl, lg, md, sm or xs');
   return value;
@@ -86,8 +99,11 @@ const parsers = new Map<string, (item: unknown) => SlotOptions>([
   ['period', (item) => ({ period: validPeriod(item) })],
   ['collapse', (item) => ({ collapse: validCollapse(item) })],
   ['hideWindows', (item) => ({ hideWindows: windowLabels(item) })],
+  ['layers', (item) => ({ layers: layerFlags(item) })],
   ['collapsedShow', (item) => ({ collapsedShow: windowLabels(item) })],
 ]);
+/** The option names a slot accepts. */
+export const SLOT_OPTION_KEYS: readonly string[] = [...parsers.keys()];
 function actionTarget(value: unknown): string {
   if (!identifier(value)) throw new Error('Invalid action target');
   return value;

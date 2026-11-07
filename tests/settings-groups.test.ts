@@ -54,6 +54,8 @@ await test('related rows are clubbed and the icon set stays on the top level', (
       'expanded',
       'animation',
       'meter',
+      'layer:quota:meter',
+      'layer:quota:reset',
     ],
   );
   assert.equal(entries.at(-1)?.children, undefined);

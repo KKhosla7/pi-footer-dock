@@ -7,6 +7,7 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { registration } from './fake-registration.js';
 
 export default function (pi: ExtensionAPI): void {
+  // biome-ignore lint/suspicious/noAssignInExpressions: ??= creates the shared log once and reuses it; it cannot be a mistyped ===.
   const log = ((globalThis as Record<string, unknown>).__acme ??= {
     clicks: [],
     settings: [],

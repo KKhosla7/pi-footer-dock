@@ -1,3 +1,5 @@
+import { formatProblems } from './core/problems.js';
+import type { Problem } from './core/problems.js';
 import { PRODUCT } from './core/product.js';
 import { defaultSettings } from './core/settings.js';
 import { nerdGlyphs, portableGlyphs } from './ui/glyphs.js';
@@ -15,6 +17,8 @@ export interface SettingsStore {
 /** Holds the global settings in memory and keeps the file in step; knows nothing about the footer. */
 export class SettingsController {
   current: Settings = defaultSettings();
+  /** The problems of the settings file as last read; empty when it was read cleanly. */
+  problems: readonly Problem[] = [];
   /** The /dock-glyphs toggle overrides the saved icon preference until the menu changes it. */
   private toggled: Glyphs | undefined;
   constructor(private readonly store: SettingsStore) {}
@@ -32,10 +36,18 @@ export class SettingsController {
   private ignored = false;
   /** Re-reads the file; says why through `report` if it had to be ignored. */
   load(report: (message: string) => void): void {
-    const { settings, problem } = this.store.load();
+    const { settings, problem, problems } = this.store.load();
     this.current = settings;
+    this.problems = problems ?? [];
     this.ignored = problem !== undefined;
-    if (problem) report(`${PRODUCT} settings ignored: ${problem}.`);
+    if (problems && problems.length > 0)
+      report(
+        formatProblems(
+          `${PRODUCT} did not apply your settings file and runs on its defaults, nothing in the file was changed`,
+          problems,
+        ),
+      );
+    else if (problem) report(`${PRODUCT} settings ignored: ${problem}.`);
   }
   /**
    * Once, for a user who never chose an icon set: what to do if the icons are not drawn (a

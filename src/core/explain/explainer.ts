@@ -14,6 +14,10 @@ export interface ExplainContext {
   ascii: boolean;
   /** The name of the provider's quota source, when the provider has one. */
   quotaLabel?: string;
+  /** Whether the footer's limit numbers are the share left or the share used; left when absent. */
+  quotaShows?: 'left' | 'used';
+  /** The parts of the item the user switched on or off (`layers` setting), when it has any. */
+  layers?: Record<string, boolean>;
   /** The period a screen with a period switch is showing; the month when absent. */
   period?: Period;
 }
