@@ -1,4 +1,5 @@
 import { QUOTA_MAX_WINDOWS } from './quota-limits.ts';
+import type { ObserveWindow, WindowType } from './window-report.ts';
 
 export interface RateLimitWindow {
   label: string;
@@ -34,19 +35,31 @@ export function windowLabel(minutes: number): string {
   return `${minutes}m`;
 }
 
-function parseWindow(value: unknown): RateLimitWindow | undefined {
-  const item = record(value);
+/** What is valid in one window's fields; the one place that says so (the parser and the report). */
+function windowChecks(item: RecordLike | undefined) {
   const usedPercent = finite(item?.used_percent);
   const minutes = finite(item?.window_minutes);
   const resetAt = finite(item?.reset_at);
+  return {
+    usedPercent,
+    minutes,
+    resetAt,
+    share: usedPercent !== undefined && usedPercent >= 0 && usedPercent <= 100,
+    span: minutes !== undefined && minutes > 0,
+    reset: resetAt !== undefined && resetAt > 0,
+  };
+}
+
+function parseWindow(value: unknown): RateLimitWindow | undefined {
+  const checks = windowChecks(record(value));
+  const { usedPercent, minutes, resetAt } = checks;
   if (
     usedPercent === undefined ||
     minutes === undefined ||
     resetAt === undefined ||
-    usedPercent < 0 ||
-    usedPercent > 100 ||
-    minutes <= 0 ||
-    resetAt <= 0
+    !checks.share ||
+    !checks.span ||
+    !checks.reset
   ) {
     return undefined;
   }
@@ -96,17 +109,29 @@ export function parseCodexUsage(
   provider: string,
   model: string,
   data: unknown,
+  observe?: ObserveWindow,
 ): RateLimits | undefined {
   const limits = record(record(data)?.rate_limit);
-  const windows = [limits?.primary_window, limits?.secondary_window]
-    .map((candidate) => {
+  const candidates: [WindowType, unknown][] = [
+    ['primary', limits?.primary_window],
+    ['secondary', limits?.secondary_window],
+  ];
+  const windows = candidates
+    .map(([type, candidate]) => {
       const window = record(candidate);
       const seconds = finite(window?.limit_window_seconds);
-      return parseWindow({
+      const fields = {
         used_percent: window?.used_percent,
         reset_at: window?.reset_at,
         window_minutes: seconds === undefined ? undefined : seconds / 60,
-      });
+      };
+      const parsed = parseWindow(fields);
+      if (observe && !window) observe({ type, sent: false, kept: false });
+      else if (observe) {
+        const { share, reset, span } = windowChecks(fields);
+        observe({ type, sent: true, share, reset, span, kept: parsed !== undefined });
+      }
+      return parsed;
     })
     .filter((window): window is RateLimitWindow => window !== undefined);
   return windows.length > 0 ? { provider, model, windows } : undefined;

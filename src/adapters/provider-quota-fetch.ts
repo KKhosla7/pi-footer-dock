@@ -1,4 +1,5 @@
 import type { ProviderQuotaSource } from '../quota-sources/contract.js';
+import type { ObserveWindow } from '../core/window-report.js';
 import { PROVIDER_QUOTA_FETCH_MS, PROVIDER_QUOTA_MAX_BACKOFF_MS } from '../core/quota-limits.js';
 import { authorizedGet } from './authorized-fetch.js';
 import type { Credential, EndpointReply } from './authorized-fetch.js';
@@ -27,11 +28,11 @@ export function backoff(
 export function classify(
   policy: FetchPolicy,
   reply: EndpointReply,
-  call: { source: ProviderQuotaSource; previous: GateState | undefined },
+  call: { source: ProviderQuotaSource; previous: GateState | undefined; observe?: ObserveWindow },
 ): GateResult {
   const delayMs = backoff(policy, call.previous, reply.retryAfterMs);
   if (reply.status >= 200 && reply.status < 300) {
-    const windows = call.source.parse(reply.body);
+    const windows = call.source.parse(reply.body, call.observe);
     return windows
       ? {
           observation: { windows, observedAt: policy.now() },
@@ -54,7 +55,12 @@ export function classify(
 /** One bounded request. Never throws: any transport problem is a `network-or-timeout` result. */
 export async function fetchResult(
   policy: FetchPolicy,
-  call: { source: ProviderQuotaSource; credential: Credential; previous: GateState | undefined },
+  call: {
+    source: ProviderQuotaSource;
+    credential: Credential;
+    previous: GateState | undefined;
+    observe?: ObserveWindow;
+  },
 ): Promise<GateResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => {

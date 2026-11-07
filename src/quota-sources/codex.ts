@@ -21,6 +21,6 @@ export const codex: ProviderQuotaSource = {
   label: 'Codex',
   origin: 'https://chatgpt.com',
   path: '/backend-api/wham/usage',
-  parse: (body) => parseCodexUsage('openai-codex', '', body)?.windows,
+  parse: (body, observe) => parseCodexUsage('openai-codex', '', body, observe)?.windows,
   credential: codexOAuth,
 };

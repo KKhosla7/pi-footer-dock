@@ -1,5 +1,5 @@
 import type { Block, MeterRow } from './blocks.js';
-import { INDENT, MAX_LABEL, blank, fit, pad, plain, width, wrapStyled } from './style.js';
+import { INDENT, MAX_LABEL, fit, pad, plain, width, wrapStyled } from './style.js';
 import { ASCII } from './style.js';
 import type { Ctx } from './style.js';
 
@@ -76,14 +76,41 @@ export function stackLines(block: Of<'stack'>, { style, cells, width: room }: Ct
     .map(({ part, glyph }, index) => style.fg(part.tone, glyph.repeat(counts[index] ?? 0)))
     .join('');
   const total = live.reduce((acc, { part }) => acc + part.amount, 0);
-  const legend = live
-    .map(({ part, glyph }) => {
-      const share = Math.round((part.amount / total) * 100);
-      const extra = part.text ? ` ${plain(part.text)}` : '';
-      return `${style.fg(part.tone, glyph)} ${plain(part.label)}${extra} ${style.fg('dim', `${share}%`)}`;
-    })
-    .join('   ');
-  return [INDENT + bar, ...wrapStyled(legend, room - INDENT.length, INDENT, blank(INDENT.length))];
+  const entries = live.map(({ part, glyph }) => {
+    const share = Math.round((part.amount / total) * 100);
+    const extra = part.text ? ` ${plain(part.text)}` : '';
+    return `${style.fg(part.tone, glyph)} ${plain(part.label)}${extra} ${style.fg('dim', `${share}%`)}`;
+  });
+  // A blank row between the bar and its legend; the legend breaks between entries, never inside one.
+  return [
+    INDENT + bar,
+    '',
+    ...legendRows(entries, room - INDENT.length).map((row) => INDENT + row),
+  ];
+}
+
+const LEGEND_GAP = '   ';
+/**
+ * Fills rows with whole legend entries. An entry that does not fit moves to the next row; one wider
+ * than a row on its own (a very narrow terminal) is the only thing that is wrapped inside.
+ */
+export function legendRows(entries: readonly string[], room: number): string[] {
+  const rows: string[] = [];
+  let current = '';
+  for (const entry of entries) {
+    if (current && width(current) + LEGEND_GAP.length + width(entry) <= room) {
+      current += LEGEND_GAP + entry;
+      continue;
+    }
+    if (current) rows.push(current);
+    if (width(entry) <= room) current = entry;
+    else {
+      rows.push(...wrapStyled(entry, room, '', ''));
+      current = '';
+    }
+  }
+  if (current) rows.push(current);
+  return rows;
 }
 
 const LEVELS = '▁▂▃▄▅▆▇█';

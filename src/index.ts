@@ -85,7 +85,7 @@ function registerInteractionCommands(pi: ExtensionAPI, runtime: DockRuntime): vo
     handler: (args, ctx) => runtime.interactions.invokeTarget(args.trim(), ctx),
   });
   pi.registerCommand('dock-settings', {
-    description: 'Open the footer settings: what to show or hide, limit wording, icons',
+    description: 'Open the footer settings: what to show or hide, limits, icons',
     handler: (_args, ctx) => runtime.openSettings(ctx),
   });
   pi.registerCommand('dock-open', {

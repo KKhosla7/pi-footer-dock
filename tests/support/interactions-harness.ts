@@ -1,4 +1,5 @@
 import { quietExtensions } from './quiet-extensions.js';
+import { noProblems } from './no-problems.js';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import type { ExtensionBus } from '../../src/adapters/ext-bus.js';
 import type { OpenResult } from '../../src/adapters/folder-opener.js';
@@ -33,6 +34,7 @@ export function harness(
         opened.push(directory);
         return Promise.resolve(result);
       },
+      problems: noProblems,
     },
   );
   const ctx = {

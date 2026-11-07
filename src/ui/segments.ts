@@ -7,18 +7,21 @@ import { costDisplay } from '../core/history/costs.js';
 import type { Snapshot } from '../core/model.js';
 import { formatApiCost, formatPercent, formatTokens, safeLabel } from '../core/model.js';
 import { renderExtensionItem } from './ext-segment.js';
+import { problemMarker } from './problem-marker.js';
 import { ICON_ACTION_IDS } from '../core/click-targets.js';
-import { QUOTA_TOGGLE, slotOptions } from '../core/footer-config.js';
+import { PROBLEM_MARKER, QUOTA_TOGGLE, slotOptions } from '../core/footer-config.js';
 import { stockForms, variantAt } from '../core/looks.js';
 import type { Look, Variant } from '../core/looks.js';
 import type { FooterConfig, SlotOptions } from '../core/footer-config.js';
 import type { Glyphs } from './glyphs.js';
+import { attachment, segmentGap } from './segment-gaps.js';
 import type { RenderOptions } from './render-options.js';
 import {
   compaction,
   gitBranch,
   gitValue,
   iconSpan,
+  modelText,
   paintIcon,
   usage,
   workspace,
@@ -27,7 +30,10 @@ import {
 export interface Segment {
   id: string;
   text: string;
+  /** Columns before this item when it follows another item. */
   gap: number;
+  /** Set for the second half of an item drawn by two slots: its gap when it directly follows the first. */
+  attach?: { to: string; gap: number };
   /** Columns of the leading icon token (glyph and its space); 0 when the icon is not a click target of its own. */
   iconWidth: number;
 }
@@ -38,21 +44,6 @@ interface Rendering {
   variant: Variant;
 }
 type StockFormatter = (snapshot: Snapshot, options: RenderOptions, rendering: Rendering) => string;
-const gaps = new Map([
-  ['context', 0],
-  ['context-usage', 0],
-  ['branch', 3],
-  ['changes', 3],
-  ['ahead', 3],
-  ['thinking', 2],
-  ['compaction', 2],
-  ['input', 5],
-  ['output', 3],
-  ['cache', 3],
-  ['speed', 3],
-  ['cost', 3],
-  [QUOTA_TOGGLE, 0],
-]);
 const iconKeys = new Map<string, keyof Glyphs>([
   ['workspace', 'folder'],
   ['branch', 'branch'],
@@ -65,6 +56,7 @@ const iconKeys = new Map<string, keyof Glyphs>([
   ['output', 'output'],
   ['cache', 'cache'],
   ['speed', 'speed'],
+  [PROBLEM_MARKER, 'warn'],
 ]);
 /** Construct dispatch/closures once, not once per slot per frame. */
 const stockTexts = new Map<string, StockFormatter>([
@@ -80,13 +72,7 @@ const stockTexts = new Map<string, StockFormatter>([
     (s, { paint: p }, { icon, variant }) =>
       gitValue(s.git.ahead, p, { icon, kind: 'ahead', short: variant !== 'full' }),
   ],
-  [
-    'model',
-    (s, { paint: p }, { icon, variant }) =>
-      paintIcon(p, `${icon} `) +
-      (variant === 'full' ? p(`${safeLabel(s.provider)}/`, 'muted') : '') +
-      p(safeLabel(s.model), 'cyan', 'bold'),
-  ],
+  ['model', (s, { paint: p }, r) => modelText(s, p, r)],
   [
     'thinking',
     (s, { paint: p }, { icon }) =>
@@ -125,6 +111,7 @@ const stockTexts = new Map<string, StockFormatter>([
           p(`${formatResponseRate(s.outputTokensPerSecond)} tok/s`, 'muted')
         : '',
   ],
+  [PROBLEM_MARKER, (_s, o, { icon }) => problemMarker(o, icon)],
   ['quota', (s, o, r) => quotaForLook(s, o, r, r.look)],
   [QUOTA_TOGGLE, (s, o, r) => quotaToggle(s, o, r.look, r.slot)],
   [
@@ -160,9 +147,6 @@ function template(text: string, snapshot: Snapshot, icon: string): string {
     /\{([a-z]+)\}/gu,
     (match, key: string) => templateValues.get(key)?.(snapshot, icon) ?? match,
   );
-}
-export function segmentGap(config: FooterConfig, id: string): number {
-  return slotOptions(config, id).gap ?? gaps.get(id) ?? 3;
 }
 /** The chevron belongs to the quota, so it follows the quota's hiding and collapsing. */
 function ownSlot(config: FooterConfig, id: string): SlotOptions {
@@ -217,5 +201,5 @@ function renderStock(
   // The icon is a token of its own only when the item really starts with it (not "Git unavailable").
   const hasIcon = text && slot.text === undefined && stripTerminalSequences(text).startsWith(icon);
   const iconWidth = hasIcon && ICON_ACTION_IDS.has(id) ? iconSpan(id, icon) : 0;
-  return { id, text, gap: segmentGap(settings.config, id), iconWidth };
+  return { id, text, gap: segmentGap(settings.config, id), ...attachment(id, slot), iconWidth };
 }

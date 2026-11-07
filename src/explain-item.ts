@@ -45,6 +45,8 @@ function explainContext(id: string, context: DocContext): ExplainContext {
     value: stripTerminalSequences(value.text).trim(),
     ascii: glyphs.folder === portableGlyphs.folder,
     ...quotaLabelOf(snapshot),
+    quotaShows: slotOptions(config, id).wording ?? 'left',
+    ...layersOf(config, id),
   };
 }
 
@@ -69,6 +71,10 @@ export function explainDoc(id: string, context: DocContext): ExplainDoc | undefi
   return fallbackDoc(itemText.get(id)?.label ?? id, at, help);
 }
 
+function layersOf(config: FooterConfig, id: string): Pick<ExplainContext, 'layers'> {
+  const { layers } = slotOptions(config, id);
+  return layers ? { layers } : {};
+}
 function quotaLabelOf(snapshot: Snapshot): { quotaLabel?: string } {
   const label = quotaSourceFor(snapshot.provider)?.label;
   return label === undefined ? {} : { quotaLabel: label };

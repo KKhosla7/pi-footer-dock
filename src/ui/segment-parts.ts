@@ -1,7 +1,9 @@
 import { visibleWidth } from '@earendil-works/pi-tui';
+import { layerOn } from '../core/layers.js';
 import type { Variant } from '../core/looks.js';
 import type { Snapshot } from '../core/model.js';
 import { formatPercent, formatTokens, safeLabel } from '../core/model.js';
+import type { SlotOptions } from '../core/slot-options.js';
 import type { Paint } from './palette.js';
 
 /** Columns an item's icon takes, with the space or two that follow it before the text. */
@@ -10,6 +12,30 @@ export function iconSpan(id: string, icon: string): number {
 }
 export function paintIcon(p: Paint, text: string): string {
   return p(text, 'cyan');
+}
+
+/**
+ * The model item: `icon provider/name`. The provider is the first part to give way (the short look
+ * leaves it out), unless the name is switched off, when it is all the item has. Each part can be
+ * switched off; with both off the item prints nothing.
+ */
+export function modelText(
+  snapshot: Snapshot,
+  p: Paint,
+  rendering: { icon: string; variant: Variant; slot: SlotOptions },
+): string {
+  const { slot, variant } = rendering;
+  const name = layerOn(slot, 'name') ? safeLabel(snapshot.model) : '';
+  const provider =
+    layerOn(slot, 'provider') && (variant === 'full' || name === '')
+      ? safeLabel(snapshot.provider)
+      : '';
+  if (provider === '' && name === '') return '';
+  return (
+    paintIcon(p, `${rendering.icon} `) +
+    (provider === '' ? '' : p(name === '' ? provider : `${provider}/`, 'muted')) +
+    (name === '' ? '' : p(name, 'cyan', 'bold'))
+  );
 }
 
 /** `~/a/b/project` to `~/…/project`; short paths are left alone. */

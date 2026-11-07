@@ -7,8 +7,17 @@ import {
   collapsedLabel,
   collapsedRows,
   isCollapsedRow,
+  windowChoice,
+  windowRows,
 } from './settings-collapse.js';
 import { compactionText, costText, itemText, quotaText } from './settings-text.js';
+import {
+  isKnownLayerRow,
+  isLayerRow,
+  layerChoice,
+  layerRows,
+  layerValues,
+} from './settings-layers.js';
 import { COST_PERIODS, DEFAULT_COST_PERIOD } from './history/costs.js';
 import type { CostPeriod } from './history/costs.js';
 import type { Settings } from './settings.js';
@@ -49,20 +58,6 @@ function itemRows(settings: Settings): MenuRow[] {
     ),
   );
 }
-function windowRows(settings: Settings, published: readonly string[]): MenuRow[] {
-  const hidden = settings.slots.quota?.hideWindows ?? [];
-  return [...new Set([...published, ...hidden])]
-    .filter(savable)
-    .map((label) =>
-      withNote(
-        row(`window:${label}`, `Limit window: ${label}`, hidden.includes(label) ? HIDDEN : SHOWN, [
-          SHOWN,
-          HIDDEN,
-        ]),
-        quotaText.window(label),
-      ),
-    );
-}
 function limitsRow(settings: Settings): MenuRow {
   return withNote(
     row(
@@ -97,7 +92,7 @@ function quotaRows(settings: Settings): MenuRow[] {
   const pick = (id: keyof typeof choices) => choices[id] ?? [];
   return [
     withNote(
-      row('wording', 'Limit wording', quota.wording ?? 'left', pick('wording')),
+      row('wording', 'Limit shows', quota.wording ?? 'left', pick('wording')),
       quotaText.wording,
     ),
     withNote(
@@ -143,6 +138,7 @@ export function menuRows(settings: Settings, published: readonly string[]): Menu
     ...windowRows(settings, published),
     limitsRow(settings),
     ...quotaRows(settings),
+    ...layerRows(settings),
     ...collapsedRows(settings, published),
     clicksRow(settings),
     withNote(
@@ -152,13 +148,6 @@ export function menuRows(settings: Settings, published: readonly string[]): Menu
   ];
 }
 
-function windowChoice(settings: Settings, label: string, value: string): Settings {
-  const others = (settings.slots.quota?.hideWindows ?? []).filter((item) => item !== label);
-  const next = value === HIDDEN ? [...others, label] : others;
-  return next.length > 8
-    ? settings
-    : withSlot(settings, 'quota', { hideWindows: next.length ? next : undefined });
-}
 function visibilityChoice(settings: Settings, id: string, value: string): Settings {
   const look = value === HIDDEN ? LOOKS[0] : value.replace('hidden from ', '');
   return withSlot(settings, id, { hideAt: value !== SHOWN && isLook(look) ? look : undefined });
@@ -170,6 +159,7 @@ function allowed(id: string): string[] | undefined {
   if (id.startsWith('window:'))
     return savable(id.slice('window:'.length)) ? [SHOWN, HIDDEN] : undefined;
   if (isCollapsedRow(id)) return savable(collapsedLabel(id)) ? [SHOWN, HIDDEN] : undefined;
+  if (isLayerRow(id)) return isKnownLayerRow(id) ? layerValues() : undefined;
   return choices[id];
 }
 
@@ -228,5 +218,6 @@ export function choose(
   if (id.startsWith('item:')) return visibilityChoice(settings, id.slice('item:'.length), value);
   if (id.startsWith('window:')) return windowChoice(settings, id.slice('window:'.length), value);
   if (isCollapsedRow(id)) return collapsedChoice(settings, collapsedLabel(id), value, published);
+  if (isLayerRow(id)) return layerChoice(settings, id, value);
   return globalChoice(settings, id, value);
 }

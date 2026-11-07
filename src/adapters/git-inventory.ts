@@ -1,3 +1,4 @@
+import type { Dir } from 'node:fs';
 import { opendir, realpath, stat } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { gitOutput, missingGitPath } from './git-command.js';
@@ -21,7 +22,7 @@ interface Role {
 
 async function children(path: string, budget: Budget): Promise<string[]> {
   const dirs: string[] = [];
-  let directory;
+  let directory: Dir;
   try {
     directory = await opendir(path);
   } catch (error) {

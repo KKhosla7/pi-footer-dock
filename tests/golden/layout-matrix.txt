@@ -1,0 +1,549 @@
+# default, three windows, no speed
+## 30
+▰ fedora-hyprland-workstation
+▣ 87%     5h 34% │ week 48% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87% of 1.0M       5h 34% │ week 48% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M     5h 34% │ week 48% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M               5h 34% │ week 48% ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M       5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M                 5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M         5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M                   5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M      5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M    5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M              5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending                5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending                     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending                                                             5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# speed shown, three windows
+## 30
+▰ fedora-hyprland-workstation
+▣ 87%     5h 34% │ week 48% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87% of 1.0M       5h 34% │ week 48% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M     5h 34% │ week 48% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M               5h 34% │ week 48% ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         5h 34% │ week 48% ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                   5h 34% │ week 48% ›
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s           5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s   5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s             5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                       5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s          5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s                  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                             5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# month hidden, speed shown (the reported flicker)
+## 30
+▰ fedora-hyprland-workstation
+▣ 87% of 1.0M        5h 34% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M      5h 34% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M                5h 34% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s          5h 34% ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s           5h 34% ◌ 2h 15m ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s    5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s              5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s        5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s       5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s                 5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                      5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                              5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+
+# month hidden, speed absent
+## 30
+▰ fedora-hyprland-workstation
+▣ 87% of 1.0M        5h 34% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M      5h 34% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M       5h 34% ◌ 2h 15m ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M                 5h 34% ◌ 2h 15m ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M          5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M    5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M             5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending               5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending       5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending              5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending                                  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending                                                      5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending                                                                                              5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   ≈$1.23
+
+# week and month only, speed shown
+## 30
+▰ fedora-hyprland-workstation
+▣ 87% of 1.0M      week 48% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M    week 48% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M              week 48% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s        week 48% ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         week 48% ◌ 3d 10h ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                   week 48% ◌ 3d 10h ›
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s           week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s     week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s      week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s    week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s              week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s      week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s        week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s               week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                           week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# month only, speed shown
+## 30
+▰ fedora-hyprland-workstation
+▣ 87% of 1.0M        month 18%
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M      month 18%
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M                month 18%
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s          month 18%
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s  month 18% ◌ 14d 0h
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s            month 18% ◌ 14d 0h
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s          month 18% ◌ 14d 0h
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s  month 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s            month 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s    month 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s     month 18% ◌ 14d 0h   ≈$1.23
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s       month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                           month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                               month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                                                           month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# expanded quota, speed shown
+## 30
+▰ fedora-hyprland-workstation
+
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87%   5h 34% │ week 48% │ month 18% ‹
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87% of 1.0M     5h 34% │ week 48% │ month 18% ‹
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M   5h 34% │ week 48% │ month 18% ‹
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M             5h 34% │ week 48% │ month 18% ‹
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s       5h 34% │ week 48% │ month 18% ‹
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                 5h 34% │ week 48% │ month 18% ‹
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s   5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s             5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                       5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s          5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s                  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                             5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# collapsedShow 5h and week
+## 30
+▰ fedora-hyprland-workstation
+▣ 87%     5h 34% │ week 48% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87% of 1.0M       5h 34% │ week 48% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M     5h 34% │ week 48% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M               5h 34% │ week 48% ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         5h 34% │ week 48% ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                   5h 34% │ week 48% ›
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s           5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s   5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s             5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                       5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s          5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s                  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                             5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# collapsedShow names a window the provider did not send
+## 30
+▰ fedora-hyprland-workstation
+
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+  week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87%       week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87% of 1.0M         week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M       week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M                 week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s           week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s     week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s      week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s    week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s              week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s      week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s        week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s               week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                           week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+
+# collapse always
+## 30
+▰ fedora-hyprland-workstation
+▣ 87%     5h 34% │ week 48% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+▣ 87% of 1.0M       5h 34% │ week 48% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M     5h 34% │ week 48% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+▣ ━━━━━━━━━━  87% of 1.0M               5h 34% │ week 48% ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s         5h 34% │ week 48% ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2      ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s                   5h 34% │ week 48% ›
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1         ▣ deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s           5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 100
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ⚡ 84.2 tok/s     5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›
+## 110
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M   ↓ 2.3M   ⚡ 84.2 tok/s      5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s    5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead              ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s              5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s      5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s        5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s               5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›    ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                   5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›    ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead                                                                                                                            ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+▣ ━━━━━━━━━━  87% of 1.0M  compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                           5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h ›    ≈$1.23
+
+# slots moved: context after the git items on row 1
+## 30
+▰ fedora-hyprland-workstation
+          5h 34% │ week 48% ›
+## 40
+▰ fedora-hyprland-workstation   ⑂ main
+⚡ 84.2 tok/s       5h 34% │ week 48% ›
+## 50
+▰ fedora-hyprland-workstation   ⑂ main
+⚡ 84.2 tok/s                 5h 34% │ week 48% ›
+## 60
+▰ fedora-hyprland-workstation   ⑂ main
+⚡ 84.2 tok/s         5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 70
+▰ fedora-hyprland-workstation   ⑂ main   ▣ deepseek-v4.1-flash  ◎ high
+⚡ 84.2 tok/s                   5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h ›
+## 80
+▰ fedora-hyprland-workstation   ⑂ main   ▣ 87%     ▣ deepseek-v4.1-flash  ◎ high
+⚡ 84.2 tok/s           5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 90
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ▣ 87%        ▣ deepseek-v4.1-flash  ◎ high
+⚡ 84.2 tok/s                     5h 34% ◌ 2h 15m │ week 48% ◌ 3d 10h │ month 18% ◌ 14d 0h
+## 100
+▰ fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ 87%           ▣ deepseek-v4.1-flash  ◎ high
+⚡ 84.2 tok/s       5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 110
+▰ ~/…/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1   ▣ 87%     ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+↓ 2.3M   ⚡ 84.2 tok/s        5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 120
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2   ⇡  1 ahead   ▣ 87%  ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s        5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 130
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead   ▣ 87%      ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+↑ 77.0M   ↓ 2.3M   ⚡ 84.2 tok/s                  5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 140
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead   ▣ 87% of 1.0M        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s          5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 160
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead   ▣ ━━━━━━━━━━  87% of 1.0M                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s         5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h
+## 180
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead   ▣ ━━━━━━━━━━  87% of 1.0M                                    ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s            5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 200
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead   ▣ ━━━━━━━━━━  87% of 1.0M                                                        ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23
+## 240
+▰ ~/Projects/fedora-hyprland-workstation   ⑂ main   ✎  2 files   ⇡  1 ahead   ▣ ━━━━━━━━━━  87% of 1.0M                                                                                                ▣ opencode-go/deepseek-v4.1-flash  ◎ high
+compacts in 112k     ↑ 77.0M   ↓ 2.3M   ↻ cache pending   ⚡ 84.2 tok/s                                                                        5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m   │   week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h   │   month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h   ≈$1.23

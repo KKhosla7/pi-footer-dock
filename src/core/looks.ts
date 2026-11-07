@@ -37,6 +37,34 @@ export const stockForms: ReadonlyMap<string, Table> = new Map<string, Table>([
   ['quota-more', { xl: 'full' }],
 ]);
 
+/** The parts of an item that can be left out without leaving the item out, in the order they print. */
+export const layerNames: ReadonlyMap<string, readonly string[]> = new Map([
+  ['model', ['provider', 'name']],
+  ['quota', ['meter', 'reset']],
+]);
+
+/** The gap each stock slot prefers before it, in columns; a slot not listed prefers 3. */
+export const preferredGaps: ReadonlyMap<string, number> = new Map([
+  ['branch', 3],
+  ['changes', 3],
+  ['ahead', 3],
+  ['thinking', 2],
+  ['compaction', 2],
+  ['input', 5],
+  ['output', 3],
+  ['cache', 3],
+  ['speed', 3],
+  ['cost', 3],
+]);
+/**
+ * Items drawn by two slots: the second sits against the first, and only when it directly follows
+ * it. Everywhere else a slot has its own gap, so moving a slot can never glue it to a neighbour.
+ */
+export const attachedTo: ReadonlyMap<string, string> = new Map([
+  ['context-usage', 'context'],
+  ['quota-more', 'quota'],
+]);
+
 export function variantAt(table: Table | undefined, look: Look, hideAt?: Look): Variant {
   if (hideAt !== undefined && lookIndex(look) >= lookIndex(hideAt)) return 'hide';
   for (let index = lookIndex(look); index >= 0; index -= 1) {
@@ -45,38 +73,4 @@ export function variantAt(table: Table | undefined, look: Look, hideAt?: Look): 
     if (variant !== undefined) return variant;
   }
   return 'full';
-}
-
-/** The richest look whose rendering fits, or undefined if none does. */
-export function richestFit<T>(
-  render: (look: Look) => T,
-  fits: (value: T) => boolean,
-): { look: Look; value: T } | undefined {
-  for (const look of LOOKS) {
-    const value = render(look);
-    if (fits(value)) return { look, value };
-  }
-  return undefined;
-}
-
-/** Essentials, least important first; the project name is the last survivor. */
-const ESSENTIALS = [
-  'compaction',
-  'quota-more',
-  'context-usage',
-  'context',
-  'quota',
-  'thinking',
-  'model',
-  'branch',
-  'workspace',
-] as const;
-/**
- * Items to remove, in order, when a row does not fit even at the narrowest look: anything that is
- * not an essential first (last in reading order first), then the essentials as listed.
- */
-export function removalOrder(ids: readonly string[]): string[] {
-  const essential = new Set<string>(ESSENTIALS);
-  const others = ids.filter((id) => !essential.has(id)).reverse();
-  return [...others, ...ESSENTIALS.filter((id) => ids.includes(id))];
 }

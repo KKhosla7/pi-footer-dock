@@ -8,6 +8,8 @@ export interface RenderOptions {
   glyphs: Glyphs;
   now?: number;
   quotaFrame?: number;
+  /** Configuration problems to show as a marker at the start of the first row; absent when there are none. */
+  problems?: { count: number; bright: boolean };
   /** Whether the quota shows every window where it would otherwise collapse. */
   quotaExpanded?: boolean;
   /** Items other extensions registered; empty or absent changes nothing. */

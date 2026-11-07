@@ -82,14 +82,15 @@ await test('the chevron is hidden with the quota, at the same looks', () => {
   assert.ok(!footer(40, hidden).targets.has('quota'));
 });
 
-await test('"used" wording mirrors the number and the label, and shows what is spent', () => {
+await test('"used" mirrors the number and the bar and shows what is spent, with no word for it', () => {
   const used = withSlot(defaultSettings(), 'quota', { wording: 'used' });
   const text = footer(260, used).text;
-  assert.match(text, /5h .*0% used/u);
-  assert.match(text, /week .*20% used/u);
-  assert.match(text, /month .*100% used/u);
-  assert.doesNotMatch(text, / left/u);
-  assert.match(footer(260, defaultSettings()).text, /month .*0% left/u);
+  assert.match(text, /\b5h .*0% ◌/u);
+  assert.match(text, /\bweek .*20% ◌/u);
+  assert.match(text, /\bmonth .*100% ◌/u);
+  assert.doesNotMatch(text, /\b(?:left|used|resets in)\b/u);
+  assert.match(footer(260, defaultSettings()).text, /\bmonth .*0% ◌/u);
+  assert.doesNotMatch(footer(260, defaultSettings()).text, /\b(?:left|used|resets in)\b/u);
 });
 
 await test('"always collapsed" leaves out the last window with a › at any width, and › brings it back', () => {

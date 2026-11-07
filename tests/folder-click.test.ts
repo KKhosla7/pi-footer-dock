@@ -1,4 +1,5 @@
 import { quietExtensions } from './support/quiet-extensions.js';
+import { noProblems } from './support/no-problems.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
@@ -129,6 +130,7 @@ await test('the explanation of the quota lists every window, even when the foote
       glyphs: () => portableGlyphs,
       settings: () => settings,
       openFolder: () => Promise.resolve({ ok: true }),
+      problems: noProblems,
     },
   );
   const ctx = {

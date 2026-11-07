@@ -1,5 +1,7 @@
+import { checkLayers } from './layers.js';
 import { parseSlotOptions } from './slot-options.js';
 import type { SlotOptions } from './slot-options.js';
+import { parseShrink } from './shrink.js';
 import { identifier, record } from './validation.js';
 
 export type { SlotOptions };
@@ -12,7 +14,12 @@ export interface FooterConfig {
   version: 1;
   rows: FooterRow[];
   slots: Record<string, SlotOptions>;
+  /** What gives way first when a row is too wide, as step names (docs/footer-configuration.md). */
+  shrink?: string[];
 }
+
+/** The marker for configuration problems: first on the first row while any exist; not a setting. */
+export const PROBLEM_MARKER = 'problems';
 
 /** The quota's expand/collapse chevron. */
 export const QUOTA_TOGGLE = 'quota-more';
@@ -104,15 +111,19 @@ function row(value: unknown): FooterRow {
   return { left: group(data.left), right: group(data.right) };
 }
 
+/** The keys a footer configuration accepts. */
+export const CONFIG_KEYS = ['version', 'rows', 'slots', 'shrink'] as const;
+
 export function parseFooterConfig(value: unknown): FooterConfig {
   const data = record(value);
-  if (Object.keys(data).some((key) => !['version', 'rows', 'slots'].includes(key)))
+  if (Object.keys(data).some((key) => !(CONFIG_KEYS as readonly string[]).includes(key)))
     throw new Error('Unknown config option');
   if (data.version !== undefined && data.version !== 1)
     throw new Error('Unsupported config version');
   const config = defaultFooterConfig();
   if (data.slots !== undefined) config.slots = readSlots(data.slots);
   if (data.rows !== undefined) config.rows = readRows(data.rows);
+  if (data.shrink !== undefined) config.shrink = parseShrink(data.shrink);
   checkSlots(config);
   return config;
 }
@@ -120,7 +131,13 @@ function readSlots(value: unknown): FooterConfig['slots'] {
   const entries = Object.entries(record(value));
   if (entries.length > 32 || entries.some(([id]) => !identifier(id)))
     throw new Error('Invalid slot IDs/count');
-  return Object.fromEntries(entries.map(([id, item]) => [id, parseSlotOptions(item)]));
+  return Object.fromEntries(
+    entries.map(([id, item]) => {
+      const options = parseSlotOptions(item);
+      checkLayers(id, options);
+      return [id, options];
+    }),
+  );
 }
 function readRows(value: unknown): FooterConfig['rows'] {
   if (!Array.isArray(value) || value.length !== 2)

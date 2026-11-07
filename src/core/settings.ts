@@ -1,8 +1,11 @@
 import { QUOTA_TOGGLE, slotHelp } from './footer-config.js';
 import type { FooterConfig } from './footer-config.js';
+import { checkLayers } from './layers.js';
+import { layerNames } from './looks.js';
 import { parseSlotOptions } from './slot-options.js';
 import type { SlotOptions } from './slot-options.js';
 import { parseOpenWith } from './open-folder.js';
+import { parseShrink } from './shrink.js';
 import { record } from './validation.js';
 
 /** Preferences that hold across sessions; the session configuration still wins per option. */
@@ -18,6 +21,8 @@ export interface Settings {
   openWith?: string[];
   /** `on` asks the provider's own usage service for its limits (about every 30 s, shared by all Pi windows); the default is off and sends nothing. */
   limits?: 'on' | 'off';
+  /** What gives way first when a row is too wide: step names, `...` marks where the rest go. */
+  shrink?: string[];
   slots: Record<string, SlotOptions>;
 }
 /** `undefined` clears an option. */
@@ -33,10 +38,11 @@ const QUOTA_ONLY = [
 ];
 /** Options that only one item has: the quota's own, the compaction unit, the cost period. */
 const ownOption = (id: string, key: string): boolean => {
+  if (key === 'layers') return layerNames.has(id);
   if (id === 'quota') return QUOTA_ONLY.includes(key);
   return (id === 'compaction' && key === 'unit') || (id === 'cost' && key === 'period');
 };
-const KEYS = [
+export const SETTING_KEYS = [
   'version',
   'glyphs',
   'glyphHintShown',
@@ -44,6 +50,7 @@ const KEYS = [
   'clicks',
   'openWith',
   'limits',
+  'shrink',
   'slots',
 ];
 
@@ -60,6 +67,7 @@ function slots(value: unknown): Settings['slots'] {
     const options = parseSlotOptions(item);
     const misplaced = Object.keys(options).filter((key) => key !== 'hideAt' && !ownOption(id, key));
     if (misplaced.length > 0) throw new Error(`Option not available for ${id}: ${misplaced[0]}`);
+    checkLayers(id, options);
     result[id] = options;
   }
   return result;
@@ -67,11 +75,13 @@ function slots(value: unknown): Settings['slots'] {
 
 export function parseSettings(value: unknown): Settings {
   const data = record(value);
-  if (Object.keys(data).some((key) => !KEYS.includes(key))) throw new Error('Unknown setting');
+  if (Object.keys(data).some((key) => !SETTING_KEYS.includes(key)))
+    throw new Error('Unknown setting');
   if (data.version !== 1) throw new Error('Unsupported settings version');
   const result = defaultSettings();
   readChoices(data, result);
   if (data.openWith !== undefined) result.openWith = parseOpenWith(data.openWith);
+  if (data.shrink !== undefined) result.shrink = parseShrink(data.shrink);
   if (data.slots !== undefined) result.slots = slots(data.slots);
   return result;
 }
@@ -79,14 +89,15 @@ export function parseSettings(value: unknown): Settings {
 function readFlags(data: Record<string, unknown>, result: Settings): void {
   for (const key of ['glyphHintShown', 'quotaExpanded'] as const) {
     if (data[key] === undefined) continue;
-    if (typeof data[key] !== 'boolean') throw new Error(`${key} must be boolean`);
+    if (typeof data[key] !== 'boolean') throw new Error(`${key} must be true or false`);
     result[key] = data[key];
   }
 }
 /** The settings that are one of a few fixed values. */
 function readChoices(data: Record<string, unknown>, result: Settings): void {
   if (data.glyphs !== undefined) {
-    if (data.glyphs !== 'nerd' && data.glyphs !== 'portable') throw new Error('Invalid glyph set');
+    if (data.glyphs !== 'nerd' && data.glyphs !== 'portable')
+      throw new Error('glyphs must be nerd or portable');
     result.glyphs = data.glyphs;
   }
   readFlags(data, result);
@@ -106,7 +117,8 @@ export function applySettings(config: FooterConfig, settings: Settings): FooterC
   const merged = { ...config.slots };
   for (const [id, options] of Object.entries(settings.slots))
     merged[id] = { ...options, ...config.slots[id] };
-  return { ...config, slots: merged };
+  const shrink = config.shrink ?? settings.shrink;
+  return { ...config, slots: merged, ...(shrink ? { shrink } : {}) };
 }
 
 /** A copy of the settings with one item's options changed; an item left without options is dropped. */

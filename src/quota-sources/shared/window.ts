@@ -1,4 +1,5 @@
 import type { RateLimitWindow } from '../../core/rate-limits.js';
+import type { ObserveWindow, WindowType } from '../../core/window-report.js';
 
 export type RecordLike = Record<string, unknown>;
 
@@ -21,13 +22,20 @@ function resetSeconds(value: unknown): number | undefined {
 }
 /** A window is shown only when the provider gave both a valid used share and a reset time. */
 export function windowOf(
-  label: string,
+  label: WindowType,
   used: unknown,
   reset: unknown,
+  observe?: ObserveWindow,
 ): RateLimitWindow | undefined {
   const percent = usedPercent(used);
   const resetAt = resetSeconds(reset);
-  return percent === undefined || resetAt === undefined
-    ? undefined
-    : { label, remainingPercent: 100 - percent, resetAt };
+  const kept = percent !== undefined && resetAt !== undefined;
+  observe?.({
+    type: label,
+    sent: true,
+    share: percent !== undefined,
+    reset: resetAt !== undefined,
+    kept,
+  });
+  return kept ? { label, remainingPercent: 100 - percent, resetAt } : undefined;
 }

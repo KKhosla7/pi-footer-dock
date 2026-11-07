@@ -17,6 +17,20 @@ export const itemText = new Map<string, { label: string; note: string }>([
   ['cost', { label: 'Cost', note: 'Estimated spend at API prices.' }],
 ]);
 
+/** The menu rows for the parts of an item, keyed `<item>:<part>`. */
+export const layerText = new Map<string, { label: string; note: string }>([
+  ['model:provider', { label: 'Model: provider', note: 'The provider before the model name.' }],
+  [
+    'model:name',
+    { label: 'Model: name', note: 'The model name. With both off the item is hidden.' },
+  ],
+  ['quota:meter', { label: 'Limit usage: meter', note: 'The bar before the percent.' }],
+  [
+    'quota:reset',
+    { label: 'Limit usage: reset time', note: 'The reload icon and the time until the reset.' },
+  ],
+]);
+
 export const costText = {
   period: 'Spend over a day, a week, a month, or this session.',
 } as const;
@@ -26,7 +40,7 @@ export const compactionText = 'How it is shown; click it for the table.';
 export const quotaText = {
   window: (label: string) => `Show or hide the ${label} window.`,
   network: 'Ask your provider for its limits. Off sends nothing.',
-  wording: 'Percent left, or percent used.',
+  wording: 'Show the percent left, or the percent used.',
   collapse: 'When to collapse, and which windows stay.',
   collapsedWindow: (label: string) => `Keep ${label} visible when collapsed.`,
   expanded: 'Start with every limit window shown.',

@@ -79,6 +79,6 @@ await test('a failing save does not throw; the note may come again next time', (
 await test('the flag round-trips and only a boolean is accepted', () => {
   const settings = { ...defaultSettings(), glyphHintShown: true };
   assert.deepEqual(parseSettings(JSON.parse(JSON.stringify(settings))), settings);
-  assert.throws(() => parseSettings({ version: 1, glyphHintShown: 'yes' }), /boolean/);
+  assert.throws(() => parseSettings({ version: 1, glyphHintShown: 'yes' }), /true or false/);
   assert.equal('glyphHintShown' in defaultSettings(), false, 'not part of the defaults');
 });

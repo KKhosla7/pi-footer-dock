@@ -51,7 +51,8 @@ for (const api of ['openai-completions', 'openai-responses'] as const) {
       await session.prompt('Fixture response only.');
       const rendered = capture.render().map(stripVTControlCharacters).join('\n');
       assert.match(rendered, /API tokens (?:[▰▱]{7} )?25%.*API requests (?:[▰▱]{7} )?60%/u);
-      assert.doesNotMatch(rendered, /5h|week|month/u);
+      // Whole words only: the footer also shows the random name of the temporary folder.
+      assert.doesNotMatch(rendered, /\b5h\b|\bweek\b|\bmonth\b/u);
       assert.doesNotMatch(rendered, /\(\d+s old\)/u);
       await session.prompt('/dock-debug');
       const report = JSON.parse(capture.notifications.at(-1) ?? '{}') as {

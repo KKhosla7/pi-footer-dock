@@ -123,7 +123,7 @@ await test('provider-supplied status text is limited to a short safe charset', (
   );
 });
 
-await test('the footer shows left values and a visible badge for the blocking window', () => {
+await test('the footer shows the percent left and no badge text for the blocking window', () => {
   const windows = parseOpenCodeGoUsage(
     go(
       { status: 'ok', percent: 0, resetsAt: iso(18_000) },
@@ -139,7 +139,7 @@ await test('the footer shows left values and a visible badge for the blocking wi
   );
   assert.match(text, /5h .* 100%/u);
   assert.match(text, /week .* 100%/u);
-  assert.match(text, /month .*0% left/u);
+  assert.match(text, /month .*0% ◌/u);
   assert.doesNotMatch(text, /rate-limited/u);
 });
 

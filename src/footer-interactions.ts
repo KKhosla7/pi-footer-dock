@@ -1,5 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
 import {
+  PROBLEM_MARKER,
   QUOTA_TOGGLE,
   actionTargets,
   clickMode,
@@ -10,13 +11,15 @@ import {
 import type { FooterConfig } from './core/footer-config.js';
 import { UIActionRegistry } from './core/ui-actions.js';
 import { applySettings } from './core/settings.js';
+import { explainConfig } from './core/config-command.js';
 import type { Settings } from './core/settings.js';
 import type { ExtensionBus } from './adapters/ext-bus.js';
 import type { Found } from './core/ext/registry.js';
 import type { OpenResult } from './adapters/folder-opener.js';
 import { createIconActions } from './click-actions.js';
 import { ExplainPresenter } from './explain-presenter.js';
-import { closeInfoScreen } from './ui/info-screen.js';
+import { ScreenToggle } from './ui/screen-toggle.js';
+import type { ProblemsHost } from './problems-controller.js';
 import { NAMES } from './core/product.js';
 import { iconTarget, parseTarget } from './core/click-targets.js';
 import type { Snapshot } from './core/model.js';
@@ -34,8 +37,7 @@ export class FooterInteractions {
   /** Whether the quota shows every window when the footer is narrow; per session, not saved. */
   quotaExpanded = false;
   private lastOpen = 0;
-  /** The item whose screen is open now. */
-  private screenOpen: string | undefined;
+  private readonly screens = new ScreenToggle();
   private readonly targets = actionTargets(this.config);
   private readonly actions: UIActionRegistry;
   private readonly iconActions: ReturnType<typeof createIconActions>;
@@ -55,11 +57,16 @@ export class FooterInteractions {
       glyphs: () => Glyphs;
       settings: () => Settings;
       openFolder: (directory: string) => Promise<OpenResult>;
+      problems: ProblemsHost;
       extensions: ExtensionBus;
     },
   ) {
     this.actions = new UIActionRegistry(pi.events, this.targets, trace);
     this.iconActions = createIconActions(pi);
+  }
+  /** The configuration problems of this session (the footer marker, its screen, re-reading the file). */
+  get problems(): ProblemsHost {
+    return this.display.problems;
   }
   start(ctx: ExtensionContext): void {
     this.base = this.restore(ctx);
@@ -81,6 +88,7 @@ export class FooterInteractions {
       configuration: () => this.config,
       isInteractive: (target: string) => this.interactive(target),
       isQuotaExpanded: () => this.quotaExpanded,
+      problemState: () => this.display.problems.state,
       extensions: this.display.extensions.registry,
     };
   }
@@ -100,24 +108,8 @@ export class FooterInteractions {
     }
     const action = this.iconActions.get(id);
     if (!action) return false;
-    await this.toggleScreen(iconTarget(id), action, ctx);
+    await this.screens.toggle(iconTarget(id), action, ctx);
     return true;
-  }
-  /** A click target opens its screen; the same target again closes it; another one switches. */
-  private async toggleScreen(
-    key: string,
-    action: (ctx: ExtensionContext) => Promise<void>,
-    ctx: ExtensionContext,
-  ): Promise<void> {
-    const wasOpen = this.screenOpen;
-    if (wasOpen !== undefined) closeInfoScreen();
-    if (wasOpen === key) return;
-    this.screenOpen = key;
-    try {
-      await action(ctx);
-    } finally {
-      if (this.screenOpen === key) this.screenOpen = undefined;
-    }
   }
   /** Opens the project folder in the file manager (or the user's app); at most once a second. */
   async openFolder(ctx: ExtensionContext): Promise<void> {
@@ -139,6 +131,8 @@ export class FooterInteractions {
       this.toggleQuota();
       return;
     }
+    if (id === PROBLEM_MARKER)
+      return this.screens.toggle(target, () => this.display.problems.open(ctx), ctx);
     const external = this.display.extensions.registry.find(id);
     if (external) return this.activateExternal(external, { icon, target }, ctx);
     if (icon && (await this.act(id, ctx))) return;
@@ -148,7 +142,7 @@ export class FooterInteractions {
       const result = await this.invoke(target, ctx, 'mouse');
       if (result !== 'unavailable') return;
     }
-    await this.toggleScreen(target, () => this.explainer.screen(id, ctx), ctx);
+    await this.screens.toggle(target, () => this.explainer.screen(id, ctx), ctx);
   }
   /** A click on an extension's item: an event for it, or Footer Dock's explanation of it, as it declared. */
   private async activateExternal(
@@ -160,7 +154,7 @@ export class FooterInteractions {
     const behaviour = token === 'icon' ? 'event' : item.text;
     if (behaviour === 'event') this.display.extensions.click(registration.ext, item.id, token);
     else if (behaviour === 'explain')
-      await this.toggleScreen(
+      await this.screens.toggle(
         click.target,
         () => this.explainer.screen(`${registration.ext}:${item.id}`, ctx),
         ctx,
@@ -206,7 +200,7 @@ export class FooterInteractions {
       this.display.redraw();
       say(ctx, 'Footer configuration saved for this session.', 'info');
     } catch {
-      say(ctx, 'Invalid footer configuration (two rows, unique slots). Nothing changed.', 'error');
+      say(ctx, explainConfig(args), 'error');
     }
   }
   private updateTargets(): void {

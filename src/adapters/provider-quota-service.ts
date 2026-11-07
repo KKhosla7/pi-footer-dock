@@ -11,6 +11,7 @@ import {
 } from '../core/quota-limits.js';
 import type { QuotaState } from '../core/quota-presentation.js';
 import type { SharedQuotaView } from '../core/quota-state.js';
+import type { WindowReport } from '../core/window-report.js';
 import { fetchResult } from './provider-quota-fetch.js';
 import { resolveCredential } from './quota-credentials.js';
 import type { FetchPolicy } from './provider-quota-fetch.js';
@@ -25,6 +26,8 @@ export interface ProviderQuotaOptions {
   intervalMs?: number;
 }
 const HINT_SPACING_MS = 2000;
+/** The parsers read at most 16 items; the report is bounded the same way. */
+const MAX_REPORT = 16;
 type Trouble = Problem | 'unavailable';
 const troubleStatus: Record<Trouble, string> = {
   unsupported: 'quota source unsupported',
@@ -51,6 +54,8 @@ export class ProviderQuotaService {
   private source: ProviderQuotaSource | undefined;
   private scope: string | undefined;
   private gateState: GateState | undefined;
+  /** What became of each window in the last reply this process read; the shared gate never holds it. */
+  private report: { at: number; windows: WindowReport[] } | undefined;
   private trouble: Trouble | undefined;
   private epoch = 0;
   private pending = false;
@@ -113,6 +118,7 @@ export class ProviderQuotaService {
       failure: this.trouble ?? this.gateState?.failure ?? 'not-requested',
       intervalMs: this.policy.intervalMs,
       ...viewDiagnostics(this.view()),
+      windowReport: this.report ?? null,
     };
   }
 
@@ -127,6 +133,7 @@ export class ProviderQuotaService {
     this.source = undefined;
     this.scope = undefined;
     this.gateState = undefined;
+    this.report = undefined;
     this.trouble = undefined;
     // A new attachment is a new subscription: the spacing of hints belongs to the old one.
     this.lastStartAt = -Infinity;
@@ -188,7 +195,18 @@ export class ProviderQuotaService {
     const previous = await this.show(scope, epoch);
     const reservation = await this.gate.reserve(scope, this.policy.intervalMs);
     if (!reservation || epoch !== this.epoch) return;
-    const result = await fetchResult(this.policy, { source, credential, previous });
+    const windows: WindowReport[] = [];
+    const result = await fetchResult(this.policy, {
+      source,
+      credential,
+      previous,
+      observe: (window) => {
+        if (windows.length < MAX_REPORT) windows.push(window);
+      },
+    });
+    // Only a reply that was read counts: a failed request must not erase the last useful report.
+    if (result.failure === 'none' || result.failure === 'invalid-response')
+      this.report = { at: this.policy.now(), windows };
     await this.gate.finish(scope, reservation.revision, result);
     await this.show(scope, epoch);
   }

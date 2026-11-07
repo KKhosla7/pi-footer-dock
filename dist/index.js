@@ -649,10 +649,18 @@ function resetSeconds(value) {
   const milliseconds = Date.parse(value);
   return Number.isFinite(milliseconds) && milliseconds > 0 ? Math.floor(milliseconds / 1e3) : void 0;
 }
-function windowOf(label3, used, reset) {
+function windowOf(label3, used, reset, observe) {
   const percent2 = usedPercent(used);
   const resetAt = resetSeconds(reset);
-  return percent2 === void 0 || resetAt === void 0 ? void 0 : { label: label3, remainingPercent: 100 - percent2, resetAt };
+  const kept2 = percent2 !== void 0 && resetAt !== void 0;
+  observe?.({
+    type: label3,
+    sent: true,
+    share: percent2 !== void 0,
+    reset: resetAt !== void 0,
+    kept: kept2
+  });
+  return kept2 ? { label: label3, remainingPercent: 100 - percent2, resetAt } : void 0;
 }
 
 // src/quota-sources/clinepass.ts
@@ -661,17 +669,21 @@ var clineTypes = /* @__PURE__ */ new Map([
   ["weekly", "week"],
   ["monthly", "month"]
 ]);
-function clineWindow(item2) {
+function clineWindow(item2, observe) {
   const entry = record3(item2);
   const label3 = typeof entry?.type === "string" ? clineTypes.get(entry.type) : void 0;
-  return label3 ? windowOf(label3, entry?.percentUsed, entry?.resetsAt) : void 0;
+  if (!label3) {
+    observe?.({ type: "unrecognized", sent: true, kept: false });
+    return void 0;
+  }
+  return windowOf(label3, entry?.percentUsed, entry?.resetsAt, observe);
 }
-function parseClinePassLimits(body) {
+function parseClinePassLimits(body, observe) {
   const limits = record3(record3(body)?.data)?.limits;
   if (!Array.isArray(limits)) return void 0;
   const windows = /* @__PURE__ */ new Map();
   for (const item2 of limits.slice(0, 16)) {
-    const parsed = clineWindow(item2);
+    const parsed = clineWindow(item2, observe);
     if (parsed && !windows.has(parsed.label)) windows.set(parsed.label, parsed);
   }
   return windows.size > 0 ? [...windows.values()].slice(0, QUOTA_MAX_WINDOWS) : void 0;
@@ -698,12 +710,23 @@ function windowLabel(minutes) {
   if (minutes % 60 === 0) return `${minutes / 60}h`;
   return `${minutes}m`;
 }
-function parseWindow(value) {
-  const item2 = record4(value);
+function windowChecks(item2) {
   const usedPercent2 = finite(item2?.used_percent);
   const minutes = finite(item2?.window_minutes);
   const resetAt = finite(item2?.reset_at);
-  if (usedPercent2 === void 0 || minutes === void 0 || resetAt === void 0 || usedPercent2 < 0 || usedPercent2 > 100 || minutes <= 0 || resetAt <= 0) {
+  return {
+    usedPercent: usedPercent2,
+    minutes,
+    resetAt,
+    share: usedPercent2 !== void 0 && usedPercent2 >= 0 && usedPercent2 <= 100,
+    span: minutes !== void 0 && minutes > 0,
+    reset: resetAt !== void 0 && resetAt > 0
+  };
+}
+function parseWindow(value) {
+  const checks = windowChecks(record4(value));
+  const { usedPercent: usedPercent2, minutes, resetAt } = checks;
+  if (usedPercent2 === void 0 || minutes === void 0 || resetAt === void 0 || !checks.share || !checks.span || !checks.reset) {
     return void 0;
   }
   return { label: windowLabel(minutes), remainingPercent: 100 - usedPercent2, resetAt };
@@ -735,16 +758,27 @@ function parseRateLimits(provider, model, data) {
   appendUnique(windows, additional);
   return windows.length > 0 ? { provider, model, windows } : void 0;
 }
-function parseCodexUsage(provider, model, data) {
+function parseCodexUsage(provider, model, data, observe) {
   const limits = record4(record4(data)?.rate_limit);
-  const windows = [limits?.primary_window, limits?.secondary_window].map((candidate) => {
+  const candidates = [
+    ["primary", limits?.primary_window],
+    ["secondary", limits?.secondary_window]
+  ];
+  const windows = candidates.map(([type, candidate]) => {
     const window2 = record4(candidate);
     const seconds2 = finite(window2?.limit_window_seconds);
-    return parseWindow({
+    const fields2 = {
       used_percent: window2?.used_percent,
       reset_at: window2?.reset_at,
       window_minutes: seconds2 === void 0 ? void 0 : seconds2 / 60
-    });
+    };
+    const parsed = parseWindow(fields2);
+    if (observe && !window2) observe({ type, sent: false, kept: false });
+    else if (observe) {
+      const { share: share3, reset, span } = windowChecks(fields2);
+      observe({ type, sent: true, share: share3, reset, span, kept: parsed !== void 0 });
+    }
+    return parsed;
   }).filter((window2) => window2 !== void 0);
   return windows.length > 0 ? { provider, model, windows } : void 0;
 }
@@ -784,9 +818,9 @@ function formatReset(resetAt, now = Date.now()) {
 
 // src/quota-sources/contract.ts
 var QuotaProblem = class extends Error {
-  constructor(problem) {
-    super(problem);
-    this.problem = problem;
+  constructor(problem2) {
+    super(problem2);
+    this.problem = problem2;
   }
   problem;
 };
@@ -899,7 +933,7 @@ var codex = {
   label: "Codex",
   origin: "https://chatgpt.com",
   path: "/backend-api/wham/usage",
-  parse: (body) => parseCodexUsage("openai-codex", "", body)?.windows,
+  parse: (body, observe) => parseCodexUsage("openai-codex", "", body, observe)?.windows,
   credential: codexOAuth
 };
 
@@ -909,18 +943,20 @@ var goKeys = [
   ["weekly", "week"],
   ["monthly", "month"]
 ];
-function parseOpenCodeGoUsage(body) {
+function goWindow(label3, entry, observe) {
+  if (!entry) {
+    observe?.({ type: label3, sent: false, kept: false });
+    return void 0;
+  }
+  const parsed = windowOf(label3, entry.percent, entry.resetsAt, observe);
+  const status5 = entry.status;
+  const blocking = typeof status5 === "string" && status5 !== "ok" && /^[a-z][a-z-]{0,23}$/u.test(status5);
+  return parsed && blocking ? { ...parsed, badge: status5 } : parsed;
+}
+function parseOpenCodeGoUsage(body, observe) {
   const usage2 = record3(record3(body)?.usage);
   if (!usage2) return void 0;
-  const windows = [];
-  for (const [key, label3] of goKeys) {
-    const entry = record3(usage2[key]);
-    const parsed = windowOf(label3, entry?.percent, entry?.resetsAt);
-    if (!parsed) continue;
-    const status5 = entry?.status;
-    const blocking = typeof status5 === "string" && status5 !== "ok" && /^[a-z][a-z-]{0,23}$/u.test(status5);
-    windows.push(blocking ? { ...parsed, badge: status5 } : parsed);
-  }
+  const windows = goKeys.map(([key, label3]) => goWindow(label3, record3(usage2[key]), observe)).filter((window2) => window2 !== void 0);
   return windows.length > 0 ? windows : void 0;
 }
 var openCodeGo = {
@@ -1129,7 +1165,7 @@ function diagnosticReport(options) {
   return withoutPersonalPaths(
     JSON.stringify(
       {
-        diagnosticVersion: 3,
+        diagnosticVersion: 4,
         capabilities: {
           footer: "configurable-slots-v1",
           quotaSources: [
@@ -1306,12 +1342,35 @@ function stackLines(block, { style, cells, width: room }) {
   );
   const bar = live.map(({ part, glyph: glyph2 }, index) => style.fg(part.tone, glyph2.repeat(counts2[index] ?? 0))).join("");
   const total = live.reduce((acc, { part }) => acc + part.amount, 0);
-  const legend4 = live.map(({ part, glyph: glyph2 }) => {
+  const entries = live.map(({ part, glyph: glyph2 }) => {
     const share3 = Math.round(part.amount / total * 100);
     const extra = part.text ? ` ${plain(part.text)}` : "";
     return `${style.fg(part.tone, glyph2)} ${plain(part.label)}${extra} ${style.fg("dim", `${share3}%`)}`;
-  }).join("   ");
-  return [INDENT + bar, ...wrapStyled(legend4, room - INDENT.length, INDENT, blank(INDENT.length))];
+  });
+  return [
+    INDENT + bar,
+    "",
+    ...legendRows(entries, room - INDENT.length).map((row4) => INDENT + row4)
+  ];
+}
+var LEGEND_GAP = "   ";
+function legendRows(entries, room) {
+  const rows = [];
+  let current = "";
+  for (const entry of entries) {
+    if (current && width(current) + LEGEND_GAP.length + width(entry) <= room) {
+      current += LEGEND_GAP + entry;
+      continue;
+    }
+    if (current) rows.push(current);
+    if (width(entry) <= room) current = entry;
+    else {
+      rows.push(...wrapStyled(entry, room, "", ""));
+      current = "";
+    }
+  }
+  if (current) rows.push(current);
+  return rows;
 }
 var LEVELS = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588";
 var HEIGHT = 3;
@@ -1389,8 +1448,8 @@ function factLine(row4, labelWidth, { style, width: room }) {
   const aside = row4.note ? plain(row4.note) : "";
   const left = room - width(lead);
   if (width(value) + (aside ? width(aside) + 2 : 0) <= left) {
-    const shown = row4.tone ? style.fg(row4.tone, value) : value;
-    return [lead + shown + (aside ? `  ${style.fg("dim", aside)}` : "")];
+    const shown2 = row4.tone ? style.fg(row4.tone, value) : value;
+    return [lead + shown2 + (aside ? `  ${style.fg("dim", aside)}` : "")];
   }
   const text = aside ? `${value} \xB7 ${aside}` : value;
   return wrapStyled(row4.tone ? style.fg(row4.tone, text) : text, left, lead, blank(width(lead)));
@@ -1440,7 +1499,8 @@ function renderBlocks(blocks, style, width2, ascii = false) {
   return blocks.flatMap((block, index) => {
     const lines = drawers[block.kind](block, ctx);
     const next = blocks[index + 1];
-    const air = lines.length > 0 && DATA.has(block.kind) && next && PROSE.has(next.kind);
+    const needsAir = (following) => block.kind === "stack" ? following.kind !== "gap" : DATA.has(block.kind) && PROSE.has(following.kind);
+    const air = lines.length > 0 && next !== void 0 && needsAir(next);
     return air ? [...lines, ""] : lines;
   }).map((line) => fit(line, ctx.width));
 }
@@ -1492,6 +1552,26 @@ var stockForms = /* @__PURE__ */ new Map([
   ["cost", { xl: "full", xs: "hide" }],
   ["quota-more", { xl: "full" }]
 ]);
+var layerNames = /* @__PURE__ */ new Map([
+  ["model", ["provider", "name"]],
+  ["quota", ["meter", "reset"]]
+]);
+var preferredGaps = /* @__PURE__ */ new Map([
+  ["branch", 3],
+  ["changes", 3],
+  ["ahead", 3],
+  ["thinking", 2],
+  ["compaction", 2],
+  ["input", 5],
+  ["output", 3],
+  ["cache", 3],
+  ["speed", 3],
+  ["cost", 3]
+]);
+var attachedTo = /* @__PURE__ */ new Map([
+  ["context-usage", "context"],
+  ["quota-more", "quota"]
+]);
 function variantAt(table2, look, hideAt) {
   if (hideAt !== void 0 && lookIndex(look) >= lookIndex(hideAt)) return "hide";
   for (let index = lookIndex(look); index >= 0; index -= 1) {
@@ -1500,29 +1580,6 @@ function variantAt(table2, look, hideAt) {
     if (variant !== void 0) return variant;
   }
   return "full";
-}
-function richestFit(render, fits) {
-  for (const look of LOOKS) {
-    const value = render(look);
-    if (fits(value)) return { look, value };
-  }
-  return void 0;
-}
-var ESSENTIALS = [
-  "compaction",
-  "quota-more",
-  "context-usage",
-  "context",
-  "quota",
-  "thinking",
-  "model",
-  "branch",
-  "workspace"
-];
-function removalOrder(ids) {
-  const essential = new Set(ESSENTIALS);
-  const others = ids.filter((id) => !essential.has(id)).reverse();
-  return [...others, ...ESSENTIALS.filter((id) => ids.includes(id))];
 }
 
 // src/core/ext/blocks.ts
@@ -2236,10 +2293,10 @@ async function gitConfigFiles(root, signal) {
     if (!origin.startsWith("file:")) continue;
     const source = resolve(root, origin.slice(5));
     files.add(source);
-    const split2 = pair.indexOf("\n");
-    if (split2 < 0) throw new Error("Invalid Git config origin");
-    if (!pair.slice(0, split2).toLowerCase().startsWith("include")) continue;
-    const value = pair.slice(split2 + 1);
+    const split3 = pair.indexOf("\n");
+    if (split3 < 0) throw new Error("Invalid Git config origin");
+    if (!pair.slice(0, split3).toLowerCase().startsWith("include")) continue;
+    const value = pair.slice(split3 + 1);
     if (value) files.add(includePath(source, value));
   }
   return [...files];
@@ -3505,13 +3562,13 @@ var MAX_RETRY_AFTER_MS = 36e5;
 function backoff(policy, previous, retryAfterMs2) {
   const failing = previous && previous.failure !== "none" && previous.failure !== "loading";
   const doubled = failing ? previous.delayMs * 2 : policy.intervalMs;
-  const bounded = Math.min(Math.max(policy.intervalMs, doubled), PROVIDER_QUOTA_MAX_BACKOFF_MS);
-  return Math.ceil(Math.max(bounded, Math.min(retryAfterMs2 ?? 0, MAX_RETRY_AFTER_MS)));
+  const bounded2 = Math.min(Math.max(policy.intervalMs, doubled), PROVIDER_QUOTA_MAX_BACKOFF_MS);
+  return Math.ceil(Math.max(bounded2, Math.min(retryAfterMs2 ?? 0, MAX_RETRY_AFTER_MS)));
 }
 function classify(policy, reply, call) {
   const delayMs = backoff(policy, call.previous, reply.retryAfterMs);
   if (reply.status >= 200 && reply.status < 300) {
-    const windows = call.source.parse(reply.body);
+    const windows = call.source.parse(reply.body, call.observe);
     return windows ? {
       observation: { windows, observedAt: policy.now() },
       failure: "none",
@@ -3684,8 +3741,8 @@ function gateView(state, now) {
   );
 }
 function presentGate(view, model) {
-  const shown = presentAccountQuota(view, { provider: model.provider, model: model.id });
-  return !view.observation && view.failure === "authentication-failed" ? { ...shown, status: "quota auth rejected" } : shown;
+  const shown2 = presentAccountQuota(view, { provider: model.provider, model: model.id });
+  return !view.observation && view.failure === "authentication-failed" ? { ...shown2, status: "quota auth rejected" } : shown2;
 }
 function viewDiagnostics(view) {
   return {
@@ -3907,9 +3964,9 @@ var SharedGate = class {
   async withLock(scope, run) {
     const lock = `${this.file(scope)}.lock`;
     const deadline = Date.now() + LOCK_WAIT_MS;
-    for (let attempt = 0; !await this.acquire(lock); attempt += 1) {
+    for (let attempt2 = 0; !await this.acquire(lock); attempt2 += 1) {
       if (Date.now() >= deadline) return void 0;
-      await delay(10 + Math.min(40, attempt * 5));
+      await delay(10 + Math.min(40, attempt2 * 5));
     }
     try {
       return await run();
@@ -3947,6 +4004,7 @@ var SharedGate = class {
 
 // src/adapters/provider-quota-service.ts
 var HINT_SPACING_MS = 2e3;
+var MAX_REPORT = 16;
 var troubleStatus = {
   unsupported: "quota source unsupported",
   auth: "quota auth unavailable",
@@ -3974,6 +4032,8 @@ var ProviderQuotaService = class {
   source;
   scope;
   gateState;
+  /** What became of each window in the last reply this process read; the shared gate never holds it. */
+  report;
   trouble;
   epoch = 0;
   pending = false;
@@ -4017,7 +4077,8 @@ var ProviderQuotaService = class {
       shared: true,
       failure: this.trouble ?? this.gateState?.failure ?? "not-requested",
       intervalMs: this.policy.intervalMs,
-      ...viewDiagnostics(this.view())
+      ...viewDiagnostics(this.view()),
+      windowReport: this.report ?? null
     };
   }
   /** The gate state seen as the shared view it is at this moment (age and staleness move with time). */
@@ -4031,6 +4092,7 @@ var ProviderQuotaService = class {
     this.source = void 0;
     this.scope = void 0;
     this.gateState = void 0;
+    this.report = void 0;
     this.trouble = void 0;
     this.lastStartAt = -Infinity;
   }
@@ -4083,7 +4145,17 @@ var ProviderQuotaService = class {
     const previous = await this.show(scope, epoch);
     const reservation = await this.gate.reserve(scope, this.policy.intervalMs);
     if (!reservation || epoch !== this.epoch) return;
-    const result = await fetchResult(this.policy, { source, credential, previous });
+    const windows = [];
+    const result = await fetchResult(this.policy, {
+      source,
+      credential,
+      previous,
+      observe: (window2) => {
+        if (windows.length < MAX_REPORT) windows.push(window2);
+      }
+    });
+    if (result.failure === "none" || result.failure === "invalid-response")
+      this.report = { at: this.policy.now(), windows };
     await this.gate.finish(scope, reservation.revision, result);
     await this.show(scope, epoch);
   }
@@ -4215,11 +4287,387 @@ var Trackers = class {
     this.extensions.start();
     this.quotas.start(ctx);
   }
+  /** The provider limits as last read, for the first snapshot of a session. */
+  limits() {
+    return this.quotas.snapshot().limits;
+  }
+  /** What `/dock-debug` reports about the sources. */
+  diagnostics() {
+    return { ...this.quotas.diagnostics(), gitMonitor: this.git.stats() };
+  }
   stop() {
     this.quotas.stop();
     this.history.stop();
     this.extensions.stop();
     this.git.stop();
+  }
+};
+
+// src/problem-state.ts
+var ProblemState = class {
+  list = [];
+  seen = false;
+  get problems() {
+    return this.list;
+  }
+  get count() {
+    return this.list.length;
+  }
+  /** Problems exist and the user has not opened the screen that lists them. */
+  get alerting() {
+    return this.list.length > 0 && !this.seen;
+  }
+  set(problems) {
+    if (JSON.stringify(problems) !== JSON.stringify(this.list)) this.seen = false;
+    this.list = problems;
+  }
+  acknowledge() {
+    this.seen = true;
+  }
+};
+
+// src/core/explain/blocks.ts
+var heading = (text) => ({ kind: "heading", text });
+var facts = (...rows) => ({ kind: "facts", rows });
+var meters = (...rows) => ({ kind: "meters", rows });
+var stack = (...parts) => ({ kind: "stack", parts });
+var table = (head, rows, right = []) => ({ kind: "table", head, rows, right });
+var bars = (chart) => ({ kind: "bars", chart });
+var bullets = (...items) => ({ kind: "bullets", items });
+var note = (text, tone) => tone ? { kind: "note", text, tone } : { kind: "note", text };
+var gap = { kind: "gap" };
+
+// src/core/problems-view.ts
+function problemsHeader(problems) {
+  if (problems.length === 0)
+    return [
+      note("Footer Dock has no configuration problems. Your settings are applied.", "success")
+    ];
+  return [
+    note(
+      "Footer Dock did not apply your settings file, so it is running on its defaults. Nothing in the file was changed.",
+      "warning"
+    ),
+    note("Fix the file, then press r here to apply it, or restart Pi."),
+    gap
+  ];
+}
+function problemBlocks(problems) {
+  return problems.flatMap((item2, index) => [
+    heading(`Problem ${index + 1} of ${problems.length}`),
+    facts(
+      { label: "Where", value: item2.where },
+      { label: "Setting", value: item2.setting },
+      { label: "What is wrong", value: item2.reason, tone: "warning" },
+      { label: "Fix", value: item2.fix, tone: "success" }
+    ),
+    gap
+  ]);
+}
+
+// src/ui/explain-style.ts
+function themeStyle(theme) {
+  return { fg: (tone, text) => theme.fg(tone, text), bold: (text) => theme.bold(text) };
+}
+var plainStyle = { fg: (_tone, text) => text, bold: (text) => text };
+
+// src/ui/live.ts
+var TICK_MS = 1e3;
+function startLive(tui, view, refresh) {
+  let stopped = false;
+  const stop = () => {
+    stopped = true;
+    clearInterval(timer);
+  };
+  const timer = setInterval(() => {
+    if (!view.drawn) {
+      stop();
+      return;
+    }
+    view.drawn = false;
+    tui.requestRender();
+  }, TICK_MS);
+  timer.unref();
+  if (refresh) {
+    loop(
+      refresh,
+      () => stopped,
+      () => {
+        tui.requestRender();
+      }
+    ).catch(() => void 0);
+  }
+  return stop;
+}
+async function loop(refresh, stopped, render) {
+  let wait = refresh.everyMs;
+  while (!stopped()) {
+    await new Promise((resume) => {
+      setTimeout(resume, wait).unref();
+    });
+    if (stopped()) return;
+    const started = performance.now();
+    const changed2 = await refresh.work().catch(() => false);
+    if (stopped()) return;
+    if (changed2) render();
+    wait = Math.max(refresh.everyMs, 3 * (performance.now() - started));
+  }
+}
+
+// src/ui/info-screen.ts
+import { Key, matchesKey, truncateToWidth as truncateToWidth2 } from "@earendil-works/pi-tui";
+var CHROME_ROWS = 6;
+var RESERVED_ROWS = CHROME_ROWS + 6;
+var MAX_ROWS = 12;
+var MIN_ROWS = 4;
+var WHEEL_STEP = 3;
+var InfoView = class {
+  constructor(screen, theme, rows, close) {
+    this.screen = screen;
+    this.theme = theme;
+    this.rows = rows;
+    this.close = close;
+  }
+  screen;
+  theme;
+  rows;
+  close;
+  offset = 0;
+  lastWidth = 80;
+  /** Set by every render; the live timer clears it, and stops itself if nothing sets it again. */
+  drawn = false;
+  pinned(width2) {
+    return {
+      top: this.screen.header?.(this.theme, width2) ?? [],
+      bottom: this.screen.footer?.(this.theme, width2) ?? []
+    };
+  }
+  /** The scrolling window: fixed, and smaller on a short terminal by what is pinned around it. */
+  visibleRows(pinned = 0) {
+    return Math.max(MIN_ROWS, Math.min(MAX_ROWS, this.rows() - RESERVED_ROWS - pinned));
+  }
+  body(width2) {
+    return this.screen.lines(this.theme, width2);
+  }
+  /** Rows of the scrolling window at the width last drawn. */
+  windowRows() {
+    const { top, bottom } = this.pinned(this.lastWidth);
+    return this.visibleRows(top.length + bottom.length);
+  }
+  scroll(by, total, rows = this.windowRows()) {
+    this.offset = Math.max(0, Math.min(Math.max(0, total - rows), this.offset + by));
+  }
+  /** The last column of each body row: a track with a thumb, only when the body scrolls. */
+  bar(rows, shown2, total) {
+    if (total <= rows) return Array.from({ length: shown2 }, () => "");
+    const thumb = Math.max(1, Math.round(rows * rows / total));
+    const start = Math.round(this.offset / (total - rows) * (rows - thumb));
+    return Array.from(
+      { length: shown2 },
+      (_, row4) => row4 >= start && row4 < start + thumb ? this.theme.fg("accent", "\u2503") : this.theme.fg("dim", "\u2502")
+    );
+  }
+  render(width2) {
+    this.lastWidth = width2;
+    this.drawn = true;
+    const all = this.body(width2);
+    const { top, bottom } = this.pinned(width2);
+    const rows = this.visibleRows(top.length + bottom.length);
+    this.scroll(0, all.length, rows);
+    const scrolls = all.length > rows;
+    const room = scrolls ? width2 - 1 : width2;
+    const visible2 = all.slice(this.offset, this.offset + rows);
+    const bar = this.bar(rows, visible2.length, all.length);
+    const shown2 = visible2.map((line, row4) => {
+      const cut = truncateToWidth2(line, room, "", scrolls);
+      return scrolls ? cut + (bar[row4] ?? "") : cut;
+    });
+    const rule = this.theme.fg("border", "\u2500".repeat(Math.max(1, width2)));
+    const position2 = scrolls ? `  (${this.offset + 1}-${this.offset + shown2.length}/${all.length})` : "";
+    return [
+      rule,
+      this.theme.bold(
+        this.theme.fg("accent", truncateToWidth2(` ${PRODUCT} \u203A ${this.screen.title}`, width2))
+      ),
+      "",
+      ...top.map((line) => truncateToWidth2(line, width2)),
+      ...shown2,
+      ...bottom.map((line) => truncateToWidth2(line, width2)),
+      "",
+      this.theme.fg(
+        "dim",
+        truncateToWidth2(
+          `  \u2191/\u2193 scroll \xB7 ${this.screen.hint ? `${this.screen.hint} \xB7 ` : ""}Esc to close${position2}`,
+          width2
+        )
+      ),
+      rule
+    ];
+  }
+  handleInput(data) {
+    const action = this.screen.keys?.[data];
+    if (action) action();
+    else if (matchesKey(data, Key.escape) || matchesKey(data, "ctrl+c") || data === "q")
+      this.close();
+    else this.scrollKey(data);
+  }
+  scrollKey(data) {
+    const total = this.body(this.lastWidth).length;
+    const page = this.windowRows();
+    if (matchesKey(data, Key.up) || data === "k") this.scroll(-1, total);
+    else if (matchesKey(data, Key.down) || data === "j") this.scroll(1, total);
+    else if (matchesKey(data, Key.pageUp)) this.scroll(-page, total);
+    else if (matchesKey(data, Key.pageDown)) this.scroll(page, total);
+    else if (matchesKey(data, Key.home)) this.scroll(-total, total);
+    else if (matchesKey(data, Key.end)) this.scroll(total, total);
+  }
+  handleMouse(event) {
+    if (event.type !== "wheel" || !event.wheelDelta) return void 0;
+    this.scroll(event.wheelDelta < 0 ? -WHEEL_STEP : WHEEL_STEP, this.body(event.width).length);
+    return { handled: true };
+  }
+  invalidate() {
+  }
+};
+function claimScreen(close) {
+  closeOpen = close;
+  return () => {
+    if (closeOpen === close) closeOpen = void 0;
+  };
+}
+var closeOpen;
+var closedFromOutside = 0;
+var outsideCloses = () => closedFromOutside;
+function closeInfoScreen() {
+  if (closeOpen) closedFromOutside += 1;
+  closeOpen?.();
+}
+async function openInfoScreen(ctx, screen) {
+  await ctx.ui.custom((tui, theme, _keys, done) => {
+    let stop = () => void 0;
+    const close = () => {
+      if (closeOpen === close) closeOpen = void 0;
+      stop();
+      done(true);
+    };
+    closeOpen = close;
+    const view = new InfoView(screen, theme, () => tui.terminal.rows, close);
+    if (screen.live === true || screen.refresh) stop = startLive(tui, view, screen.refresh);
+    return view;
+  });
+}
+
+// src/problems-screen.ts
+async function openProblemsScreen(ctx, deps) {
+  deps.state.acknowledge();
+  deps.redraw();
+  const draw = (pick) => (theme, width2) => renderBlocks(pick(), themeStyle(theme), width2, deps.ascii());
+  await openInfoScreen(ctx, {
+    title: "Settings problems",
+    live: true,
+    header: draw(() => problemsHeader(deps.state.problems)),
+    lines: draw(() => problemBlocks(deps.state.problems)),
+    keys: {
+      r: () => {
+        deps.reread(ctx);
+      }
+    },
+    hint: "r apply the fixed file"
+  });
+}
+
+// src/ui/glyphs.ts
+var nerdGlyphs = {
+  folder: "\uF07C",
+  branch: "\uE725",
+  changed: "\uF040",
+  ahead: "\uF0EE",
+  chip: "\uF2DB",
+  input: "\u2191",
+  output: "\u2193",
+  cache: "\uF021",
+  robot: "\u{F06A9}",
+  reasoning: "\u{F09D1}",
+  hourglass: "\uF252",
+  reset: "\u{F0453}",
+  speed: "\uF0E4",
+  expand: "\u203A",
+  collapse: "\u2039",
+  dot: "\u25CF",
+  check: "\uF00C",
+  warn: "\uF071",
+  error: "\uF00D",
+  info: "\uF05A",
+  clock: "\uF017",
+  user: "\uF007",
+  star: "\uF005"
+};
+var portableGlyphs = {
+  folder: "\u25B0",
+  branch: "\u2442",
+  changed: "\u270E",
+  ahead: "\u21E1",
+  chip: "\u25A3",
+  input: "\u2191",
+  output: "\u2193",
+  cache: "\u21BB",
+  robot: "\u25A3",
+  reasoning: "\u25CE",
+  hourglass: "\u29D6",
+  reset: "\u25CC",
+  speed: "\u26A1",
+  expand: "\u203A",
+  collapse: "\u2039",
+  dot: "\u2022",
+  check: "\u2713",
+  warn: "\u25B2",
+  error: "\u2717",
+  info: "\u24D8",
+  clock: "\u25F7",
+  user: "\u263A",
+  star: "\u2605"
+};
+
+// src/problems-controller.ts
+var ProblemsController = class {
+  constructor(deps) {
+    this.deps = deps;
+  }
+  deps;
+  current = new ProblemState();
+  seen;
+  /** Always the problems of the settings as last loaded, whoever loaded them. */
+  get state() {
+    this.load();
+    return this.current;
+  }
+  load() {
+    const { problems } = this.deps.settings;
+    if (problems === this.seen) return;
+    this.seen = problems;
+    this.current.set(problems);
+  }
+  open(ctx) {
+    const { settings, tui } = this.deps;
+    return openProblemsScreen(ctx, {
+      state: this.current,
+      reread: (current) => {
+        this.reread(current);
+      },
+      ascii: () => settings.glyphs.folder === portableGlyphs.folder,
+      redraw: () => tui()?.requestRender()
+    });
+  }
+  /** Reads the settings file again; if it is valid now it is applied and the marker goes away. */
+  reread(ctx) {
+    const { settings, interactions } = this.deps;
+    const before = settings.current;
+    settings.load(() => void 0);
+    this.load();
+    interactions().settingsChanged(before);
+    if (this.current.count > 0) return;
+    closeInfoScreen();
+    say(ctx, "Footer Dock applied your settings file.", "info");
   }
 };
 
@@ -4248,13 +4696,15 @@ async function openFolder(directory, openWith, platform = process.platform) {
 }
 
 // src/footer-host.ts
-function footerHost(tui, settings, extensions) {
+function footerHost(tui, settings, extensions, interactions) {
+  const problems = new ProblemsController({ settings, tui, interactions });
   return {
     extensions,
     redraw: () => tui()?.requestRender(),
     glyphs: () => settings.glyphs,
     settings: () => settings.current,
-    openFolder: (directory) => openFolder(directory, settings.current.openWith)
+    openFolder: (directory) => openFolder(directory, settings.current.openWith),
+    problems
   };
 }
 
@@ -4337,6 +4787,100 @@ import {
 } from "node:fs";
 import { join as join10 } from "node:path";
 import { getAgentDir as getAgentDir2 } from "@earendil-works/pi-coding-agent";
+import { homedir as homedir6 } from "node:os";
+
+// src/core/problems.ts
+var MAX_TEXT = 200;
+var MAX_SHOWN_VALUE = 40;
+var MAX_PROBLEMS = 20;
+var plain2 = (text) => text.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim();
+var bounded = (text) => {
+  const clean4 = plain2(text);
+  return clean4.length > MAX_TEXT ? `${clean4.slice(0, MAX_TEXT - 1)}\u2026` : clean4;
+};
+function shown(value) {
+  let text;
+  try {
+    text = value === void 0 ? "nothing" : JSON.stringify(value);
+  } catch {
+    text = "(a value that cannot be shown)";
+  }
+  const clean4 = plain2(text);
+  return clean4.length > MAX_SHOWN_VALUE ? `${clean4.slice(0, MAX_SHOWN_VALUE - 1)}\u2026` : clean4;
+}
+function distance(a, b) {
+  let row4 = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j += 1)
+      next.push(
+        Math.min(
+          (row4[j] ?? 0) + 1,
+          (next[j - 1] ?? 0) + 1,
+          (row4[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1)
+        )
+      );
+    row4 = next;
+  }
+  return row4[b.length] ?? 0;
+}
+function closest(name, candidates) {
+  let best;
+  for (const candidate of candidates) {
+    const steps = distance(name.slice(0, 64), candidate);
+    if (steps <= Math.max(2, Math.floor(candidate.length / 4)) && (!best || steps < best.steps))
+      best = { name: candidate, steps };
+  }
+  return best?.name;
+}
+function problem(where, setting, reason, fix) {
+  return { where, setting, reason: bounded(reason), fix: bounded(fix) };
+}
+function invalidValue(where, setting, value, error) {
+  const message = error instanceof Error ? error.message : "The value is not accepted";
+  return problem(
+    where,
+    setting,
+    `The value ${shown(value)} is not accepted for ${setting}.`,
+    message.endsWith(".") ? message : `${message}.`
+  );
+}
+function unknownName(where, setting, name, known) {
+  const near = closest(name, known.names);
+  return problem(
+    where,
+    setting,
+    `${shown(name)} is not a ${known.kind}.`,
+    near ? `Did you mean "${near}"? Otherwise remove it.` : `Use one of: ${known.names.join(", ")}.`
+  );
+}
+function formatProblems(heading3, problems) {
+  const shownProblems = problems.slice(0, MAX_PROBLEMS);
+  const lines = shownProblems.map(
+    (item2, index) => `${index + 1}. ${item2.where}: ${item2.setting}
+   ${item2.reason}
+   Fix: ${item2.fix}`
+  );
+  const more = problems.length > MAX_PROBLEMS ? [`\u2026 and ${problems.length - MAX_PROBLEMS} more.`] : [];
+  const count5 = problems.length === 1 ? "1 problem" : `${problems.length} problems`;
+  return [`${heading3} (${count5}):`, ...lines, ...more].join("\n");
+}
+
+// src/core/layers.ts
+var layerOn = (options, name) => options.layers?.[name] !== false;
+function checkLayers(id, options) {
+  const set = Object.keys(options.layers ?? {});
+  if (set.length === 0) return;
+  const known = layerNames.get(id);
+  if (!known) throw new Error(`Layers are not available for ${id}`);
+  for (const name of set) {
+    if (known.includes(name)) continue;
+    const near = closest(name, known);
+    throw new Error(
+      `Unknown layer for ${id}: ${name.slice(0, 24)}. ${near ? `Did you mean ${near}?` : `Use ${known.join(" or ")}.`}`
+    );
+  }
+}
 
 // src/core/slot-options.ts
 function validClick(value) {
@@ -4378,6 +4922,17 @@ function windowLabels(value) {
   if (!Array.isArray(value) || value.length > 8) throw new Error("At most 8 window labels");
   return value.map((label3) => boundedText(label3, 24));
 }
+function layerFlags(value) {
+  const entries = Object.entries(record2(value));
+  if (entries.length > 8) throw new Error("At most 8 layers");
+  return Object.fromEntries(
+    entries.map(([name, flag]) => {
+      if (typeof flag !== "boolean")
+        throw new Error(`Layer ${safeLabel(name)} must be true or false`);
+      return [name, flag];
+    })
+  );
+}
 function validLook(value) {
   if (!isLook(value)) throw new Error("hideAt must be xl, lg, md, sm or xs");
   return value;
@@ -4397,8 +4952,10 @@ var parsers = /* @__PURE__ */ new Map([
   ["period", (item2) => ({ period: validPeriod(item2) })],
   ["collapse", (item2) => ({ collapse: validCollapse(item2) })],
   ["hideWindows", (item2) => ({ hideWindows: windowLabels(item2) })],
+  ["layers", (item2) => ({ layers: layerFlags(item2) })],
   ["collapsedShow", (item2) => ({ collapsedShow: windowLabels(item2) })]
 ]);
+var SLOT_OPTION_KEYS = [...parsers.keys()];
 function actionTarget(value) {
   if (!identifier(value)) throw new Error("Invalid action target");
   return value;
@@ -4414,7 +4971,109 @@ function parseSlotOptions(value) {
   return result;
 }
 
+// src/core/shrink.ts
+var repeat = (step, times) => Array.from({ length: times }, () => step);
+var LEAST_IMPORTANT = [
+  "drop:cost",
+  "drop:compaction",
+  "shorten:cache",
+  "drop:cache",
+  "shorten:input",
+  "shorten:output",
+  "drop:input",
+  "drop:output"
+];
+var QUOTA_WORDING = "shorten:quota";
+var REST = [
+  ...repeat("shorten:quota", 3),
+  "drop:speed",
+  ...repeat("shorten:context-usage", 2),
+  "shorten:changes",
+  "shorten:ahead",
+  ...repeat("shorten:workspace", 2),
+  "shorten:model",
+  "drop:ahead",
+  "drop:changes",
+  "drop:context-usage",
+  "drop:context",
+  "drop:quota-more",
+  "drop:quota",
+  "drop:thinking",
+  "drop:model",
+  "drop:branch"
+];
+var DEFAULT_PLAN = [QUOTA_WORDING, ...LEAST_IMPORTANT, ...REST];
+function planWithExtensions(ids, depth) {
+  const steps = [...ids].reverse().flatMap((id) => [...repeat(`shorten:${id}`, depth(id)), `drop:${id}`]);
+  return [QUOTA_WORDING, ...LEAST_IMPORTANT, ...steps, ...REST];
+}
+var STEP_NAMES = new Set(DEFAULT_PLAN);
+var REST_MARK = "...";
+var MAX_SHRINK = 64;
+function checkStep(item2, owed) {
+  if (typeof item2 !== "string") throw new Error("shrink steps must be text");
+  if (!STEP_NAMES.has(item2)) {
+    const near = closest(item2, STEP_NAMES);
+    throw new Error(
+      `Unknown shrink step: ${item2.slice(0, 40)}${near ? ` (did you mean ${near}?)` : ""}`
+    );
+  }
+  const left = (owed.get(item2) ?? 0) - 1;
+  if (left < 0) throw new Error(`Shrink step used more often than the plan has it: ${item2}`);
+  owed.set(item2, left);
+}
+function parseShrink(value) {
+  if (!Array.isArray(value) || value.length > MAX_SHRINK)
+    throw new Error(`shrink must be a list of at most ${MAX_SHRINK} steps`);
+  const owed = /* @__PURE__ */ new Map();
+  for (const step of DEFAULT_PLAN) owed.set(step, (owed.get(step) ?? 0) + 1);
+  const marks = value.filter((item2) => item2 === REST_MARK).length;
+  if (marks > 1) throw new Error(`shrink may hold "${REST_MARK}" once`);
+  for (const item2 of value) if (item2 !== REST_MARK) checkStep(item2, owed);
+  return value;
+}
+function orderPlan(base2, user) {
+  if (!user || user.length === 0) return base2;
+  const owed = /* @__PURE__ */ new Map();
+  for (const step of user) if (step !== REST_MARK) owed.set(step, (owed.get(step) ?? 0) + 1);
+  const rest = base2.filter((step) => {
+    const left = owed.get(step) ?? 0;
+    if (left > 0) owed.set(step, left - 1);
+    return left === 0;
+  });
+  const mark = user.indexOf(REST_MARK);
+  if (mark < 0) return [...user, ...rest];
+  return [...user.slice(0, mark), ...rest, ...user.slice(mark + 1)];
+}
+function take(step, model, state) {
+  const colon = step.indexOf(":");
+  const kind = step.slice(0, colon);
+  const id = step.slice(colon + 1);
+  if (!model.ids.includes(id) || state.dropped.has(id)) return false;
+  if (kind === "drop") {
+    state.dropped.add(id);
+    return true;
+  }
+  const level = state.level.get(id) ?? 0;
+  if (kind !== "shorten" || level >= model.depth(id)) return false;
+  state.level.set(id, level + 1);
+  return true;
+}
+function shrinkRow(model, plan) {
+  const state = { level: /* @__PURE__ */ new Map(), dropped: /* @__PURE__ */ new Set() };
+  const steps = [];
+  let fitting = model.fits(state);
+  for (const step of plan) {
+    if (fitting) break;
+    if (!take(step, model, state)) continue;
+    steps.push(step);
+    fitting = model.fits(state);
+  }
+  return { ...state, steps };
+}
+
 // src/core/footer-config.ts
+var PROBLEM_MARKER = "problems";
 var QUOTA_TOGGLE = "quota-more";
 var slotHelp = /* @__PURE__ */ new Map([
   [
@@ -4491,24 +5150,26 @@ function defaultFooterConfig() {
 }
 function row(value) {
   const data = record2(value);
-  const group3 = (items) => {
+  const group2 = (items) => {
     if (!Array.isArray(items) || items.length > 32 || !items.every(identifier))
       throw new Error("Rows require bounded slot-ID arrays");
     return items;
   };
   if (Object.keys(data).some((key) => key !== "left" && key !== "right"))
     throw new Error("Unknown row option");
-  return { left: group3(data.left), right: group3(data.right) };
+  return { left: group2(data.left), right: group2(data.right) };
 }
+var CONFIG_KEYS = ["version", "rows", "slots", "shrink"];
 function parseFooterConfig(value) {
   const data = record2(value);
-  if (Object.keys(data).some((key) => !["version", "rows", "slots"].includes(key)))
+  if (Object.keys(data).some((key) => !CONFIG_KEYS.includes(key)))
     throw new Error("Unknown config option");
   if (data.version !== void 0 && data.version !== 1)
     throw new Error("Unsupported config version");
   const config = defaultFooterConfig();
   if (data.slots !== void 0) config.slots = readSlots(data.slots);
   if (data.rows !== void 0) config.rows = readRows(data.rows);
+  if (data.shrink !== void 0) config.shrink = parseShrink(data.shrink);
   checkSlots(config);
   return config;
 }
@@ -4516,7 +5177,13 @@ function readSlots(value) {
   const entries = Object.entries(record2(value));
   if (entries.length > 32 || entries.some(([id]) => !identifier(id)))
     throw new Error("Invalid slot IDs/count");
-  return Object.fromEntries(entries.map(([id, item2]) => [id, parseSlotOptions(item2)]));
+  return Object.fromEntries(
+    entries.map(([id, item2]) => {
+      const options = parseSlotOptions(item2);
+      checkLayers(id, options);
+      return [id, options];
+    })
+  );
 }
 function readRows(value) {
   if (!Array.isArray(value) || value.length !== 2)
@@ -4554,10 +5221,11 @@ var QUOTA_ONLY = [
   "meterColor"
 ];
 var ownOption = (id, key) => {
+  if (key === "layers") return layerNames.has(id);
   if (id === "quota") return QUOTA_ONLY.includes(key);
   return id === "compaction" && key === "unit" || id === "cost" && key === "period";
 };
-var KEYS = [
+var SETTING_KEYS = [
   "version",
   "glyphs",
   "glyphHintShown",
@@ -4565,6 +5233,7 @@ var KEYS = [
   "clicks",
   "openWith",
   "limits",
+  "shrink",
   "slots"
 ];
 var defaultSettings = () => ({ version: 1, slots: {} });
@@ -4577,30 +5246,34 @@ function slots(value) {
     const options = parseSlotOptions(item2);
     const misplaced = Object.keys(options).filter((key) => key !== "hideAt" && !ownOption(id, key));
     if (misplaced.length > 0) throw new Error(`Option not available for ${id}: ${misplaced[0]}`);
+    checkLayers(id, options);
     result[id] = options;
   }
   return result;
 }
 function parseSettings(value) {
   const data = record2(value);
-  if (Object.keys(data).some((key) => !KEYS.includes(key))) throw new Error("Unknown setting");
+  if (Object.keys(data).some((key) => !SETTING_KEYS.includes(key)))
+    throw new Error("Unknown setting");
   if (data.version !== 1) throw new Error("Unsupported settings version");
   const result = defaultSettings();
   readChoices(data, result);
   if (data.openWith !== void 0) result.openWith = parseOpenWith(data.openWith);
+  if (data.shrink !== void 0) result.shrink = parseShrink(data.shrink);
   if (data.slots !== void 0) result.slots = slots(data.slots);
   return result;
 }
 function readFlags(data, result) {
   for (const key of ["glyphHintShown", "quotaExpanded"]) {
     if (data[key] === void 0) continue;
-    if (typeof data[key] !== "boolean") throw new Error(`${key} must be boolean`);
+    if (typeof data[key] !== "boolean") throw new Error(`${key} must be true or false`);
     result[key] = data[key];
   }
 }
 function readChoices(data, result) {
   if (data.glyphs !== void 0) {
-    if (data.glyphs !== "nerd" && data.glyphs !== "portable") throw new Error("Invalid glyph set");
+    if (data.glyphs !== "nerd" && data.glyphs !== "portable")
+      throw new Error("glyphs must be nerd or portable");
     result.glyphs = data.glyphs;
   }
   readFlags(data, result);
@@ -4618,7 +5291,8 @@ function applySettings(config, settings) {
   const merged = { ...config.slots };
   for (const [id, options] of Object.entries(settings.slots))
     merged[id] = { ...options, ...config.slots[id] };
-  return { ...config, slots: merged };
+  const shrink = config.shrink ?? settings.shrink;
+  return { ...config, slots: merged, ...shrink ? { shrink } : {} };
 }
 function withSlot(settings, id, patch) {
   const options = Object.entries({ ...settings.slots[id], ...patch }).filter(
@@ -4627,6 +5301,88 @@ function withSlot(settings, id, patch) {
   const others = Object.entries(settings.slots).filter(([key]) => key !== id);
   const changed2 = options.length > 0 ? [[id, Object.fromEntries(options)]] : [];
   return { ...settings, slots: Object.fromEntries([...others, ...changed2]) };
+}
+
+// src/core/settings-problems.ts
+var isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+var kindOf = (value) => value === null ? "null" : Array.isArray(value) ? "a list" : typeof value;
+function attempt(where, setting, value, run) {
+  try {
+    run();
+    return [];
+  } catch (error) {
+    return [invalidValue(where, setting, value, error)];
+  }
+}
+var notAnObject = (where, setting, what, value) => problem(
+  where,
+  setting,
+  `${what} must be a JSON object, not ${kindOf(value)}.`,
+  "Use { ... } with the settings inside."
+);
+var versionProblems = (where, value) => value === 1 ? [] : [invalidValue(where, "version", value, new Error("The version must be 1"))];
+function slotProblems(where, value, probe) {
+  if (!isObject(value)) return [notAnObject(where, "slots", "slots", value)];
+  return Object.entries(value).flatMap(([id, options]) => {
+    if (!isObject(options))
+      return [notAnObject(where, `slots.${id}`, `The options of ${id}`, options)];
+    return Object.entries(options).flatMap(
+      ([option2, item2]) => SLOT_OPTION_KEYS.includes(option2) ? attempt(where, `slots.${id}.${option2}`, item2, () => probe(id, option2, item2)) : [
+        unknownName(where, `slots.${id}.${option2}`, option2, {
+          kind: "slot option",
+          names: SLOT_OPTION_KEYS
+        })
+      ]
+    );
+  });
+}
+function settingsSlotProblems(where, value) {
+  if (!isObject(value)) return [notAnObject(where, "slots", "slots", value)];
+  const items = settingsItems();
+  const unknown = Object.keys(value).filter((id) => !items.includes(id)).map((id) => unknownName(where, `slots.${id}`, id, { kind: "footer item", names: items }));
+  const known = Object.fromEntries(Object.entries(value).filter(([id]) => items.includes(id)));
+  const probe = (id, option2, item2) => parseSettings({ version: 1, slots: { [id]: { [option2]: item2 } } });
+  return [...unknown, ...slotProblems(where, known, probe)];
+}
+function settingProblems(where, key, item2) {
+  if (!SETTING_KEYS.includes(key))
+    return [unknownName(where, key, key, { kind: "setting", names: SETTING_KEYS })];
+  if (key === "version") return versionProblems(where, item2);
+  if (key === "slots") return settingsSlotProblems(where, item2);
+  return attempt(where, key, item2, () => parseSettings({ version: 1, [key]: item2 }));
+}
+function checkSettings(value, where) {
+  if (!isObject(value)) return [notAnObject(where, "(file)", "The settings", value)];
+  const missing = "version" in value ? [] : [
+    problem(
+      where,
+      "version",
+      "The version is missing.",
+      'Add "version": 1 as the first entry.'
+    )
+  ];
+  const found = [
+    ...missing,
+    ...Object.entries(value).flatMap(([key, item2]) => settingProblems(where, key, item2))
+  ];
+  return found.length > 0 ? found : attempt(where, "(settings)", void 0, () => parseSettings(value));
+}
+function configProblems(where, key, item2) {
+  if (!CONFIG_KEYS.includes(key))
+    return [unknownName(where, key, key, { kind: "configuration key", names: CONFIG_KEYS })];
+  if (key === "version") return versionProblems(where, item2);
+  if (key === "slots")
+    return slotProblems(
+      where,
+      item2,
+      (id, option2, setting) => parseFooterConfig({ slots: { [id]: { [option2]: setting } } })
+    );
+  return attempt(where, key, item2, () => parseFooterConfig({ [key]: item2 }));
+}
+function checkConfig(value, where) {
+  if (!isObject(value)) return [notAnObject(where, "(configuration)", "The configuration", value)];
+  const found = Object.entries(value).flatMap(([key, item2]) => configProblems(where, key, item2));
+  return found.length > 0 ? found : attempt(where, "(configuration)", void 0, () => parseFooterConfig(value));
 }
 
 // src/adapters/settings-file.ts
@@ -4655,18 +5411,53 @@ function readSafely(path) {
     closeSync(descriptor);
   }
 }
+var tidy = (path) => {
+  const home = homedir6();
+  return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+};
+function fileProblem(error, path) {
+  const where = tidy(path);
+  if (error instanceof SyntaxError)
+    return problem(
+      where,
+      "(file)",
+      `The file is not valid JSON: ${error.message}`,
+      "Fix the syntax (a missing comma, quote or brace is the usual cause), or move the file away to start again."
+    );
+  const message = error instanceof Error ? error.message : "The file cannot be read";
+  const fix = message.includes("mode 600") ? `Run: chmod 600 ${tidy(path)}` : message.includes("symbolic link") ? "Replace the link with a regular file that only you can read and write." : "Make it a regular file of at most 16 KiB that only you can read and write.";
+  return problem(where, "(file)", message, fix);
+}
 function loadSettings(path = settingsPath()) {
+  let text;
   try {
-    const text = readSafely(path) ?? (path === settingsPath() ? legacyPaths().reduce(
+    text = readSafely(path) ?? (path === settingsPath() ? legacyPaths().reduce(
       (found, old) => found ?? readSafely(old),
       void 0
     ) : void 0);
-    return { settings: text === void 0 ? defaultSettings() : parseSettings(JSON.parse(text)) };
   } catch (error) {
-    const reason = error instanceof SyntaxError ? "not valid JSON" : error.message;
-    return { settings: defaultSettings(), problem: reason };
+    return refused([fileProblem(error, path)]);
+  }
+  if (text === void 0) return { settings: defaultSettings() };
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    return refused([fileProblem(error, path)]);
+  }
+  const problems = checkSettings(value, tidy(path));
+  if (problems.length > 0) return refused(problems);
+  try {
+    return { settings: parseSettings(value) };
+  } catch (error) {
+    return refused([invalidValue(tidy(path), "(settings)", void 0, error)]);
   }
 }
+var refused = (problems) => ({
+  settings: defaultSettings(),
+  problem: problems[0]?.reason ?? "The settings are not valid.",
+  problems
+});
 function saveSettings(settings, path = settingsPath()) {
   const temporary = `${path}.${process.pid}.${randomUUID3()}.tmp`;
   try {
@@ -4680,7 +5471,7 @@ function saveSettings(settings, path = settingsPath()) {
 }
 
 // src/core/ui-actions.ts
-import { stripTerminalSequences as stripTerminalSequences3, truncateToWidth as truncateToWidth2 } from "@earendil-works/pi-tui";
+import { stripTerminalSequences as stripTerminalSequences3, truncateToWidth as truncateToWidth3 } from "@earendil-works/pi-tui";
 var MAX_UI_ACTIONS = 64;
 var MAX_UI_ACTIONS_PER_TARGET = 16;
 var actionChannels = {
@@ -4704,7 +5495,7 @@ function registration(value, targets) {
   }
   if (typeof data.label !== "string" || data.label.length > 4096) return void 0;
   const label3 = stripTerminalSequences3(
-    truncateToWidth2(safeLabel(stripTerminalSequences3(data.label)).trim(), 80, "\u2026", false)
+    truncateToWidth3(safeLabel(stripTerminalSequences3(data.label)).trim(), 80, "\u2026", false)
   );
   return label3 ? { id: data.id, target: data.target, label: label3 } : void 0;
 }
@@ -4810,11 +5601,41 @@ var UIActionRegistry = class {
   }
 };
 
+// src/core/config-command.ts
+function explainConfig(args) {
+  const where = "/dock-config";
+  if (args.length > 16384)
+    return formatProblems("Nothing changed: the footer configuration was not applied", [
+      problem(
+        where,
+        "(command)",
+        "The command is longer than 16 KiB.",
+        "Keep only what you want to change, or use the settings file."
+      )
+    ]);
+  let value;
+  try {
+    value = JSON.parse(args);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "It is not valid JSON.";
+    return formatProblems("Nothing changed: the footer configuration was not applied", [
+      problem(
+        where,
+        "(command)",
+        `The text after /dock-config is not valid JSON: ${reason}`,
+        'Write one JSON object on one line, for example {"shrink":["drop:cost"]}; or use /dock-config show or /dock-config reset.'
+      )
+    ]);
+  }
+  const problems = checkConfig(value, where);
+  return problems.length > 0 ? formatProblems("Nothing changed: the footer configuration was not applied", problems) : "Nothing changed: the footer configuration was not applied: it is not valid (two rows, unique slots).";
+}
+
 // src/features/ahead.ts
 import { truncateToWidth as truncateToWidth5 } from "@earendil-works/pi-tui";
 
 // src/core/ahead-lines.ts
-import { truncateToWidth as truncateToWidth3 } from "@earendil-works/pi-tui";
+import { truncateToWidth as truncateToWidth4 } from "@earendil-works/pi-tui";
 
 // src/core/ahead-parse.ts
 import { stripTerminalSequences as stripTerminalSequences4 } from "@earendil-works/pi-tui";
@@ -4880,7 +5701,7 @@ function relativeTime(nowMs, whenSeconds) {
 // src/core/ahead-lines.ts
 var AHEAD_LIMIT = 100;
 var SIDE_LIMIT = 10;
-var fit2 = (text, view) => truncateToWidth3(text, view.width, "\u2026");
+var fit2 = (text, view) => truncateToWidth4(text, view.width, "\u2026");
 var plural = (count5, word) => `${count5} ${word}${count5 === 1 ? "" : "s"}`;
 function statText(commit, view) {
   const { theme } = view;
@@ -4891,7 +5712,7 @@ function statText(commit, view) {
 function commitLines(commit, view) {
   const { theme } = view;
   const prefix = `  ${commit.hash}  `;
-  const subject = truncateToWidth3(
+  const subject = truncateToWidth4(
     commit.subject || "(no subject)",
     Math.max(1, view.width - prefix.length),
     "\u2026"
@@ -4951,13 +5772,13 @@ function whereBlock(report, view) {
     );
   return lines;
 }
-function heading(text, view) {
+function heading2(text, view) {
   return fit2(view.theme.bold(view.theme.fg("accent", text)), view);
 }
-var note = (text, view) => fit2(`  ${view.theme.fg("dim", text)}`, view);
+var note2 = (text, view) => fit2(`  ${view.theme.fg("dim", text)}`, view);
 function commitList(commits2, total, view) {
   const lines = commits2.flatMap((commit) => commitLines(commit, view));
-  if (total > commits2.length) lines.push(note(`\u2026 ${total - commits2.length} more`, view));
+  if (total > commits2.length) lines.push(note2(`\u2026 ${total - commits2.length} more`, view));
   return lines;
 }
 function whyUnknown(report) {
@@ -4969,23 +5790,23 @@ function sections(report, view) {
   const { counts: counts2, upstream } = report;
   if (!counts2 || !upstream) {
     const unknown = [
-      heading("Ahead: unknown", view),
-      note(`${whyUnknown(report)} Ahead is unknown, not zero.`, view)
+      heading2("Ahead: unknown", view),
+      note2(`${whyUnknown(report)} Ahead is unknown, not zero.`, view)
     ];
     return report.recent.length ? [
       unknown,
       [
-        heading("Recent local commits (context, not a count)", view),
+        heading2("Recent local commits (context, not a count)", view),
         ...commitList(report.recent, report.recent.length, view)
       ]
     ] : [unknown];
   }
-  const ahead = [heading(`Commits ahead of ${upstream.name} (${counts2.ahead})`, view)];
+  const ahead = [heading2(`Commits ahead of ${upstream.name} (${counts2.ahead})`, view)];
   ahead.push(
-    ...counts2.ahead ? commitList(report.ahead, counts2.ahead, view) : [note("Nothing to push.", view)]
+    ...counts2.ahead ? commitList(report.ahead, counts2.ahead, view) : [note2("Nothing to push.", view)]
   );
   if (!counts2.behind) return [ahead];
-  const behind = [heading(`Behind ${upstream.name} (${counts2.behind})`, view)];
+  const behind = [heading2(`Behind ${upstream.name} (${counts2.behind})`, view)];
   return [ahead, [...behind, ...commitList(report.behind, counts2.behind, view)]];
 }
 function aheadLines(report, view) {
@@ -5054,192 +5875,6 @@ function aheadFailure(error) {
   if (code === 128) return "This folder is not inside a git repository.";
   if (code === "ETIMEDOUT" || code === "ABORT_ERR") return "git took too long to answer.";
   return "git could not be read.";
-}
-
-// src/ui/live.ts
-var TICK_MS = 1e3;
-function startLive(tui, view, refresh) {
-  let stopped = false;
-  const stop = () => {
-    stopped = true;
-    clearInterval(timer);
-  };
-  const timer = setInterval(() => {
-    if (!view.drawn) {
-      stop();
-      return;
-    }
-    view.drawn = false;
-    tui.requestRender();
-  }, TICK_MS);
-  timer.unref();
-  if (refresh) {
-    loop(
-      refresh,
-      () => stopped,
-      () => {
-        tui.requestRender();
-      }
-    ).catch(() => void 0);
-  }
-  return stop;
-}
-async function loop(refresh, stopped, render) {
-  let wait = refresh.everyMs;
-  while (!stopped()) {
-    await new Promise((resume) => {
-      setTimeout(resume, wait).unref();
-    });
-    if (stopped()) return;
-    const started = performance.now();
-    const changed2 = await refresh.work().catch(() => false);
-    if (stopped()) return;
-    if (changed2) render();
-    wait = Math.max(refresh.everyMs, 3 * (performance.now() - started));
-  }
-}
-
-// src/ui/info-screen.ts
-import { Key, matchesKey, truncateToWidth as truncateToWidth4 } from "@earendil-works/pi-tui";
-var CHROME_ROWS = 6;
-var RESERVED_ROWS = CHROME_ROWS + 6;
-var MAX_ROWS = 12;
-var MIN_ROWS = 4;
-var WHEEL_STEP = 3;
-var InfoView = class {
-  constructor(screen, theme, rows, close) {
-    this.screen = screen;
-    this.theme = theme;
-    this.rows = rows;
-    this.close = close;
-  }
-  screen;
-  theme;
-  rows;
-  close;
-  offset = 0;
-  lastWidth = 80;
-  /** Set by every render; the live timer clears it, and stops itself if nothing sets it again. */
-  drawn = false;
-  pinned(width2) {
-    return {
-      top: this.screen.header?.(this.theme, width2) ?? [],
-      bottom: this.screen.footer?.(this.theme, width2) ?? []
-    };
-  }
-  /** The scrolling window: fixed, and smaller on a short terminal by what is pinned around it. */
-  visibleRows(pinned = 0) {
-    return Math.max(MIN_ROWS, Math.min(MAX_ROWS, this.rows() - RESERVED_ROWS - pinned));
-  }
-  body(width2) {
-    return this.screen.lines(this.theme, width2);
-  }
-  /** Rows of the scrolling window at the width last drawn. */
-  windowRows() {
-    const { top, bottom } = this.pinned(this.lastWidth);
-    return this.visibleRows(top.length + bottom.length);
-  }
-  scroll(by, total, rows = this.windowRows()) {
-    this.offset = Math.max(0, Math.min(Math.max(0, total - rows), this.offset + by));
-  }
-  /** The last column of each body row: a track with a thumb, only when the body scrolls. */
-  bar(rows, shown, total) {
-    if (total <= rows) return Array.from({ length: shown }, () => "");
-    const thumb = Math.max(1, Math.round(rows * rows / total));
-    const start = Math.round(this.offset / (total - rows) * (rows - thumb));
-    return Array.from(
-      { length: shown },
-      (_, row4) => row4 >= start && row4 < start + thumb ? this.theme.fg("accent", "\u2503") : this.theme.fg("dim", "\u2502")
-    );
-  }
-  render(width2) {
-    this.lastWidth = width2;
-    this.drawn = true;
-    const all = this.body(width2);
-    const { top, bottom } = this.pinned(width2);
-    const rows = this.visibleRows(top.length + bottom.length);
-    this.scroll(0, all.length, rows);
-    const scrolls = all.length > rows;
-    const room = scrolls ? width2 - 1 : width2;
-    const visible2 = all.slice(this.offset, this.offset + rows);
-    const bar = this.bar(rows, visible2.length, all.length);
-    const shown = visible2.map((line, row4) => {
-      const cut = truncateToWidth4(line, room, "", scrolls);
-      return scrolls ? cut + (bar[row4] ?? "") : cut;
-    });
-    const rule = this.theme.fg("border", "\u2500".repeat(Math.max(1, width2)));
-    const position2 = scrolls ? `  (${this.offset + 1}-${this.offset + shown.length}/${all.length})` : "";
-    return [
-      rule,
-      this.theme.bold(
-        this.theme.fg("accent", truncateToWidth4(` ${PRODUCT} \u203A ${this.screen.title}`, width2))
-      ),
-      "",
-      ...top.map((line) => truncateToWidth4(line, width2)),
-      ...shown,
-      ...bottom.map((line) => truncateToWidth4(line, width2)),
-      "",
-      this.theme.fg(
-        "dim",
-        truncateToWidth4(
-          `  \u2191/\u2193 scroll \xB7 ${this.screen.hint ? `${this.screen.hint} \xB7 ` : ""}Esc to close${position2}`,
-          width2
-        )
-      ),
-      rule
-    ];
-  }
-  handleInput(data) {
-    const action = this.screen.keys?.[data];
-    if (action) action();
-    else if (matchesKey(data, Key.escape) || matchesKey(data, "ctrl+c") || data === "q")
-      this.close();
-    else this.scrollKey(data);
-  }
-  scrollKey(data) {
-    const total = this.body(this.lastWidth).length;
-    const page = this.windowRows();
-    if (matchesKey(data, Key.up) || data === "k") this.scroll(-1, total);
-    else if (matchesKey(data, Key.down) || data === "j") this.scroll(1, total);
-    else if (matchesKey(data, Key.pageUp)) this.scroll(-page, total);
-    else if (matchesKey(data, Key.pageDown)) this.scroll(page, total);
-    else if (matchesKey(data, Key.home)) this.scroll(-total, total);
-    else if (matchesKey(data, Key.end)) this.scroll(total, total);
-  }
-  handleMouse(event) {
-    if (event.type !== "wheel" || !event.wheelDelta) return void 0;
-    this.scroll(event.wheelDelta < 0 ? -WHEEL_STEP : WHEEL_STEP, this.body(event.width).length);
-    return { handled: true };
-  }
-  invalidate() {
-  }
-};
-function claimScreen(close) {
-  closeOpen = close;
-  return () => {
-    if (closeOpen === close) closeOpen = void 0;
-  };
-}
-var closeOpen;
-var closedFromOutside = 0;
-var outsideCloses = () => closedFromOutside;
-function closeInfoScreen() {
-  if (closeOpen) closedFromOutside += 1;
-  closeOpen?.();
-}
-async function openInfoScreen(ctx, screen) {
-  await ctx.ui.custom((tui, theme, _keys, done) => {
-    let stop = () => void 0;
-    const close = () => {
-      if (closeOpen === close) closeOpen = void 0;
-      stop();
-      done(true);
-    };
-    closeOpen = close;
-    const view = new InfoView(screen, theme, () => tui.terminal.rows, close);
-    if (screen.live === true || screen.refresh) stop = startLive(tui, view, screen.refresh);
-    return view;
-  });
 }
 
 // src/features/ahead.ts
@@ -5383,12 +6018,12 @@ function fit3(text, size) {
   const cut = truncateToWidth6(text, size, "\u2026");
   return cut + " ".repeat(Math.max(0, size - visibleWidth2(cut)));
 }
-function columns(shown, ages, width2) {
+function columns(shown2, ages, width2) {
   const widest = (items) => Math.max(0, ...items.map((i) => visibleWidth2(i)));
-  const wanted = widest(shown.map((b) => b.name));
+  const wanted = widest(shown2.map((b) => b.name));
   return {
     name: Math.max(MIN_NAME, Math.min(wanted, Math.floor(width2 * 0.4))),
-    hash: widest(shown.map((b) => b.hash)),
+    hash: widest(shown2.map((b) => b.hash)),
     age: widest(ages)
   };
 }
@@ -5417,12 +6052,12 @@ function section({ title, note: note3, all, empty: empty2 }, ctx) {
   const head = theme.bold(theme.fg("accent", `${title} (${all.length})`));
   const lines = [note3 === "" ? head : `${head}  ${theme.fg("dim", note3)}`];
   if (all.length === 0) return [...lines, theme.fg("dim", `  ${empty2}`)];
-  const shown = all.slice(0, SECTION_LIMIT);
-  const ages = shown.map((b) => relativeAge(b.time, now));
-  const cols = columns(shown, ages, width2);
-  shown.forEach((branch, index) => lines.push(row2(branch, ages[index] ?? "", cols, theme)));
-  if (all.length > shown.length)
-    lines.push(theme.fg("dim", `  \u2026 ${all.length - shown.length} more`));
+  const shown2 = all.slice(0, SECTION_LIMIT);
+  const ages = shown2.map((b) => relativeAge(b.time, now));
+  const cols = columns(shown2, ages, width2);
+  lines.push(...shown2.map((branch, index) => row2(branch, ages[index] ?? "", cols, theme)));
+  if (all.length > shown2.length)
+    lines.push(theme.fg("dim", `  \u2026 ${all.length - shown2.length} more`));
   return lines;
 }
 function listLines(list2, theme, width2, now) {
@@ -5612,7 +6247,7 @@ var PickerView = class {
       if (at >= this.offset + rows) this.offset = at - rows + 1;
     }
     this.offset = Math.max(0, Math.min(this.offset, Math.max(0, all.length - rows)));
-    const shown = all.slice(this.offset, this.offset + rows).map((line) => line.text);
+    const shown2 = all.slice(this.offset, this.offset + rows).map((line) => line.text);
     const size = this.state.items.length;
     const empty2 = size === 0 ? [` ${this.theme.fg("muted", this.spec.emptyText ?? "No matches")}`] : [];
     const position2 = size > 0 ? this.theme.fg("muted", `  (${this.state.selected + 1}/${size})`) : "";
@@ -5627,7 +6262,7 @@ var PickerView = class {
       "",
       ...top.map((line) => truncateToWidth7(line, width2)),
       ...search.map((line) => truncateToWidth7(line, width2)),
-      ...shown,
+      ...shown2,
       ...empty2,
       ...detail ? ["", ` ${this.theme.fg("muted", truncateToWidth7(detail, width2 - 2))}`] : [],
       ...bottom.map((line) => truncateToWidth7(line, width2)),
@@ -5797,7 +6432,7 @@ function parseNumstat(output) {
   const tokens3 = output.split("\0");
   const stats = /* @__PURE__ */ new Map();
   for (let index = 0; index < tokens3.length; index += 1) {
-    const match = /^(\d+|-)\t(\d+|-)\t([^]*)$/u.exec(tokens3[index] ?? "");
+    const match = /^(\d+|-)\t(\d+|-)\t(.*)$/su.exec(tokens3[index] ?? "");
     if (!match) continue;
     let path = match[3] ?? "";
     if (path === "") {
@@ -5994,7 +6629,7 @@ var GAP2 = "  ";
 var number = (value) => value.toLocaleString("en-US");
 var pad2 = (text, width2) => " ".repeat(Math.max(0, width2 - visibleWidth3(text))) + text;
 var segments = (text) => Array.from(new Intl.Segmenter().segment(text), (part) => part.segment);
-function take(parts, budget) {
+function take2(parts, budget) {
   let used = 0;
   let out = "";
   for (const part of parts) {
@@ -6008,11 +6643,11 @@ function fitPath(path, max) {
   if (visibleWidth3(path) <= max) return path;
   const name = path.slice(path.lastIndexOf("/") + 1);
   if (visibleWidth3(name) + 2 <= max) {
-    return take(segments(path), max - 1 - visibleWidth3(name)) + "\u2026" + name;
+    return take2(segments(path), max - 1 - visibleWidth3(name)) + "\u2026" + name;
   }
   const head = Math.floor((max - 1) / 2);
-  const tail = take(segments(path).reverse(), max - 1 - head);
-  return take(segments(path), head) + "\u2026" + segments(tail).reverse().join("");
+  const tail = take2(segments(path).reverse(), max - 1 - head);
+  return take2(segments(path), head) + "\u2026" + segments(tail).reverse().join("");
 }
 function sizeText(size) {
   if (size.kind === "lines") return `${number(size.lines)} ${size.lines === 1 ? "line" : "lines"}`;
@@ -6022,18 +6657,18 @@ function changeCell(file, theme) {
   const { added, removed } = file;
   if (added === null || removed === null) return { text: "", width: 0 };
   const parts = [];
-  const plain2 = [];
+  const plain3 = [];
   if (added > 0) {
-    plain2.push(`+${number(added)}`);
+    plain3.push(`+${number(added)}`);
     parts.push(theme.fg("success", `+${number(added)}`));
   }
   if (removed > 0) {
-    plain2.push(`\u2212${number(removed)}`);
+    plain3.push(`\u2212${number(removed)}`);
     parts.push(theme.fg("error", `\u2212${number(removed)}`));
   }
   const bar = ` ${squares(added, removed, theme)}`;
   if (!parts.length) return { text: theme.fg("dim", "\xB10") + bar, width: 2 + 6 };
-  return { text: parts.join(" ") + bar, width: visibleWidth3(plain2.join(" ")) + 6 };
+  return { text: parts.join(" ") + bar, width: visibleWidth3(plain3.join(" ")) + 6 };
 }
 function squares(added, removed, theme) {
   const { green, red, neutral } = statSquares(added, removed);
@@ -6080,14 +6715,14 @@ function changedFilesParts(state, theme, width2) {
     return { header: [], rows: [theme.fg("warning", ` ${MESSAGES[state.kind]}`)], footer: [] };
   if (!state.files.length)
     return { header: [], rows: [theme.fg("dim", " No changes")], footer: [] };
-  const shown = state.files.slice(0, MAX_ROWS3);
-  const list2 = fileRows(shown, theme, width2);
-  const more = state.files.length - shown.length;
+  const shown2 = state.files.slice(0, MAX_ROWS3);
+  const list2 = fileRows(shown2, theme, width2);
+  const more = state.files.length - shown2.length;
   if (more > 0) list2.push(theme.fg("dim", ` \u2026 ${number(more)} more`));
   return {
     header: [header(state.files, theme), ""],
     rows: list2,
-    footer: ["", legend(shown, theme, width2)]
+    footer: ["", legend(shown2, theme, width2)]
   };
 }
 function fileSummary(file, theme, width2) {
@@ -6178,12 +6813,12 @@ function changeRanges(lines) {
   return ranges;
 }
 function formatRanges(ranges, max = 8) {
-  const shown = ranges.slice(0, max).map((range) => {
+  const shown2 = ranges.slice(0, max).map((range) => {
     const text = range.from === range.to ? `${range.from}` : `${range.from}\u2013${range.to}`;
     return range.removedOnly ? `${text} (removed)` : text;
   });
-  const more = ranges.length - shown.length;
-  return more > 0 ? `${shown.join(", ")}, \u2026 ${more} more` : shown.join(", ");
+  const more = ranges.length - shown2.length;
+  return more > 0 ? `${shown2.join(", ")}, \u2026 ${more} more` : shown2.join(", ");
 }
 
 // src/core/diff-lines.ts
@@ -6469,17 +7104,6 @@ function createIconActions(pi) {
 // src/explain-item.ts
 import { stripTerminalSequences as stripTerminalSequences8 } from "@earendil-works/pi-tui";
 
-// src/core/explain/blocks.ts
-var heading2 = (text) => ({ kind: "heading", text });
-var facts = (...rows) => ({ kind: "facts", rows });
-var meters = (...rows) => ({ kind: "meters", rows });
-var stack = (...parts) => ({ kind: "stack", parts });
-var table = (head, rows, right = []) => ({ kind: "table", head, rows, right });
-var bars = (chart) => ({ kind: "bars", chart });
-var bullets = (...items) => ({ kind: "bullets", items });
-var note2 = (text, tone) => tone ? { kind: "note", text, tone } : { kind: "note", text };
-var gap = { kind: "gap" };
-
 // src/core/ext/explain.ts
 function extensionExplainer({ registration: registration2, item: item2 }) {
   const own = item2.explain;
@@ -6489,15 +7113,15 @@ function extensionExplainer({ registration: registration2, item: item2 }) {
     reports: own?.reports ?? [`A value shown by ${registration2.label}.`],
     missingWhen: own?.missingWhen ?? [`Whenever ${registration2.label} has nothing to show for it.`],
     build({ value }) {
-      const shown = value !== "";
+      const shown2 = value !== "";
       return {
-        headline: [facts({ label: "Shows", value: shown ? value : "nothing right now" })],
+        headline: [facts({ label: "Shows", value: shown2 ? value : "nothing right now" })],
         body: [
           ...own?.blocks ?? [],
           gap,
           facts({ label: "Provided by", value: registration2.label })
         ],
-        status: own?.status ?? { available: shown, text: shown ? "available" : "nothing to show" }
+        status: own?.status ?? { available: shown2, text: shown2 ? "available" : "nothing to show" }
       };
     }
   };
@@ -6506,7 +7130,7 @@ function extensionExplainer({ registration: registration2, item: item2 }) {
 // src/core/explain/explainer.ts
 function compose(explainer, context) {
   const { headline, body, status: status5 } = explainer.build(context);
-  const now = note2(`Now: ${status5.text}`, status5.available ? "success" : "warning");
+  const now = note(`Now: ${status5.text}`, status5.available ? "success" : "warning");
   return {
     title: explainer.title,
     ...explainer.periods ? { periods: true } : {},
@@ -6516,10 +7140,10 @@ function compose(explainer, context) {
     body: [
       ...body,
       ...body.length > 0 ? [gap] : [],
-      heading2("What it reports"),
+      heading("What it reports"),
       bullets(...explainer.reports.map((text) => ({ text }))),
       gap,
-      heading2("Can be missing when"),
+      heading("Can be missing when"),
       bullets(...explainer.missingWhen.map((text) => ({ text })))
     ]
   };
@@ -6529,7 +7153,7 @@ function fallbackDoc(title, context, help) {
     title,
     value: context.value,
     headline: [facts({ label: "Shows", value: context.value || "not currently available" })],
-    body: [note2(help)]
+    body: [note(help)]
   };
 }
 
@@ -6640,7 +7264,7 @@ function costHistory(history, period, now) {
   const total = sum2(here);
   return [
     gap,
-    heading2("Over time"),
+    heading("Over time"),
     periodFacts(period),
     bars({
       values: costs,
@@ -6651,11 +7275,11 @@ function costHistory(history, period, now) {
       peak: money2(peak),
       current: costs.length - 1
     }),
-    note2(
+    note(
       `Last ${bins.length} ${LAST[period]}. ${NAMES2[period][0]?.toUpperCase()}${NAMES2[period].slice(1)}: ${money2(total.cost)} over ${count3(total.responses)} responses.`
     ),
     gap,
-    heading2(`By project, ${NAMES2[period]}`),
+    heading(`By project, ${NAMES2[period]}`),
     table(
       ["Project", "Responses", "Dollars", "Share"],
       grouped(here, projectName(history), (t) => t.cost).map(({ name, totals }) => [
@@ -6667,7 +7291,7 @@ function costHistory(history, period, now) {
       [1, 2, 3]
     ),
     gap,
-    heading2(`By model, ${NAMES2[period]}`),
+    heading(`By model, ${NAMES2[period]}`),
     table(
       ["Model", "Responses", "Dollars", "Share"],
       grouped(
@@ -6683,7 +7307,7 @@ function costHistory(history, period, now) {
       [1, 2, 3]
     ),
     ...total.unpriced > 0 ? [
-      note2(
+      note(
         `${count3(total.unpriced)} responses in this period could not be priced and are not in these totals.`,
         "warning"
       )
@@ -6705,7 +7329,7 @@ function cacheHistory(history, period, now) {
   })).filter(({ totals }) => totals.responses > 0);
   return [
     gap,
-    heading2("Over time"),
+    heading("Over time"),
     periodFacts(period),
     facts({
       label: "Reuse",
@@ -6713,7 +7337,7 @@ function cacheHistory(history, period, now) {
       note: `${formatTokens(total.read, "decimal")} read of ${formatTokens(promptOf(total), "decimal")} prompt tokens`
     }),
     gap,
-    heading2("By idle time"),
+    heading("By idle time"),
     table(
       ["Idle before", "Responses", "Prompt", "Reuse"],
       byGap.map(({ name, totals }) => row4(name, totals)),
@@ -6723,14 +7347,14 @@ function cacheHistory(history, period, now) {
       text: "Most low readings are a pause, not a broken cache: the longer Pi sat idle, the less of the prompt is still cached."
     }),
     gap,
-    heading2(`By project, ${NAMES2[period]}`),
+    heading(`By project, ${NAMES2[period]}`),
     table(
       ["Project", "Responses", "Prompt", "Reuse"],
       grouped(here, projectName(history), promptOf).map(({ name, totals }) => row4(name, totals)),
       [1, 2, 3]
     ),
     gap,
-    heading2(`By model, ${NAMES2[period]}`),
+    heading(`By model, ${NAMES2[period]}`),
     table(
       ["Model", "Responses", "Prompt", "Reuse"],
       grouped(here, (item2) => `${item2.provider}/${item2.model}`, promptOf).map(
@@ -6855,7 +7479,7 @@ function lastBlocks(snapshot, kind) {
   const cache3 = snapshot.cacheUsage;
   if (!cache3)
     return [
-      note2(
+      note(
         "No response has finished since Pi started or the model changed, so there is nothing to show yet."
       )
     ];
@@ -6893,8 +7517,8 @@ function sessionBlocks(snapshot) {
   const { input, cacheRead, cacheWrite } = snapshot.totals;
   const share3 = sessionShare(snapshot);
   if (input === null || cacheRead === null || cacheWrite === null)
-    return [note2("The session total is unknown: a recorded response had unusable usage.")];
-  if (share3 === null) return [note2("Nothing has been recorded in this session yet.")];
+    return [note("The session total is unknown: a recorded response had unusable usage.")];
+  if (share3 === null) return [note("Nothing has been recorded in this session yet.")];
   const prompt = input + cacheRead + cacheWrite;
   return [
     facts(
@@ -6951,14 +7575,14 @@ var cache2 = {
     return {
       headline: [meters(lastRow(snapshot, kind), sessionRow(snapshot))],
       body: [
-        heading2("Last response"),
+        heading("Last response"),
         ...lastBlocks(snapshot, kind),
         gap,
-        heading2("This session"),
+        heading("This session"),
         ...sessionBlocks(snapshot),
         ...snapshot.history ? cacheHistory(snapshot.history, period ?? "month", new Date(now)) : [],
         gap,
-        heading2("How to read it"),
+        heading("How to read it"),
         legend2
       ],
       status: status2(kind)
@@ -7178,7 +7802,7 @@ function compactionFacts({ capacity, reserve, at }) {
       }
     ),
     gap,
-    heading2("Choose a different point"),
+    heading("Choose a different point"),
     table(
       ["Compact at", "Set reserveTokens to"],
       [50, 60, 70, 80, 90].map((percent2) => [
@@ -7187,7 +7811,7 @@ function compactionFacts({ capacity, reserve, at }) {
       ]),
       [1]
     ),
-    note2(
+    note(
       "Set it in Pi's settings.json as compaction.reserveTokens. Footer Dock cannot change it: Pi gives extensions no way to write its settings."
     )
   ];
@@ -7233,7 +7857,7 @@ var compaction = {
     return {
       headline,
       body: [
-        ...state ? compactionFacts(state) : [note2("The model's window is not known yet, so no conversion can be shown.")],
+        ...state ? compactionFacts(state) : [note("The model's window is not known yet, so no conversion can be shown.")],
         ...off
       ],
       status: compactionStatus(snapshot)
@@ -7296,8 +7920,8 @@ function workedExample(breakdown) {
   }));
   const how = latest.basis === "reported" ? "the cost Pi recorded for it" : "repriced from Pi's registry";
   return [
-    heading2("Latest response"),
-    note2(`${safeLabel(latest.model)}: ${money2(sumOf(latest.parts))} (${how}).`),
+    heading("Latest response"),
+    note(`${safeLabel(latest.model)}: ${money2(sumOf(latest.parts))} (${how}).`),
     bullets(...lines)
   ];
 }
@@ -7306,8 +7930,8 @@ function leftOut(estimate) {
   if (estimate.unavailable === 0 || reasons.length === 0) return [];
   return [
     gap,
-    heading2("Left out"),
-    note2(
+    heading("Left out"),
+    note(
       `${estimate.unavailable} of ${estimate.responses} recorded entries could not be priced. They are not counted as free.`
     ),
     bullets(...reasons.map(([reason, n]) => ({ term: String(n), text: REASONS[reason] })))
@@ -7345,10 +7969,10 @@ function categoryBar(breakdown) {
 }
 function pricedBody(breakdown) {
   return [
-    heading2("Where it goes"),
+    heading("Where it goes"),
     categoryTable(breakdown.total),
     gap,
-    heading2("By model"),
+    heading("By model"),
     modelTable(breakdown.models, sumOf(breakdown.total.parts)),
     gap,
     ...workedExample(breakdown)
@@ -7477,6 +8101,28 @@ function quotaHelp(snapshot, label3) {
   const age = observationAge(snapshot);
   if (label3) return providerHelp(label3, snapshot, age);
   return "Reported request/model-scoped API buckets, not numerical subscription usage. " + (age ? `Latest observation: ${age}. ` : snapshot.rateLimits ? "Observation time unknown for restored snapshot. " : "No reported bucket currently displayed. ") + "Values are snapshots, not realtime consumption. " + (snapshot.provider === "openai" ? "Native OpenAI account quota is unavailable." : "");
+}
+
+// src/core/explain/items/quota-footer.ts
+function inTheFooter(shows, layers) {
+  const other = shows === "left" ? "used" : "left";
+  const on = (name) => layerOn({ ...layers ? { layers } : {} }, name);
+  const parts = [
+    "its name",
+    ...on("meter") ? ["a bar"] : [],
+    `the percent ${shows}`,
+    ...on("reset") ? ["then the reload icon and the time until it resets"] : []
+  ];
+  return [
+    heading("In the footer"),
+    note(
+      `Each window reads: ${parts.join(", ")}. The number is what is ${shows}${on("meter") ? " (the bar follows it)" : ""}; the colour always follows what is left.`
+    ),
+    bullets({
+      term: `Show ${other} instead`,
+      text: `/dock-settings, Limit usage, "Limit shows": ${other}.`
+    })
+  ];
 }
 
 // src/core/explain/items/quota.ts
@@ -7634,14 +8280,16 @@ var quota = {
     "The last successful check is older than five minutes, or the endpoint changed shape: windows are hidden rather than guessed.",
     "A window the provider does not report is simply not listed."
   ],
-  build({ snapshot, now, quotaLabel }) {
+  build({ snapshot, now, quotaLabel, quotaShows, layers }) {
     const windows = snapshot.rateLimits?.windows ?? [];
     const rows = windows.map((window2) => ({ window: window2, pace: paceOf(window2, now) }));
     const heads = windows.length > 0 ? [meters(...rows.map(({ window: window2, pace }) => meterRow(window2, pace)))] : [];
     return {
       headline: heads,
-      body: windows.length === 0 ? [note2(quotaHelp(snapshot, quotaLabel))] : [
-        heading2("Pace"),
+      body: windows.length === 0 ? [note(quotaHelp(snapshot, quotaLabel))] : [
+        ...inTheFooter(quotaShows ?? "left", layers),
+        gap,
+        heading("Pace"),
         table(
           ["Window", "Left", "Resets in", "Clock", "Pace"],
           rows.map(({ window: window2, pace }) => tableRow(window2, pace, now)),
@@ -7649,10 +8297,10 @@ var quota = {
         ),
         bullets(...projectionBullets(windows, now)),
         gap,
-        heading2("Observation"),
+        heading("Observation"),
         observationFacts(snapshot, now, quotaLabel),
         gap,
-        heading2("What the markers mean"),
+        heading("What the markers mean"),
         legend3(windows)
       ],
       status: status4(snapshot, windows)
@@ -7707,8 +8355,8 @@ var speed = {
         })
       ],
       body: [
-        ...rows.length > 0 ? [heading2("How it was measured"), facts(...rows), gap] : [],
-        heading2("Reading it"),
+        ...rows.length > 0 ? [heading("How it was measured"), facts(...rows), gap] : [],
+        heading("Reading it"),
         bullets(
           {
             term: "rate",
@@ -7759,6 +8407,18 @@ var itemText = /* @__PURE__ */ new Map([
   ["quota", { label: "Limit usage", note: "What is left of each provider limit." }],
   ["cost", { label: "Cost", note: "Estimated spend at API prices." }]
 ]);
+var layerText = /* @__PURE__ */ new Map([
+  ["model:provider", { label: "Model: provider", note: "The provider before the model name." }],
+  [
+    "model:name",
+    { label: "Model: name", note: "The model name. With both off the item is hidden." }
+  ],
+  ["quota:meter", { label: "Limit usage: meter", note: "The bar before the percent." }],
+  [
+    "quota:reset",
+    { label: "Limit usage: reset time", note: "The reload icon and the time until the reset." }
+  ]
+]);
 var costText = {
   period: "Spend over a day, a week, a month, or this session."
 };
@@ -7766,7 +8426,7 @@ var compactionText = "How it is shown; click it for the table.";
 var quotaText = {
   window: (label3) => `Show or hide the ${label3} window.`,
   network: "Ask your provider for its limits. Off sends nothing.",
-  wording: "Percent left, or percent used.",
+  wording: "Show the percent left, or the percent used.",
   collapse: "When to collapse, and which windows stay.",
   collapsedWindow: (label3) => `Keep ${label3} visible when collapsed.`,
   expanded: "Start with every limit window shown.",
@@ -7775,66 +8435,14 @@ var quotaText = {
   glyphs: "Nerd Font icons, or portable symbols."
 };
 
-// src/ui/glyphs.ts
-var nerdGlyphs = {
-  folder: "\uF07C",
-  branch: "\uE725",
-  changed: "\uF040",
-  ahead: "\uF0EE",
-  chip: "\uF2DB",
-  input: "\u2191",
-  output: "\u2193",
-  cache: "\uF021",
-  robot: "\u{F06A9}",
-  reasoning: "\u{F09D1}",
-  hourglass: "\uF252",
-  reset: "\u25CC",
-  speed: "\uF0E4",
-  expand: "\u203A",
-  collapse: "\u2039",
-  dot: "\u25CF",
-  check: "\uF00C",
-  warn: "\uF071",
-  error: "\uF00D",
-  info: "\uF05A",
-  clock: "\uF017",
-  user: "\uF007",
-  star: "\uF005"
-};
-var portableGlyphs = {
-  folder: "\u25B0",
-  branch: "\u2442",
-  changed: "\u270E",
-  ahead: "\u21E1",
-  chip: "\u25A3",
-  input: "\u2191",
-  output: "\u2193",
-  cache: "\u21BB",
-  robot: "\u25A3",
-  reasoning: "\u25CE",
-  hourglass: "\u29D6",
-  reset: "\u25CC",
-  speed: "\u26A1",
-  expand: "\u203A",
-  collapse: "\u2039",
-  dot: "\u2022",
-  check: "\u2713",
-  warn: "\u25B2",
-  error: "\u2717",
-  info: "\u24D8",
-  clock: "\u25F7",
-  user: "\u263A",
-  star: "\u2605"
-};
-
 // src/ui/segments.ts
 import { stripTerminalSequences as stripTerminalSequences7 } from "@earendil-works/pi-tui";
 
 // src/ui/quota.ts
 import { visibleWidth as visibleWidth4 } from "@earendil-works/pi-tui";
 function quotaMeter(percent2, options, slot) {
-  const bounded = Math.min(100, Math.max(0, percent2));
-  const filled = bounded > 0 ? Math.max(1, Math.round(bounded / 100 * 7)) : 0;
+  const bounded2 = Math.min(100, Math.max(0, percent2));
+  const filled = bounded2 > 0 ? Math.max(1, Math.round(bounded2 / 100 * 7)) : 0;
   const tone = percent2 <= 25 ? "yellow" : slot.meterColor === "theme" ? "cyan" : "lavender";
   return Array.from(
     { length: 7 },
@@ -7846,16 +8454,17 @@ function quotaMeter(percent2, options, slot) {
   ).join("");
 }
 var SEPARATOR2 = "   \u2502   ";
+var SLIM_SEPARATOR = " \u2502 ";
 function windowText(window2, tier, options, slot) {
   const p = options.paint;
   const blocked = window2.badge !== void 0;
   const level = Math.min(4, tier);
   const tone = blocked ? "red" : window2.remainingPercent <= 25 ? "yellow" : "text";
   const reset = formatReset(window2.resetAt, options.now);
-  const used = slot.wording === "used";
-  const shown = used ? 100 - window2.remainingPercent : window2.remainingPercent;
-  return p(`${safeLabel(window2.label)} `, "muted") + (level <= 2 ? quotaMeter(shown, options, slot) + p(" ") : "") + p(formatPercent(shown), tone, "bold") + (level <= 3 ? p(used ? " used" : " left", "muted") : "") + (level <= 1 ? p(" ") + p(options.glyphs.reset, "cyan") : "") + (level === 0 ? p(` resets in ${reset}`, "muted") : level === 1 ? p(` ${reset}`, "muted") : "");
+  const shown2 = slot.wording === "used" ? 100 - window2.remainingPercent : window2.remainingPercent;
+  return p(`${safeLabel(window2.label)} `, "muted") + (level <= 1 && layerOn(slot, "meter") ? quotaMeter(shown2, options, slot) + p(" ") : "") + p(formatPercent(shown2), tone, "bold") + (level <= 2 && layerOn(slot, "reset") ? p(" ") + p(options.glyphs.reset, "cyan") + p(` ${reset}`, "muted") : "");
 }
+var separatorAt = (tier) => tier === 0 ? SEPARATOR2 : SLIM_SEPARATOR;
 function liveWindows(snapshot, options) {
   const now = (options.now ?? Date.now()) / 1e3;
   return (snapshot.rateLimits?.windows ?? []).filter((window2) => window2.resetAt > now);
@@ -7867,8 +8476,9 @@ function prepare(snapshot, options, settings) {
     live: liveWindows(snapshot, options)
   };
 }
-function compose2(p, parts, texts) {
-  return p(parts.prefix, "cyan") + texts.join(p(SEPARATOR2, "muted")) + p(parts.suffix, "muted");
+function compose2(p, parts, shape) {
+  const separator = p(separatorAt(shape.tier), "muted");
+  return p(parts.prefix, "cyan") + shape.texts.join(separator) + p(parts.suffix, "muted");
 }
 var COLLAPSES_AT = lookIndex("sm");
 var collapsedView = (windows, slot) => slot.collapsedShow ? windows.filter((window2) => slot.collapsedShow?.includes(window2.label)) : windows.slice(0, -1);
@@ -7879,10 +8489,10 @@ function quotaForLook(snapshot, options, settings, look) {
     return options.paint(snapshot.quotaStatus ?? "quota unavailable", "muted");
   const collapsed = collapsible(look, parts.live, settings.slot) && !options.quotaExpanded;
   const tier = Math.max(0, lookIndex(look) - (collapsed ? 1 : 0));
-  const shown = collapsed ? collapsedView(parts.live, settings.slot) : parts.live;
-  if (shown.length === 0) return "";
-  const texts = shown.map((window2) => windowText(window2, tier, options, settings.slot));
-  return compose2(options.paint, parts, texts);
+  const shown2 = collapsed ? collapsedView(parts.live, settings.slot) : parts.live;
+  if (shown2.length === 0) return "";
+  const texts = shown2.map((window2) => windowText(window2, tier, options, settings.slot));
+  return compose2(options.paint, parts, { texts, tier });
 }
 function quotaToggle(snapshot, options, look, slot) {
   if (!collapsible(look, liveWindows(snapshot, options), slot)) return "";
@@ -7898,6 +8508,13 @@ function iconSpan(id, icon) {
 function paintIcon(p, text) {
   return p(text, "cyan");
 }
+function modelText(snapshot, p, rendering) {
+  const { slot, variant } = rendering;
+  const name = layerOn(slot, "name") ? safeLabel(snapshot.model) : "";
+  const provider = layerOn(slot, "provider") && (variant === "full" || name === "") ? safeLabel(snapshot.provider) : "";
+  if (provider === "" && name === "") return "";
+  return paintIcon(p, `${rendering.icon} `) + (provider === "" ? "" : p(name === "" ? provider : `${provider}/`, "muted")) + (name === "" ? "" : p(name, "cyan", "bold"));
+}
 function elide(path) {
   const parts = path.split("/");
   return parts.length > 2 ? `${parts[0] ?? ""}/\u2026/${parts.at(-1) ?? ""}` : path;
@@ -7905,10 +8522,10 @@ function elide(path) {
 function workspace(snapshot, p, rendering) {
   const path = safeLabel(snapshot.cwd);
   const home = path.startsWith(`${snapshot.home}/`) ? `~${path.slice(snapshot.home.length)}` : path;
-  const shown = rendering.variant === "short" ? elide(home) : home;
-  const slash = rendering.variant === "bare" ? shown.lastIndexOf("/") + 1 : 0;
-  const split2 = shown.lastIndexOf("/") + 1;
-  return paintIcon(p, `${rendering.icon} `) + (rendering.variant === "bare" ? "" : p(shown.slice(0, split2), "muted")) + p(shown.slice(Math.max(slash, split2)));
+  const shown2 = rendering.variant === "short" ? elide(home) : home;
+  const slash = rendering.variant === "bare" ? shown2.lastIndexOf("/") + 1 : 0;
+  const split3 = shown2.lastIndexOf("/") + 1;
+  return paintIcon(p, `${rendering.icon} `) + (rendering.variant === "bare" ? "" : p(shown2.slice(0, split3), "muted")) + p(shown2.slice(Math.max(slash, split3)));
 }
 function usage(snapshot, p, variant) {
   const fill = Math.round(Math.min(100, Math.max(0, snapshot.percent ?? 0)) / 100 * 10);
@@ -7961,6 +8578,14 @@ function renderExtensionItem(item2, look, options) {
   return { text, iconWidth: icon && item2.icon === "event" ? iconSpan(item2.id, icon) : 0 };
 }
 
+// src/ui/problem-marker.ts
+function problemMarker(options, icon) {
+  const { count: count5, bright } = options.problems ?? { count: 0, bright: true };
+  if (count5 === 0) return "";
+  const label3 = count5 === 1 ? "1 problem" : `${count5} problems`;
+  return options.paint(`${icon} ${label3}`, bright ? "red" : "muted", "bold");
+}
+
 // src/core/click-targets.ts
 var ICON_SUFFIX = ":icon";
 var ICON_ACTION_IDS = /* @__PURE__ */ new Set([
@@ -7976,22 +8601,19 @@ function parseTarget(target2) {
   return target2.endsWith(ICON_SUFFIX) ? { id: target2.slice(0, -ICON_SUFFIX.length), icon: true } : { id: target2, icon: false };
 }
 
+// src/ui/segment-gaps.ts
+function segmentGap(config, id) {
+  return slotOptions(config, id).gap ?? preferredGaps.get(id) ?? 3;
+}
+function attachment(id, slot) {
+  const to = attachedTo.get(id);
+  return to ? { attach: { to, gap: slot.gap ?? 0 } } : {};
+}
+function leaderOf(id) {
+  return id === QUOTA_TOGGLE ? attachedTo.get(id) ?? id : id;
+}
+
 // src/ui/segments.ts
-var gaps = /* @__PURE__ */ new Map([
-  ["context", 0],
-  ["context-usage", 0],
-  ["branch", 3],
-  ["changes", 3],
-  ["ahead", 3],
-  ["thinking", 2],
-  ["compaction", 2],
-  ["input", 5],
-  ["output", 3],
-  ["cache", 3],
-  ["speed", 3],
-  ["cost", 3],
-  [QUOTA_TOGGLE, 0]
-]);
 var iconKeys = /* @__PURE__ */ new Map([
   ["workspace", "folder"],
   ["branch", "branch"],
@@ -8003,7 +8625,8 @@ var iconKeys = /* @__PURE__ */ new Map([
   ["input", "input"],
   ["output", "output"],
   ["cache", "cache"],
-  ["speed", "speed"]
+  ["speed", "speed"],
+  [PROBLEM_MARKER, "warn"]
 ]);
 var stockTexts = /* @__PURE__ */ new Map([
   ["workspace", (s, { paint: p }, r) => workspace(s, p, r)],
@@ -8016,10 +8639,7 @@ var stockTexts = /* @__PURE__ */ new Map([
     "ahead",
     (s, { paint: p }, { icon, variant }) => gitValue(s.git.ahead, p, { icon, kind: "ahead", short: variant !== "full" })
   ],
-  [
-    "model",
-    (s, { paint: p }, { icon, variant }) => paintIcon(p, `${icon} `) + (variant === "full" ? p(`${safeLabel(s.provider)}/`, "muted") : "") + p(safeLabel(s.model), "cyan", "bold")
-  ],
+  ["model", (s, { paint: p }, r) => modelText(s, p, r)],
   [
     "thinking",
     (s, { paint: p }, { icon }) => s.thinking ? paintIcon(p, `${icon} `) + p(safeLabel(s.thinking), "muted") : ""
@@ -8049,6 +8669,7 @@ var stockTexts = /* @__PURE__ */ new Map([
     "speed",
     (s, { paint: p }, { icon }) => typeof s.outputTokensPerSecond === "number" && s.outputTokensPerSecond > 0 && Number.isFinite(s.outputTokensPerSecond) ? paintIcon(p, `${icon} `) + p(`${formatResponseRate(s.outputTokensPerSecond)} tok/s`, "muted") : ""
   ],
+  [PROBLEM_MARKER, (_s, o, { icon }) => problemMarker(o, icon)],
   ["quota", (s, o, r) => quotaForLook(s, o, r, r.look)],
   [QUOTA_TOGGLE, (s, o, r) => quotaToggle(s, o, r.look, r.slot)],
   [
@@ -8085,9 +8706,6 @@ function template(text, snapshot, icon) {
     (match, key) => templateValues.get(key)?.(snapshot, icon) ?? match
   );
 }
-function segmentGap(config, id) {
-  return slotOptions(config, id).gap ?? gaps.get(id) ?? 3;
-}
 function ownSlot(config, id) {
   const own = slotOptions(config, id);
   if (id !== QUOTA_TOGGLE) return own;
@@ -8102,8 +8720,8 @@ function ownSlot(config, id) {
 function renderSegment(id, snapshot, options, settings) {
   const external = options.extensions?.find(id);
   if (!external) return renderStock(id, snapshot, options, settings);
-  const shown = renderExtensionItem(external.item, settings.look, options);
-  return { id, ...shown, gap: segmentGap(settings.config, id) };
+  const shown2 = renderExtensionItem(external.item, settings.look, options);
+  return { id, ...shown2, gap: segmentGap(settings.config, id) };
 }
 function renderStock(id, snapshot, options, settings) {
   const slot = ownSlot(settings.config, id);
@@ -8118,7 +8736,7 @@ function renderStock(id, snapshot, options, settings) {
   }) ?? "" : slot.text.split("{icon}").map((part) => options.paint(template(part, snapshot, icon))).join(paintIcon(options.paint, icon));
   const hasIcon = text && slot.text === void 0 && stripTerminalSequences7(text).startsWith(icon);
   const iconWidth = hasIcon && ICON_ACTION_IDS.has(id) ? iconSpan(id, icon) : 0;
-  return { id, text, gap: segmentGap(settings.config, id), iconWidth };
+  return { id, text, gap: segmentGap(settings.config, id), ...attachment(id, slot), iconWidth };
 }
 
 // src/explain-item.ts
@@ -8142,7 +8760,9 @@ function explainContext(id, context) {
     ...context.period ? { period: context.period } : {},
     value: stripTerminalSequences8(value.text).trim(),
     ascii: glyphs.folder === portableGlyphs.folder,
-    ...quotaLabelOf(snapshot)
+    ...quotaLabelOf(snapshot),
+    quotaShows: slotOptions(config, id).wording ?? "left",
+    ...layersOf(config, id)
   };
 }
 function explainDoc(id, context) {
@@ -8158,16 +8778,14 @@ function explainDoc(id, context) {
   const help = custom ?? slotHelp.get(id) ?? "Custom footer slot. Its text and action binding are configured for this session.";
   return fallbackDoc(itemText.get(id)?.label ?? id, at, help);
 }
+function layersOf(config, id) {
+  const { layers } = slotOptions(config, id);
+  return layers ? { layers } : {};
+}
 function quotaLabelOf(snapshot) {
   const label3 = quotaSourceFor(snapshot.provider)?.label;
   return label3 === void 0 ? {} : { quotaLabel: label3 };
 }
-
-// src/ui/explain-style.ts
-function themeStyle(theme) {
-  return { fg: (tone, text) => theme.fg(tone, text), bold: (text) => theme.bold(text) };
-}
-var plainStyle = { fg: (_tone, text) => text, bold: (text) => text };
 
 // src/explain-screen.ts
 var TEXT_WIDTH = 100;
@@ -8247,6 +8865,23 @@ ${explainText(found, this.ascii())}`,
   }
 };
 
+// src/ui/screen-toggle.ts
+var ScreenToggle = class {
+  /** The target whose screen is open now. */
+  open;
+  async toggle(key, action, ctx) {
+    const wasOpen = this.open;
+    if (wasOpen !== void 0) closeInfoScreen();
+    if (wasOpen === key) return;
+    this.open = key;
+    try {
+      await action(ctx);
+    } finally {
+      if (this.open === key) this.open = void 0;
+    }
+  }
+};
+
 // src/footer-interactions.ts
 var CONFIG_ENTRY = NAMES.configEntry;
 var FooterInteractions = class {
@@ -8268,8 +8903,7 @@ var FooterInteractions = class {
   /** Whether the quota shows every window when the footer is narrow; per session, not saved. */
   quotaExpanded = false;
   lastOpen = 0;
-  /** The item whose screen is open now. */
-  screenOpen;
+  screens = new ScreenToggle();
   targets = actionTargets(this.config);
   actions;
   iconActions;
@@ -8279,6 +8913,10 @@ var FooterInteractions = class {
     glyphs: () => this.display.glyphs(),
     extensions: () => this.display.extensions.registry
   });
+  /** The configuration problems of this session (the footer marker, its screen, re-reading the file). */
+  get problems() {
+    return this.display.problems;
+  }
   start(ctx) {
     this.base = this.restore(ctx);
     this.config = applySettings(this.base, this.display.settings());
@@ -8298,6 +8936,7 @@ var FooterInteractions = class {
       configuration: () => this.config,
       isInteractive: (target2) => this.interactive(target2),
       isQuotaExpanded: () => this.quotaExpanded,
+      problemState: () => this.display.problems.state,
       extensions: this.display.extensions.registry
     };
   }
@@ -8317,20 +8956,8 @@ var FooterInteractions = class {
     }
     const action = this.iconActions.get(id);
     if (!action) return false;
-    await this.toggleScreen(iconTarget(id), action, ctx);
+    await this.screens.toggle(iconTarget(id), action, ctx);
     return true;
-  }
-  /** A click target opens its screen; the same target again closes it; another one switches. */
-  async toggleScreen(key, action, ctx) {
-    const wasOpen = this.screenOpen;
-    if (wasOpen !== void 0) closeInfoScreen();
-    if (wasOpen === key) return;
-    this.screenOpen = key;
-    try {
-      await action(ctx);
-    } finally {
-      if (this.screenOpen === key) this.screenOpen = void 0;
-    }
   }
   /** Opens the project folder in the file manager (or the user's app); at most once a second. */
   async openFolder(ctx) {
@@ -8351,6 +8978,8 @@ var FooterInteractions = class {
       this.toggleQuota();
       return;
     }
+    if (id === PROBLEM_MARKER)
+      return this.screens.toggle(target2, () => this.display.problems.open(ctx), ctx);
     const external = this.display.extensions.registry.find(id);
     if (external) return this.activateExternal(external, { icon, target: target2 }, ctx);
     if (icon && await this.act(id, ctx)) return;
@@ -8360,7 +8989,7 @@ var FooterInteractions = class {
       const result = await this.invoke(target3, ctx, "mouse");
       if (result !== "unavailable") return;
     }
-    await this.toggleScreen(target2, () => this.explainer.screen(id, ctx), ctx);
+    await this.screens.toggle(target2, () => this.explainer.screen(id, ctx), ctx);
   }
   /** A click on an extension's item: an event for it, or Footer Dock's explanation of it, as it declared. */
   async activateExternal({ registration: registration2, item: item2 }, click, ctx) {
@@ -8368,7 +8997,7 @@ var FooterInteractions = class {
     const behaviour = token2 === "icon" ? "event" : item2.text;
     if (behaviour === "event") this.display.extensions.click(registration2.ext, item2.id, token2);
     else if (behaviour === "explain")
-      await this.toggleScreen(
+      await this.screens.toggle(
         click.target,
         () => this.explainer.screen(`${registration2.ext}:${item2.id}`, ctx),
         ctx
@@ -8415,7 +9044,7 @@ var FooterInteractions = class {
       this.display.redraw();
       say(ctx, "Footer configuration saved for this session.", "info");
     } catch {
-      say(ctx, "Invalid footer configuration (two rows, unique slots). Nothing changed.", "error");
+      say(ctx, explainConfig(args), "error");
     }
   }
   updateTargets() {
@@ -8447,6 +9076,8 @@ var SettingsController = class {
   }
   store;
   current = defaultSettings();
+  /** The problems of the settings file as last read; empty when it was read cleanly. */
+  problems = [];
   /** The /dock-glyphs toggle overrides the saved icon preference until the menu changes it. */
   toggled;
   get glyphs() {
@@ -8462,10 +9093,18 @@ var SettingsController = class {
   ignored = false;
   /** Re-reads the file; says why through `report` if it had to be ignored. */
   load(report) {
-    const { settings, problem } = this.store.load();
+    const { settings, problem: problem2, problems } = this.store.load();
     this.current = settings;
-    this.ignored = problem !== void 0;
-    if (problem) report(`${PRODUCT} settings ignored: ${problem}.`);
+    this.problems = problems ?? [];
+    this.ignored = problem2 !== void 0;
+    if (problems && problems.length > 0)
+      report(
+        formatProblems(
+          `${PRODUCT} did not apply your settings file and runs on its defaults, nothing in the file was changed`,
+          problems
+        )
+      );
+    else if (problem2) report(`${PRODUCT} settings ignored: ${problem2}.`);
   }
   /**
    * Once, for a user who never chose an icon set: what to do if the icons are not drawn (a
@@ -8532,6 +9171,62 @@ function collapsedChoice(settings, label3, value, published) {
   const next = value === SHOWN2 ? [...others, label3] : others;
   return next.length > MAX_LABELS ? settings : withSlot(settings, "quota", { collapsedShow: next });
 }
+function windowRows(settings, published) {
+  const hidden = settings.slots.quota?.hideWindows ?? [];
+  return [.../* @__PURE__ */ new Set([...published, ...hidden])].filter(savable).map(
+    (label3) => withNote(
+      row3(`window:${label3}`, `Limit window: ${label3}`, hidden.includes(label3) ? HIDDEN : SHOWN2, [
+        SHOWN2,
+        HIDDEN
+      ]),
+      quotaText.window(label3)
+    )
+  );
+}
+function windowChoice(settings, label3, value) {
+  const others = (settings.slots.quota?.hideWindows ?? []).filter((item2) => item2 !== label3);
+  const next = value === HIDDEN ? [...others, label3] : others;
+  return next.length > MAX_LABELS ? settings : withSlot(settings, "quota", { hideWindows: next.length ? next : void 0 });
+}
+
+// src/core/settings-layers.ts
+var PREFIX2 = "layer:";
+var split2 = (id) => {
+  const [prefix, item2, part, ...more] = id.split(":");
+  return `${prefix}:` === PREFIX2 && item2 && part && more.length === 0 ? { item: item2, part } : void 0;
+};
+var layerItem = (id) => split2(id)?.item;
+var isLayerRow = (id) => split2(id) !== void 0;
+var layerValues = () => [SHOWN2, HIDDEN];
+var isKnownLayerRow = (id) => {
+  const found = split2(id);
+  return found !== void 0 && settingsItems().includes(found.item) && (layerNames.get(found.item) ?? []).includes(found.part);
+};
+function layerRows(settings) {
+  return settingsItems().flatMap(
+    (item2) => (layerNames.get(item2) ?? []).map((part) => {
+      const text = layerText.get(`${item2}:${part}`);
+      return withNote(
+        row3(
+          `${PREFIX2}${item2}:${part}`,
+          text?.label ?? `${item2}: ${part}`,
+          settings.slots[item2]?.layers?.[part] === false ? HIDDEN : SHOWN2,
+          layerValues()
+        ),
+        text?.note ?? ""
+      );
+    })
+  );
+}
+function layerChoice(settings, id, value) {
+  const found = split2(id);
+  if (!found || !isKnownLayerRow(id)) return settings;
+  const next = { ...settings.slots[found.item]?.layers, [found.part]: value === SHOWN2 };
+  const off = Object.entries(next).filter(([, on]) => !on);
+  return withSlot(settings, found.item, {
+    layers: off.length > 0 ? Object.fromEntries(off) : void 0
+  });
+}
 
 // src/core/settings-menu.ts
 var choices = {
@@ -8562,18 +9257,6 @@ function itemRows(settings) {
         visibility
       ),
       itemText.get(id)?.note ?? ""
-    )
-  );
-}
-function windowRows(settings, published) {
-  const hidden = settings.slots.quota?.hideWindows ?? [];
-  return [.../* @__PURE__ */ new Set([...published, ...hidden])].filter(savable).map(
-    (label3) => withNote(
-      row3(`window:${label3}`, `Limit window: ${label3}`, hidden.includes(label3) ? HIDDEN : SHOWN2, [
-        SHOWN2,
-        HIDDEN
-      ]),
-      quotaText.window(label3)
     )
   );
 }
@@ -8611,7 +9294,7 @@ function quotaRows(settings) {
   const pick = (id) => choices[id] ?? [];
   return [
     withNote(
-      row3("wording", "Limit wording", quota2.wording ?? "left", pick("wording")),
+      row3("wording", "Limit shows", quota2.wording ?? "left", pick("wording")),
       quotaText.wording
     ),
     withNote(
@@ -8655,6 +9338,7 @@ function menuRows(settings, published) {
     ...windowRows(settings, published),
     limitsRow(settings),
     ...quotaRows(settings),
+    ...layerRows(settings),
     ...collapsedRows(settings, published),
     clicksRow(settings),
     withNote(
@@ -8662,11 +9346,6 @@ function menuRows(settings, published) {
       quotaText.glyphs
     )
   ];
-}
-function windowChoice(settings, label3, value) {
-  const others = (settings.slots.quota?.hideWindows ?? []).filter((item2) => item2 !== label3);
-  const next = value === HIDDEN ? [...others, label3] : others;
-  return next.length > 8 ? settings : withSlot(settings, "quota", { hideWindows: next.length ? next : void 0 });
 }
 function visibilityChoice(settings, id, value) {
   const look = value === HIDDEN ? LOOKS[0] : value.replace("hidden from ", "");
@@ -8678,6 +9357,7 @@ function allowed(id) {
   if (id.startsWith("window:"))
     return savable(id.slice("window:".length)) ? [SHOWN2, HIDDEN] : void 0;
   if (isCollapsedRow(id)) return savable(collapsedLabel(id)) ? [SHOWN2, HIDDEN] : void 0;
+  if (isLayerRow(id)) return isKnownLayerRow(id) ? layerValues() : void 0;
   return choices[id];
 }
 function globalChoice(settings, id, value) {
@@ -8727,6 +9407,7 @@ function choose(settings, id, value, published = []) {
   if (id.startsWith("item:")) return visibilityChoice(settings, id.slice("item:".length), value);
   if (id.startsWith("window:")) return windowChoice(settings, id.slice("window:".length), value);
   if (isCollapsedRow(id)) return collapsedChoice(settings, collapsedLabel(id), value, published);
+  if (isLayerRow(id)) return layerChoice(settings, id, value);
   return globalChoice(settings, id, value);
 }
 
@@ -8785,8 +9466,8 @@ function group(spec, children2) {
     children: children2
   };
 }
-function collapseGroup(take2) {
-  const children2 = take2((row4) => row4.id === "collapse" || isCollapsedRow(row4.id));
+function collapseGroup(take3) {
+  const children2 = take3((row4) => row4.id === "collapse" || isCollapsedRow(row4.id));
   return {
     id: "group:collapse",
     label: "Limit windows",
@@ -8798,34 +9479,38 @@ function collapseGroup(take2) {
 }
 function menuEntries(settings, published) {
   const rows = menuRows(settings, published);
-  const take2 = (match) => rows.filter(match);
+  const take3 = (match) => rows.filter(match);
   const entries = groups.map(
     (spec) => group(
       spec,
-      take2(
-        (row4) => spec.items.some((item2) => row4.id === `item:${item2}`) || (spec.rows ?? []).includes(row4.id)
+      take3(
+        (row4) => spec.items.some((item2) => row4.id === `item:${item2}` || layerItem(row4.id) === item2) || (spec.rows ?? []).includes(row4.id)
       )
     )
   );
-  const limits = take2(
-    (row4) => row4.id === "item:quota" || row4.id.startsWith("window:") || QUOTA_ROWS.includes(row4.id) || isCollapsedRow(row4.id)
+  const limits = take3(
+    (row4) => row4.id === "item:quota" || layerItem(row4.id) === "quota" || row4.id.startsWith("window:") || QUOTA_ROWS.includes(row4.id) || isCollapsedRow(row4.id)
   ).flatMap((row4) => {
     if (isCollapsedRow(row4.id)) return [];
-    return row4.id === "collapse" ? [collapseGroup(take2)] : [row4];
+    return row4.id === "collapse" ? [collapseGroup(take3)] : [row4];
   });
   return [
     ...entries,
     group(
-      { id: "quota", label: "Limit usage", note: "Visibility, windows, collapse, wording, meter." },
+      {
+        id: "quota",
+        label: "Limit usage",
+        note: "Visibility, windows, collapse, left or used, meter."
+      },
       limits
     ),
-    ...take2((row4) => row4.id === "clicks" || row4.id === "glyphs")
+    ...take3((row4) => row4.id === "clicks" || row4.id === "glyphs")
   ];
 }
 
 // src/core/ext/menu.ts
-var PREFIX2 = "ext:";
-var isExtensionRow = (id) => id.startsWith(PREFIX2);
+var PREFIX3 = "ext:";
+var isExtensionRow = (id) => id.startsWith(PREFIX3);
 function parseRowId(id) {
   const [, ext, row4] = id.split(":");
   return ext && row4 ? { ext, row: row4 } : void 0;
@@ -8834,7 +9519,7 @@ function extensionEntries(registry) {
   return registry.all().flatMap((registration2) => {
     if (!registration2.settings) return [];
     const children2 = registration2.settings.rows.map((row4) => ({
-      id: `${PREFIX2}${registration2.ext}:${row4.id}`,
+      id: `${PREFIX3}${registration2.ext}:${row4.id}`,
       label: row4.label,
       description: row4.description,
       values: row4.values,
@@ -8843,7 +9528,7 @@ function extensionEntries(registry) {
     }));
     return [
       {
-        id: `${PREFIX2}${registration2.ext}`,
+        id: `${PREFIX3}${registration2.ext}`,
         label: registration2.label,
         description: registration2.settings.note || `Settings of ${registration2.label}.`,
         values: [],
@@ -9021,6 +9706,8 @@ async function runSettingsCommand(ctx, command) {
   settings.load((message) => {
     say(ctx, message, "warning");
   });
+  interactions.problems.load();
+  if (interactions.problems.state.count > 0) return interactions.problems.open(ctx);
   const iconsBefore = settings.current.glyphs;
   await openSettingsScreen(ctx, {
     current: () => settings.current,
@@ -9044,7 +9731,7 @@ async function runSettingsCommand(ctx, command) {
 }
 
 // src/ui/layout.ts
-import { stripTerminalSequences as stripTerminalSequences9, truncateToWidth as truncateToWidth10, visibleWidth as visibleWidth6 } from "@earendil-works/pi-tui";
+import { stripTerminalSequences as stripTerminalSequences9, truncateToWidth as truncateToWidth10, visibleWidth as visibleWidth7 } from "@earendil-works/pi-tui";
 
 // src/core/ext/rows.ts
 function withExtensionRows(config, registry) {
@@ -9068,51 +9755,124 @@ function withoutWindows(snapshot, hidden) {
   return kept2.length === 0 ? { ...snapshot, rateLimits, quotaStatus: "" } : { ...snapshot, rateLimits };
 }
 
-// src/ui/layout.ts
-function panelLine(content, width2, paint) {
-  const clipped = truncateToWidth10(content, Math.max(0, width2), "", false);
-  return clipped + paint(" ".repeat(Math.max(0, width2 - visibleWidth6(clipped))));
-}
+// src/ui/row-fit.ts
+import { visibleWidth as visibleWidth6 } from "@earendil-works/pi-tui";
 function join12(segments2) {
   let text = "";
+  let previous;
   const spans = [];
   for (const segment of segments2) {
     if (!segment.text) continue;
-    text += " ".repeat(text ? segment.gap : 0);
+    const attached = segment.attach !== void 0 && segment.attach.to === previous;
+    text += " ".repeat(text ? attached ? segment.attach?.gap ?? 0 : segment.gap : 0);
     spans.push({ segment, x: visibleWidth6(text) });
     text += segment.text;
+    previous = segment.id;
   }
   return { text, spans };
 }
-function group2(ids, snapshot, options, settings) {
-  return join12(ids.map((id) => renderSegment(id, snapshot, options, settings)));
-}
 var rowWidth = (placed) => visibleWidth6(placed.left.text) + (placed.right.text ? 2 + visibleWidth6(placed.right.text) : 0);
-function chooseRows(config, render, available) {
-  const fits = (placed) => rowWidth(placed) <= available;
-  const rowIds = config.rows.map((row4) => [...row4.left, ...row4.right]);
-  const order = removalOrder(rowIds.flat());
-  const removed = /* @__PURE__ */ new Set();
-  for (let step = 0; step <= order.length; step += 1) {
-    const rows = rowIds.map((_, index) => richestFit((look) => render(index, look, removed), fits));
-    const chosen = rows.flatMap((row4) => row4 ? [row4.value] : []);
-    if (chosen.length === rows.length) return chosen;
-    const failing = rowIds.filter((_, index) => !rows[index]);
-    const next = order.find(
-      (id) => id !== "workspace" && !removed.has(id) && failing.some((ids) => ids.includes(id))
-    );
-    if (next === void 0) break;
-    removed.add(next);
-  }
-  return rowIds.map((_, index) => render(index, "xs", removed));
+var hideAtOf = (config, id) => slotOptions(config, leaderOf(id)).hideAt;
+function withoutHideAt(config) {
+  const slots2 = Object.entries(config.slots).map(([id, slot]) => [
+    id,
+    Object.fromEntries(Object.entries(slot).filter(([key]) => key !== "hideAt"))
+  ]);
+  return { ...config, slots: Object.fromEntries(slots2) };
 }
-function regions(group3, bounds, config) {
+function hiddenByLook(row4, ctx) {
+  const ids = [...row4.left, ...row4.right];
+  const limits = ids.flatMap((id) => {
+    const at2 = hideAtOf(ctx.config, id);
+    return at2 ? [{ id, at: at2 }] : [];
+  });
+  if (limits.length === 0) return /* @__PURE__ */ new Set();
+  const at = (look) => {
+    const render = (list2) => join12(
+      list2.map(
+        (id) => renderSegment(id, ctx.snapshot, ctx.options, { config: ctx.config, look })
+      )
+    );
+    return { left: render(row4.left), right: render(row4.right) };
+  };
+  const needed = LOOKS.find((look) => rowWidth(at(look)) <= ctx.available) ?? "xs";
+  return new Set(
+    limits.filter(({ at: limit }) => lookIndex(needed) >= lookIndex(limit)).map(({ id }) => id)
+  );
+}
+function fitRow(row4, ctx, plain3) {
+  const memo = /* @__PURE__ */ new Map();
+  const segment = (id, look, expanded) => {
+    const key = `${id}|${look}|${expanded}`;
+    const known = memo.get(key);
+    if (known) return known;
+    const options = { ...ctx.options, quotaExpanded: expanded };
+    const made = renderSegment(id, ctx.snapshot, options, { config: plain3, look });
+    memo.set(key, made);
+    return made;
+  };
+  const wordings = /* @__PURE__ */ new Map();
+  const wordingsOf = (id) => {
+    const known = wordings.get(id);
+    if (known) return known;
+    if (id === QUOTA_TOGGLE) {
+      const shows = LOOKS.some(
+        (look) => segment(id, look, ctx.options.quotaExpanded === true).text
+      );
+      wordings.set(id, shows ? ["xl"] : []);
+      return wordings.get(id) ?? [];
+    }
+    const looks = [];
+    let last = "";
+    for (const look of LOOKS) {
+      const { text } = segment(id, look, ctx.options.quotaExpanded === true);
+      if (!text) break;
+      if (text !== last) looks.push(look);
+      last = text;
+    }
+    wordings.set(id, looks);
+    return looks;
+  };
+  const hidden = hiddenByLook(row4, ctx);
+  const ids = [...row4.left, ...row4.right].filter(
+    (id) => !hidden.has(id) && wordingsOf(id).length > 0
+  );
+  const present = new Set(ids);
+  const lookOf = (id, state) => {
+    const leader = leaderOf(id);
+    return wordingsOf(leader)[state.level.get(leader) ?? 0] ?? "xs";
+  };
+  const render = (state) => {
+    const expanded = ctx.options.quotaExpanded === true && !state.dropped.has(QUOTA_TOGGLE);
+    const side = (list2) => join12(
+      list2.filter((id) => present.has(id) && !state.dropped.has(id)).map((id) => segment(id, lookOf(id, state), expanded))
+    );
+    return { left: side(row4.left), right: side(row4.right) };
+  };
+  const depth = (id) => Math.max(0, wordingsOf(id).length - 1);
+  const own = ids.filter((id) => ctx.options.extensions?.find(id));
+  const plan = orderPlan(planWithExtensions(own, depth), ctx.config.shrink);
+  const model = { ids, depth, fits: (state) => rowWidth(render(state)) <= ctx.available };
+  return render(shrinkRow(model, plan));
+}
+
+// src/ui/layout.ts
+function withProblemMarker(config, problems) {
+  const [first, ...rest] = config.rows;
+  if (!problems || problems.count === 0 || !first) return config;
+  return { ...config, rows: [{ ...first, left: [PROBLEM_MARKER, ...first.left] }, ...rest] };
+}
+function panelLine(content, width2, paint) {
+  const clipped = truncateToWidth10(content, Math.max(0, width2), "", false);
+  return clipped + paint(" ".repeat(Math.max(0, width2 - visibleWidth7(clipped))));
+}
+function regions(group2, bounds, config) {
   const result = [];
-  for (const { segment, x } of group3.spans) {
+  for (const { segment, x } of group2.spans) {
     if (clickMode(config, segment.id) === "none") continue;
     const clipped = truncateToWidth10(segment.text, Math.max(0, bounds.width - x), "", false);
     if (!stripTerminalSequences9(clipped).trim()) continue;
-    const width2 = visibleWidth6(clipped);
+    const width2 = visibleWidth7(clipped);
     const icon = Math.min(segment.iconWidth, width2);
     const at = { x: bounds.x + x, y: bounds.y, height: 1 };
     if (icon > 0 && icon < width2) {
@@ -9124,27 +9884,17 @@ function regions(group3, bounds, config) {
 }
 function layoutFooter(fullSnapshot, width2, options) {
   const available = Math.max(0, Math.floor(width2));
-  const config = withExtensionRows(options.config ?? defaultFooterConfig(), options.extensions);
-  const snapshot = withoutWindows(fullSnapshot, config.slots.quota?.hideWindows);
-  const rows = chooseRows(
-    config,
-    (index, look, removed) => {
-      const row4 = config.rows[index];
-      const keep = (ids) => (ids ?? []).filter((id) => !removed.has(id));
-      const shown = {
-        ...options,
-        quotaExpanded: options.quotaExpanded === true && !removed.has(QUOTA_TOGGLE)
-      };
-      return {
-        left: group2(keep(row4?.left), snapshot, shown, { config, look }),
-        right: group2(keep(row4?.right), snapshot, shown, { config, look })
-      };
-    },
-    available
+  const config = withProblemMarker(
+    withExtensionRows(options.config ?? defaultFooterConfig(), options.extensions),
+    options.problems
   );
+  const snapshot = withoutWindows(fullSnapshot, config.slots.quota?.hideWindows);
+  const ctx = { snapshot, options, config, available };
+  const plain3 = withoutHideAt(config);
+  const rows = config.rows.map((row4) => fitRow(row4, ctx, plain3));
   const hitRegions = [];
   const lines = rows.map((row4, y) => {
-    const column = available - visibleWidth6(row4.right.text);
+    const column = available - visibleWidth7(row4.right.text);
     const leftWidth = row4.right.text ? Math.max(0, column - 2) : available;
     const left = truncateToWidth10(row4.left.text, leftWidth, "\u2026", false);
     hitRegions.push(...regions(row4.left, { x: 0, y, width: leftWidth }, config));
@@ -9153,7 +9903,7 @@ function layoutFooter(fullSnapshot, width2, options) {
       ...regions(row4.right, { x: column, y, width: Math.max(0, available - column) }, config)
     );
     return panelLine(
-      left + options.paint(" ".repeat(Math.max(2, column - visibleWidth6(left)))) + row4.right.text,
+      left + options.paint(" ".repeat(Math.max(2, column - visibleWidth7(left)))) + row4.right.text,
       available,
       options.paint
     );
@@ -9173,6 +9923,33 @@ function hitRegion(event, regions2) {
     (region) => event.x >= region.x && event.x < region.x + region.width && event.y >= region.y && event.y < region.y + region.height
   );
 }
+
+// src/ui/problem-blink.ts
+var ProblemBlink = class {
+  constructor(redraw) {
+    this.redraw = redraw;
+  }
+  redraw;
+  bright = true;
+  timer;
+  update(active) {
+    if (!active) {
+      this.stop();
+      return;
+    }
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      this.bright = !this.bright;
+      this.redraw();
+    }, 500);
+    this.timer.unref();
+  }
+  stop() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = void 0;
+    this.bright = true;
+  }
+};
 
 // src/ui/quota-animation.ts
 var QuotaAnimation = class {
@@ -9236,6 +10013,7 @@ var DockFooter = class {
   constructor(options) {
     this.options = options;
     this.animation = new QuotaAnimation(() => this.options.requestRender?.());
+    this.blink = new ProblemBlink(() => this.options.requestRender?.());
   }
   options;
   regions = [];
@@ -9243,22 +10021,28 @@ var DockFooter = class {
   disposed = false;
   renderVersion = 0;
   animation;
-  layoutOptions(config) {
+  blink;
+  layoutOptions(config, problems) {
     return {
       ...this.options,
       quotaFrame: this.animation.frame,
+      ...problems && problems.count > 0 ? { problems: { count: problems.count, bright: this.blink.bright } } : {},
       quotaExpanded: this.options.isQuotaExpanded?.() ?? false,
       ...config ? { config } : {}
     };
   }
+  /** The quota's highlight and the problem marker's blink: both follow the animation setting. */
+  animate(snapshot, config, problems) {
+    const enabled = !this.disposed && !!this.options.requestRender && config?.slots.quota?.animation !== false;
+    this.animation.update(snapshot, enabled);
+    this.blink.update(!!problems?.alerting && enabled);
+  }
   render(width2) {
     const snapshot = this.options.snapshot();
     const config = this.options.configuration?.();
-    this.animation.update(
-      snapshot,
-      !this.disposed && !!this.options.requestRender && config?.slots.quota?.animation !== false
-    );
-    const layout = layoutFooter(snapshot, width2, this.layoutOptions(config));
+    const problems = this.options.problemState?.();
+    this.animate(snapshot, config, problems);
+    const layout = layoutFooter(snapshot, width2, this.layoutOptions(config, problems));
     const regions2 = this.disposed ? [] : layout.hitRegions;
     const nextWidth = Math.max(0, Math.floor(width2));
     const changed2 = this.tracing() && (nextWidth !== this.renderedWidth || JSON.stringify(regions2) !== JSON.stringify(this.regions));
@@ -9329,6 +10113,7 @@ var DockFooter = class {
     if (this.disposed) return;
     this.disposed = true;
     this.animation.stop();
+    this.blink.stop();
     this.invalidate();
     this.options.dispose();
   }
@@ -9364,7 +10149,12 @@ var DockRuntime = class {
       pi,
       () => this.snapshot(),
       this.pointerTrace.record,
-      footerHost(() => this.tui, this.settings, this.trackers.extensions)
+      footerHost(
+        () => this.tui,
+        this.settings,
+        this.trackers.extensions,
+        () => this.interactions
+      )
     );
   }
   pi;
@@ -9394,12 +10184,7 @@ var DockRuntime = class {
     this.settings.announceGlyphs(sayAt(ctx));
     this.ctx = ctx;
     this.trackers.start(ctx);
-    this.live = this.usage.capture(
-      ctx,
-      this.pi,
-      this.trackers.git.state,
-      this.trackers.quotas.snapshot().limits
-    );
+    this.live = this.usage.capture(ctx, this.pi, this.trackers.git.state, this.trackers.limits());
     this.installFooter(ctx);
     this.interactions.start(ctx);
     this.clock.start(() => this.tui?.requestRender());
@@ -9501,8 +10286,7 @@ var DockRuntime = class {
       bound: this.ctx,
       cached: this.live,
       source: import.meta.url,
-      ...this.trackers.quotas.diagnostics(),
-      gitMonitor: this.trackers.git.stats(),
+      ...this.trackers.diagnostics(),
       footerSlots: this.interactions.config.rows.flatMap((row4) => [...row4.left, ...row4.right])
     });
   }
@@ -9632,7 +10416,7 @@ function registerInteractionCommands(pi, runtime) {
     handler: (args, ctx) => runtime.interactions.invokeTarget(args.trim(), ctx)
   });
   pi.registerCommand("dock-settings", {
-    description: "Open the footer settings: what to show or hide, limit wording, icons",
+    description: "Open the footer settings: what to show or hide, limits, icons",
     handler: (_args, ctx) => runtime.openSettings(ctx)
   });
   pi.registerCommand("dock-open", {

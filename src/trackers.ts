@@ -23,6 +23,14 @@ export class Trackers {
     this.extensions.start();
     this.quotas.start(ctx);
   }
+  /** The provider limits as last read, for the first snapshot of a session. */
+  limits() {
+    return this.quotas.snapshot().limits;
+  }
+  /** What `/dock-debug` reports about the sources. */
+  diagnostics() {
+    return { ...this.quotas.diagnostics(), gitMonitor: this.git.stats() };
+  }
   stop(): void {
     this.quotas.stop();
     this.history.stop();

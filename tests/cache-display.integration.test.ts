@@ -22,7 +22,8 @@ await test('actual SDK near-full cache stays below 100% and retained samples are
     assert.match(render(), /cache pending/u);
     await session.prompt('Synthetic near-full cache response.');
     assert.match(render(), /last <100% · 222k read/u);
-    assert.doesNotMatch(render(), /last 100%|W0|R222k/u);
+    // Whole words only: the footer also shows the random name of the temporary folder.
+    assert.doesNotMatch(render(), /last 100%|\bW0\b|\bR222k\b/u);
     await session.prompt('Synthetic second response.');
     assert.ok(frames.some((frame) => frame.includes('last <100% · 222k read')));
     await session.prompt('/dock-info cache');

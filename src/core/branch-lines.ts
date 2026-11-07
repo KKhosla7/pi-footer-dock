@@ -78,7 +78,7 @@ function section({ title, note, all, empty }: Section, ctx: Context): string[] {
   const shown = all.slice(0, SECTION_LIMIT);
   const ages = shown.map((b) => relativeAge(b.time, now));
   const cols = columns(shown, ages, width);
-  shown.forEach((branch, index) => lines.push(row(branch, ages[index] ?? '', cols, theme)));
+  lines.push(...shown.map((branch, index) => row(branch, ages[index] ?? '', cols, theme)));
   if (all.length > shown.length)
     lines.push(theme.fg('dim', `  … ${all.length - shown.length} more`));
   return lines;
