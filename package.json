@@ -42,7 +42,7 @@
       "./dist/index.js"
     ],
     "image": "https://raw.githubusercontent.com/KKhosla7/pi-footer-dock/main/docs/images/footer-wide.png",
-    "video": "https://github.com/user-attachments/assets/2f7eab93-210e-40e2-8736-d7cc64520ccc"
+    "video": "https://github.com/KKhosla7/pi-footer-dock/releases/download/media/footer-dock-launch.mp4"
   },
   "scripts": {
     "format": "prettier --write .",
