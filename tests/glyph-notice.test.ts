@@ -5,7 +5,6 @@ import { SettingsController } from '../src/settings-controller.js';
 import type { Settings } from '../src/core/settings.js';
 import type { SettingsStore } from '../src/settings-controller.js';
 
-/** A store that keeps the "file" in memory and counts what happens to it. */
 function memoryStore(initial: Settings = defaultSettings(), problem?: string) {
   const state = { file: initial, saves: 0, fail: false };
   const store: SettingsStore = {

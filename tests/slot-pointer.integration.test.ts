@@ -9,7 +9,6 @@ import { portableGlyphs } from '../src/ui/glyphs.js';
 import { demoSnapshot } from './reference.js';
 import { MemoryTerminal } from './support/terminal.js';
 
-/** Every target a click can land on: items, and the icon token of items whose icon acts. */
 const EXPECTED_TARGETS = new Set([
   'context',
   'speed',
@@ -38,9 +37,7 @@ await test('shared fullscreen dispatcher activates every configured slot cell, i
     ...options,
     configuration: () => config,
     snapshot: () => snapshot,
-    dispose: () => {
-      /* No owned fixture resources. */
-    },
+    dispose: () => {},
     isInteractive: () => true,
     onActivate: (target) => activated.push(target),
   });
@@ -48,9 +45,7 @@ await test('shared fullscreen dispatcher activates every configured slot cell, i
     new VStack([
       {
         render: () => ['header', 'header', 'header'],
-        invalidate: () => {
-          /* No cache. */
-        },
+        invalidate: () => {},
       },
       footer,
     ]),

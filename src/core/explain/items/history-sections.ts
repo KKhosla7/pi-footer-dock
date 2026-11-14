@@ -34,7 +34,6 @@ const percent = (totals: Totals): string => {
 };
 const promptOf = (totals: Totals): number => totals.input + totals.read + totals.write;
 
-/** The pinned line for the chosen period's total, when the history is known. */
 export function headlineFact(history: History | undefined, period: Period, now: Date): Fact[] {
   if (!history) return [];
   const total = sum(inPeriod(history.rows, period, now));
@@ -49,7 +48,6 @@ export function headlineFact(history: History | undefined, period: Period, now: 
   ];
 }
 
-/** How the screen says which period it is showing and how to change it. */
 export function periodFacts(period: Period): Block {
   return facts({
     label: 'Period',
@@ -58,7 +56,6 @@ export function periodFacts(period: Period): Block {
   });
 }
 
-/** Rows grouped by `pick`, biggest first by `weigh`, the tail folded into one `other` row. */
 function grouped(
   rows: readonly HistoryRow[],
   pick: (row: HistoryRow) => string,
@@ -78,7 +75,6 @@ const projectName =
   (row: HistoryRow): string =>
     history.projects[row.project] ?? '(unknown)';
 
-/** Cost over time: a column per day, week or month, then where the period's money went. */
 export function costHistory(history: History, period: Period, now: Date): Block[] {
   const bins = series(history.rows, period, now, BINS[period]);
   const costs = bins.map((bin) => bin.cost);
@@ -140,7 +136,6 @@ export function costHistory(history: History, period: Period, now: Date): Block[
   ];
 }
 
-/** Cache over time: reuse by project, by model and by how long Pi sat idle before the response. */
 export function cacheHistory(history: History, period: Period, now: Date): Block[] {
   const here = inPeriod(history.rows, period, now);
   const total = sum(here);

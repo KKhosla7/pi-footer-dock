@@ -17,7 +17,6 @@ export function readTotals(
 export function restoreRateLimits(
   ctx: Pick<ExtensionContext, 'model' | 'sessionManager'>,
 ): RateLimits | null {
-  // OpenAI/Codex auth can change between logins; never restore another account's limits.
   const model = ctx.model;
   if (!model || ['openai-codex', 'openai'].includes(model.provider)) return null;
   const entries = ctx.sessionManager.getBranch();
@@ -52,7 +51,6 @@ function remaining(tokens: number | null, capacity: number | null, reserve: numb
   return tokens === null || capacity === null ? null : Math.max(0, capacity - reserve - tokens);
 }
 
-/** Pi compacts when tokens > capacity - reserve; a reserve of the whole window or more means from 0%. */
 function compactionPoint(capacity: number | null, reserve: number): number | null {
   return capacity === null ? null : Math.floor((Math.max(0, capacity - reserve) * 100) / capacity);
 }

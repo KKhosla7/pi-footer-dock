@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { quotaRoot } from './quota-fixtures.js';
 
-/** Fixed clock for commit dates: 2020-01-01T00:00:00Z plus whole days. */
 export const DAY = 86_400;
 export const EPOCH = 1_577_836_800;
 
@@ -29,7 +28,6 @@ export function git(cwd: string, ...args: string[]): string {
   );
 }
 
-/** Commits `files` (path to content) at EPOCH + day days. */
 export function commit(
   cwd: string,
   message: string,
@@ -57,7 +55,6 @@ export function commit(
   );
 }
 
-/** A work repository on `main` with a bare local `origin` it has pushed two commits to. */
 export function pushedRepository(t: TestContext) {
   const root = quotaRoot(t);
   const origin = join(root, 'origin.git');
@@ -72,7 +69,6 @@ export function pushedRepository(t: TestContext) {
   return { root, origin, cwd };
 }
 
-/** A true (--no-ff) merge commit dated EPOCH + day days. */
 export function merge(cwd: string, branch: string, message: string, day: number): void {
   const date = `${EPOCH + day * DAY} +0000`;
   const env = { ...process.env, ...isolated, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date };

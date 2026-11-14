@@ -1,6 +1,5 @@
 import type { Snapshot } from '../src/core/model.js';
 
-/** Test-only visual reference. Not imported by the extension runtime. */
 export const demoSnapshot: Snapshot = {
   cwd: '/home/fixture/Projects/fedora-hyprland-workstation',
   home: '/home/fixture',
@@ -31,7 +30,6 @@ export const demoSnapshot: Snapshot = {
   },
 };
 
-/** The reference footer with an API cost estimate, for tests of the cost slot (it hides without one). */
 export const withCost: Snapshot = {
   ...demoSnapshot,
   apiCostEstimate: { amount: 1.23, responses: 3, unavailable: 0, coverage: 'complete' },

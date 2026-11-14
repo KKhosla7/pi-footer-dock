@@ -1,11 +1,6 @@
 import type { FooterConfig, FooterRow } from '../footer-config.js';
 import type { ExtensionRegistry } from './registry.js';
 
-/**
- * The footer's own rows with the registered items appended after Footer Dock's, per region. A third
- * row exists only while an item asks for it. Rendering, clicks and the order in which items give
- * way on a narrow terminal then treat these items like any other (they give way first).
- */
 export function withExtensionRows(
   config: FooterConfig,
   registry: ExtensionRegistry | undefined,

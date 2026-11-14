@@ -1,6 +1,5 @@
 export const STAT_SQUARES = 5;
 
-/** How many of the five squares are green, red and neutral for a change of this size. */
 export function statSquares(
   added: number,
   removed: number,

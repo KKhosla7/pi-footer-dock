@@ -1,4 +1,3 @@
-/** Opaque, provider/source-scoped key. Adapters must never put credentials in it. */
 export interface QuotaScope {
   provider: string;
   domain: string;
@@ -18,7 +17,6 @@ function sameScope(left: QuotaScope, right: QuotaScope): boolean {
   );
 }
 
-/** Subscriber fencing only; shared acquisition admission belongs to the durable store. */
 export class QuotaBinding {
   private generation = 0;
   private current: BindingLease | undefined;
@@ -33,7 +31,6 @@ export class QuotaBinding {
     return this.current;
   }
 
-  /** Call before resolving a new account/routed source, including A → B → A. */
   invalidate(): void {
     this.generation += 1;
     this.current = undefined;

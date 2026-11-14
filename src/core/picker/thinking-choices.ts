@@ -1,7 +1,6 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import type { Choice } from './state.js';
 
-/** The words `/thinking` uses for each level. */
 export const LEVEL_TEXT: Readonly<Record<string, string>> = {
   off: 'No reasoning',
   minimal: 'Very brief reasoning (~1k tokens)',
@@ -13,18 +12,11 @@ export const LEVEL_TEXT: Readonly<Record<string, string>> = {
 };
 const ALL_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
 
-/** The levels `ExtensionAPI.setThinkingLevel` accepts. */
 type ThinkingLevel = Parameters<ExtensionAPI['setThinkingLevel']>[0];
 
-/** A level Pi knows, or nothing: what reaches `setThinkingLevel` is checked, not cast. */
 export const asLevel = (value: string | undefined): ThinkingLevel | undefined =>
   ALL_LEVELS.find((level) => level === value);
 
-/**
- * The levels a model supports, by the rule Pi itself uses (`getSupportedThinkingLevels`, which the
- * extension entry point does not export): a level mapped to `null` is unsupported, and `xhigh` and
- * `max` exist only when the model maps them. A model that cannot reason has none to choose.
- */
 export function supportedLevels(model: {
   reasoning: boolean;
   thinkingLevelMap?: Readonly<Record<string, unknown>> | undefined;
@@ -44,7 +36,6 @@ export interface ThinkingChoice extends Choice {
   isDefault: boolean;
 }
 
-/** The levels the model supports, in the order Pi gives them, with the current and the default marked. */
 export function thinkingChoices(
   levels: readonly string[],
   current: string | undefined,

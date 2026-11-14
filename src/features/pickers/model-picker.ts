@@ -4,7 +4,6 @@ import { safeLabel } from '../../core/model.js';
 import { openPicker } from '../../ui/list-picker.js';
 import { say } from '../../notify.js';
 
-/** Click on the robot icon: the models Pi can use, searchable; Enter switches to the one chosen. */
 export async function pickModel(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> {
   const available = ctx.modelRegistry.getAvailable();
   if (available.length === 0) {

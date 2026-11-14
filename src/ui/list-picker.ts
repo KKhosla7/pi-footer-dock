@@ -1,4 +1,5 @@
 import type { ExtensionContext, Theme } from '@earendil-works/pi-coding-agent';
+import { noop } from '../core/noop.js';
 import { Key, matchesKey, truncateToWidth } from '@earendil-works/pi-tui';
 import type { Component, TUI, TuiMouseEvent } from '@earendil-works/pi-tui';
 import { PickerState } from '../core/picker/state.js';
@@ -8,27 +9,18 @@ import { claimScreen } from './info-screen.js';
 import { startLive } from './live.js';
 import type { Refresh } from './live.js';
 
-/** A choice with the way it is drawn: `row` is styled by the feature, so each list keeps its own look. */
 export interface PickerChoice extends Choice {
   row: (theme: Theme, width: number) => string;
-  /** A line under the list while this choice is under the cursor. */
   detail?: string;
 }
 export interface PickerSpec {
-  /** Shown after the product name, for example `Models`. */
   title: string;
-  /** A function is asked on every draw; return the same array while nothing changed. */
   choices: readonly PickerChoice[] | (() => readonly PickerChoice[]);
-  /** Work repeated while the picker is open (re-reading files); true when something changed. */
   refresh?: Refresh;
-  /** Typing narrows the list. */
   searchable?: boolean;
-  /** The id the cursor starts on. */
   start?: string;
-  /** Lines pinned above and below the list. */
   header?: (theme: Theme, width: number) => string[];
   footer?: (theme: Theme, width: number) => string[];
-  /** What Enter does, said in the hint line. */
   action?: string;
   emptyText?: string;
 }
@@ -41,15 +33,12 @@ const WHEEL_STEP = 3;
 
 interface Line {
   text: string;
-  /** Index into the filtered items when this line is a choice. */
   item?: number;
 }
 
-/** Frames a list like Pi's own selectors: rules, a title, search, rows with a cursor, a hint. */
 class PickerView implements Component {
   private readonly state: PickerState<PickerChoice>;
   private offset = 0;
-  /** Set by every draw; the live loop clears it and stops when nothing draws the view any more. */
   drawn = false;
   private shown: readonly PickerChoice[] | undefined;
   constructor(
@@ -66,7 +55,6 @@ class PickerView implements Component {
     this.shown = typeof choices === 'function' ? choices() : choices;
     return this.shown;
   }
-  /** Takes up new choices when the feature handed over a different list. */
   private syncChoices(): void {
     if (typeof this.spec.choices !== 'function') return;
     const previous = this.shown;
@@ -79,7 +67,6 @@ class PickerView implements Component {
     this.state.items.forEach((choice, item) => {
       if (choice.section !== undefined && choice.section !== section) {
         section = choice.section;
-        // A blank row separates one section from the one above it; the heading is bold, like a title.
         if (out.length > 0) out.push({ text: '' });
         const note = choice.sectionNote ? `  ${this.theme.fg('dim', choice.sectionNote)}` : '';
         out.push({ text: ` ${this.theme.bold(this.theme.fg('accent', choice.section))}${note}` });
@@ -156,7 +143,6 @@ class PickerView implements Component {
     else if (matchesKey(data, Key.end)) this.state.end();
     else this.text(data);
   }
-  /** Printable input edits the search; with no search box a few letters work like in a pager. */
   private text(data: string): void {
     if (!this.spec.searchable) {
       if (data === 'q') this.finish(undefined);
@@ -172,12 +158,9 @@ class PickerView implements Component {
     this.state.jump(event.wheelDelta < 0 ? -WHEEL_STEP : WHEEL_STEP);
     return { handled: true };
   }
-  invalidate(): void {
-    /* Drawn from the state on every render. */
-  }
+  readonly invalidate = noop;
 }
 
-/** Opens the picker in place of the text area; resolves with the chosen id, or nothing on Esc. */
 export async function openPicker(
   ctx: ExtensionContext,
   spec: PickerSpec,

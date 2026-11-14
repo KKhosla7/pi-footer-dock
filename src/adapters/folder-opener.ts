@@ -5,10 +5,6 @@ import { launchFor } from '../core/open-folder.js';
 export type OpenResult = { ok: true } | { ok: false; message: string };
 const fail = (message: string): OpenResult => ({ ok: false, message });
 
-/**
- * Opens `directory` with the platform's file manager or the user's own command. No shell is used,
- * so the folder is one inert argument; the child is detached with no pipes and never awaited.
- */
 export async function openFolder(
   directory: string,
   openWith: readonly string[] | undefined,

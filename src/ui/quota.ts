@@ -8,8 +8,11 @@ import type { SlotOptions } from '../core/footer-config.js';
 import type { Paint } from './palette.js';
 import { layerOn } from '../core/layers.js';
 import { lookIndex } from '../core/looks.js';
+import { METER_CELLS } from '../core/meter-styles.js';
+import type { MeterStyle } from '../core/meter-styles.js';
 import type { Look } from '../core/looks.js';
 import type { RenderOptions } from './render-options.js';
+import { paintIcon } from './segment-parts.js';
 
 interface Settings {
   icon: string;
@@ -17,14 +20,17 @@ interface Settings {
   slot: SlotOptions;
 }
 
-/** Original slanted seven-cell meter; positive quota must never appear exhausted. */
-export function quotaMeter(percent: number, options: RenderOptions, slot: SlotOptions): string {
+export function quotaMeter(
+  percent: number,
+  options: RenderOptions,
+  style: MeterStyle = 'slanted',
+): string {
   const bounded = Math.min(100, Math.max(0, percent));
   const filled = bounded > 0 ? Math.max(1, Math.round((bounded / 100) * 7)) : 0;
-  const tone = percent <= 25 ? 'yellow' : slot.meterColor === 'theme' ? 'cyan' : 'lavender';
+  const tone = percent <= 25 ? 'warning' : 'accent';
   return Array.from({ length: 7 }, (_, index) =>
     options.paint(
-      index < filled ? '▰' : '▱',
+      index < filled ? METER_CELLS[style].on : METER_CELLS[style].off,
       index < filled ? tone : 'muted',
       index < filled && options.quotaFrame === index ? 'bold' : undefined,
     ),
@@ -35,14 +41,6 @@ const SEPARATOR = '   │   ';
 const SLIM_SEPARATOR = ' │ ';
 const TIERS = 5;
 
-/**
- * One window at a shrink tier. Tiers 0 and 1 spell it out (`5h ▰▰▰▱▱▱▱ 78% ◌ 2h`; they differ only
- * in the separator between windows); 2 drops the meter and keeps the reset; 3 drops the reset; 4 is
- * the same as 3. A meter or reset the user switched off (the layers setting) is never printed. There
- * are no words: the explainer says whether the number is left or used. A window the provider reports
- * as blocking is distinguished by colour (red), not by extra width; its status word is in the quota
- * help.
- */
 function windowText(
   window: RateLimitWindow,
   tier: number,
@@ -52,27 +50,26 @@ function windowText(
   const p = options.paint;
   const blocked = window.badge !== undefined;
   const level = Math.min(4, tier);
-  const tone = blocked ? 'red' : window.remainingPercent <= 25 ? 'yellow' : 'text';
+  const tone = blocked ? 'error' : window.remainingPercent <= 25 ? 'warning' : 'text';
   const reset = formatReset(window.resetAt, options.now);
-  // "used" mirrors the number and the meter; the colour still follows what is left.
   const shown = slot.wording === 'used' ? 100 - window.remainingPercent : window.remainingPercent;
   return (
     p(`${safeLabel(window.label)} `, 'muted') +
-    (level <= 1 && layerOn(slot, 'meter') ? quotaMeter(shown, options, slot) + p(' ') : '') +
+    (level <= 1 && layerOn(slot, 'meter')
+      ? quotaMeter(shown, options, slot.meterStyle) + p(' ')
+      : '') +
     p(formatPercent(shown), tone, 'bold') +
     (level <= 2 && layerOn(slot, 'reset')
-      ? p(' ') + p(options.glyphs.reset, 'cyan') + p(` ${reset}`, 'muted')
+      ? p(' ') + paintIcon(p, options.glyphs.reset) + p(` ${reset}`, 'muted')
       : '')
   );
 }
-/** The separator between windows: wide at the fullest tier, slim from the next one on. */
 const separatorAt = (tier: number): string => (tier === 0 ? SEPARATOR : SLIM_SEPARATOR);
 
 interface Entry {
   blocked: boolean;
   text: string;
 }
-/** Windows that fit in the compact form: blocked first, then the rest, shown in natural order. */
 function keepThatFit(entries: Entry[], fits: (texts: string[]) => boolean): string[] {
   const keep = new Set<number>();
   const priority = entries
@@ -102,12 +99,10 @@ function compose(
   shape: { texts: string[]; tier: number },
 ): string {
   const separator = p(separatorAt(shape.tier), 'muted');
-  return p(parts.prefix, 'cyan') + shape.texts.join(separator) + p(parts.suffix, 'muted');
+  return p(parts.prefix, 'icon') + shape.texts.join(separator) + p(parts.suffix, 'muted');
 }
 
-/** From this look on the quota collapses (hides its last window) unless the user expanded it. */
 const COLLAPSES_AT = lookIndex('sm');
-/** What a collapsed quota shows: the user's pick, or every window but the last. */
 const collapsedView = (windows: RateLimitWindow[], slot: SlotOptions): RateLimitWindow[] =>
   slot.collapsedShow
     ? windows.filter((window) => slot.collapsedShow?.includes(window.label))
@@ -117,7 +112,6 @@ const collapsible = (look: Look, windows: RateLimitWindow[], slot: SlotOptions):
   (slot.collapse === 'always' || lookIndex(look) >= COLLAPSES_AT) &&
   collapsedView(windows, slot).length < windows.length;
 
-/** The quota at one look of the footer (xl is the fullest, xs the most compact). */
 export function quotaForLook(
   snapshot: Snapshot,
   options: RenderOptions,
@@ -127,7 +121,6 @@ export function quotaForLook(
   const parts = prepare(snapshot, options, settings);
   if (parts.live.length === 0)
     return options.paint(snapshot.quotaStatus ?? 'quota unavailable', 'muted');
-  // Collapsed, the last window (the longest period) is left out and `›` brings it back.
   const collapsed = collapsible(look, parts.live, settings.slot) && !options.quotaExpanded;
   const tier = Math.max(0, lookIndex(look) - (collapsed ? 1 : 0));
   const shown = collapsed ? collapsedView(parts.live, settings.slot) : parts.live;
@@ -136,7 +129,6 @@ export function quotaForLook(
   return compose(options.paint, parts, { texts, tier });
 }
 
-/** The click target that expands or collapses the quota; empty where nothing is collapsed. */
 export function quotaToggle(
   snapshot: Snapshot,
   options: RenderOptions,
@@ -145,10 +137,9 @@ export function quotaToggle(
 ): string {
   if (!collapsible(look, liveWindows(snapshot, options), slot)) return '';
   const glyph = options.quotaExpanded ? options.glyphs.collapse : options.glyphs.expand;
-  return options.paint(` ${glyph} `, 'cyan', 'bold');
+  return options.paint(` ${glyph} `, 'icon', 'bold');
 }
 
-/** Natural order is always 5h, week, month; the richest shape that fits the budget is used. */
 export function renderQuota(
   snapshot: Snapshot,
   options: RenderOptions,

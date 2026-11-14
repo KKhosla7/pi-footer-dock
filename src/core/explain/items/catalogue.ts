@@ -11,7 +11,6 @@ const gitMissing = (snapshot: Snapshot): string =>
     ? 'the repository is too large to watch completely, so the count is unknown'
     : 'not a Git repository, or Git could not be read';
 
-/** Said on the Git items when the repository is too large to watch: values refresh after each Pi action. */
 const refreshFacts = (snapshot: Snapshot): Fact[] =>
   snapshot.git.monitoring === 'events'
     ? [
@@ -23,7 +22,6 @@ const refreshFacts = (snapshot: Snapshot): Fact[] =>
       ]
     : [];
 
-/** Items that are a value and a few facts. Each row states what it reports and when it is missing. */
 export const catalogue: readonly Explainer[] = [
   simpleExplainer({
     id: 'workspace',

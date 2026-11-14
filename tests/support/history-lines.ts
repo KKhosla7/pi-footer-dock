@@ -5,7 +5,6 @@ export interface Amounts {
   output: number;
   total: number;
 }
-/** A usage object as Pi records it, with the recorded cost split evenly (only the total matters). */
 export const usage = ({ input, read, write, output, total }: Amounts) => ({
   input,
   output,
@@ -14,7 +13,6 @@ export const usage = ({ input, read, write, output, total }: Amounts) => ({
   totalTokens: input + read + write + output,
   cost: { input: total / 4, output: total / 4, cacheRead: total / 4, cacheWrite: total / 4, total },
 });
-/** One session-log line for an assistant response. */
 export const response = (
   end: string,
   start: number,

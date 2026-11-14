@@ -39,7 +39,6 @@ interface SharedQuotaMetadata {
   lastAttemptAt: number | null;
   lastSuccessAt: number | null;
   nextAttemptInMs: number;
-  /** Set only on a view the client synthesised itself because the worker stayed silent. */
   local?: 'watchdog';
 }
 export type SharedQuotaView = SharedQuotaMetadata &
@@ -84,7 +83,6 @@ export interface QuotaWorkerReply {
   view: SharedQuotaView;
 }
 
-/** The refresh outlived its budget: a slow or unreachable server, not a storage fault. */
 export function slowQuota(): SharedQuotaView {
   return {
     kind: 'unavailable',

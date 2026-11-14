@@ -15,10 +15,6 @@ import {
   until,
 } from './support/provider-quota-harness.js';
 
-/**
- * `/dock-debug` says what became of every window a
- * provider sent, so a dropped window is visible. Names and yes/no only, never provider text.
- */
 const MARKER = 'PROVIDER-TEXT-MARKER';
 const collect = <T>(run: (observe: (report: WindowReport) => void) => T) => {
   const reports: WindowReport[] = [];

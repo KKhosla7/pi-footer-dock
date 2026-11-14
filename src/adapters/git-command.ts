@@ -6,10 +6,6 @@ export interface GitCommandOptions {
   allowNoMatch?: boolean;
 }
 
-/**
- * Bounded read-only Git metadata query: no shell, no network, optional index locks off, and every
- * program the repository's own config would make git run switched off (see `git-inert.ts`).
- */
 export async function gitOutput(
   cwd: string,
   args: string[],

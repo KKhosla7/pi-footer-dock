@@ -28,10 +28,6 @@ function alive(pid: number): boolean {
   }
 }
 
-/**
- * Portable cross-process admission: one request per scope per interval, for every Pi window of
- * this OS user. Private directory, atomic replace and a pid-stamped lock file; no database.
- */
 export class SharedGate {
   private readonly now: () => number;
   private readonly flightMs: number;
@@ -50,7 +46,6 @@ export class SharedGate {
     return this.load(scope);
   }
 
-  /** Admits at most one caller per interval; everyone else only reads the shared state. */
   async reserve(scope: string, minIntervalMs: number): Promise<{ revision: string } | undefined> {
     await this.ready();
     return this.withLock(scope, async () => {
@@ -66,7 +61,6 @@ export class SharedGate {
     });
   }
 
-  /** Records the outcome; ignored if another caller took over after this flight expired. */
   async finish(scope: string, revision: string, result: GateResult): Promise<boolean> {
     await this.ready();
     const done = await this.withLock(scope, async () => {
@@ -147,7 +141,6 @@ export class SharedGate {
       return false;
     }
   }
-  /** A lock is stale if its holder is gone, or if it is past its lifetime. */
   private async clearStale(lock: string): Promise<void> {
     try {
       const info = await stat(lock);
@@ -155,8 +148,6 @@ export class SharedGate {
       const holderGone = pid !== undefined && Number.isInteger(pid) && pid > 0 && !alive(pid);
       const stamped = at !== undefined && Number.isFinite(at) ? at : info.mtimeMs;
       if (holderGone || Date.now() - stamped > this.lockStaleMs) await rm(lock, { force: true });
-    } catch {
-      /* The holder released it meanwhile. */
-    }
+    } catch {}
   }
 }

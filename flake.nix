@@ -23,6 +23,7 @@
           packages = [
             pkgs.nodejs_24
             pkgs.git
+            pkgs.gitleaks
             # Only the terminal-capture scripts under scripts/ need Python.
             (pkgs.python3.withPackages (python: [ python.pyte ]))
           ];

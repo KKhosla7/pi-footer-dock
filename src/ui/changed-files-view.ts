@@ -10,7 +10,6 @@ import { statSquares } from '../core/diff-stat.js';
 import { safeLabel } from '../core/model.js';
 
 type Colour = 'accent' | 'success' | 'error' | 'warning' | 'muted' | 'dim';
-/** The part of Pi's theme the screen uses, so it can be drawn and tested without a terminal. */
 export interface Styler {
   fg(colour: Colour, text: string): string;
   bold(text: string): string;
@@ -28,7 +27,6 @@ const BADGE_COLOUR: Record<FileStatus, Colour> = {
   '?': 'muted',
   U: 'error',
 };
-/** What the user reads: git's `?` (untracked) means nothing to most people, so it reads as a new file. */
 const SHOWN: Record<FileStatus, string> = { M: 'M', A: 'A', D: 'D', R: 'R', '?': 'A', U: 'U' };
 const MEANING: Record<string, string> = {
   M: 'modified',
@@ -56,7 +54,6 @@ function take(parts: string[], budget: number): string {
   return out;
 }
 
-/** Fits a path by cutting out its middle; the file name stays visible when it can. */
 export function fitPath(path: string, max: number): string {
   if (visibleWidth(path) <= max) return path;
   const name = path.slice(path.lastIndexOf('/') + 1);
@@ -91,7 +88,6 @@ function changeCell(file: ChangedFile, theme: Styler): Cell {
   return { text: parts.join(' ') + bar, width: visibleWidth(plain.join(' ')) + 6 };
 }
 
-/** Five squares in the proportion of added to removed lines, like a pull request's diffstat. */
 function squares(added: number, removed: number, theme: Styler): string {
   const { green, red, neutral } = statSquares(added, removed);
   return (
@@ -111,7 +107,6 @@ function header(files: readonly ChangedFile[], theme: Styler): string {
   return ` ${theme.bold(`${number(totals.files)} ${noun}`)} · ${counts}${note}`;
 }
 
-/** One line per file, aligned with the others, as drawn in the list. */
 export function fileRows(files: readonly ChangedFile[], theme: Styler, width: number): string[] {
   const sizes = files.map((file) => sizeText(file.size));
   const changes = files.map((file) => changeCell(file, theme));
@@ -120,7 +115,6 @@ export function fileRows(files: readonly ChangedFile[], theme: Styler, width: nu
   const room = (size: number): number =>
     width - (4 + (size ? size + GAP.length : 0) + GAP.length + changeWidth);
   if (room(sizeWidth) < MIN_PATH) sizeWidth = 0;
-  // The columns sit right after the longest name instead of at the far edge of a wide terminal.
   const longest = Math.max(4, ...files.map((file) => visibleWidth(clean(file.path))));
   const pathWidth = Math.min(longest, Math.max(4, room(sizeWidth)));
   return files.map((file, index) => {
@@ -133,7 +127,6 @@ export function fileRows(files: readonly ChangedFile[], theme: Styler, width: nu
   });
 }
 
-/** What each letter means, only for the letters on screen. */
 function legend(files: readonly ChangedFile[], theme: Styler, width: number): string {
   const letters = [...new Set(files.map((file) => SHOWN[file.status]))];
   const words = letters.map((letter) => `${letter} ${MEANING[letter] ?? ''}`);
@@ -146,7 +139,6 @@ const MESSAGES = {
   failed: 'Git could not be read (it timed out or reported too much).',
 } as const;
 
-/** The screen in three parts: a summary and a legend that stay put, and the rows that scroll. */
 export interface ChangedFilesParts {
   header: string[];
   rows: string[];
@@ -173,7 +165,6 @@ export function changedFilesParts(
   };
 }
 
-/** Everything as one list (a summary, one row per file at most 300, what was left out, a legend). */
 export function changedFilesLines(
   state: ChangedFilesState,
   theme: Styler,
@@ -183,7 +174,6 @@ export function changedFilesLines(
   return [...parts.header, ...parts.rows, ...parts.footer];
 }
 
-/** ` M path  +12 −3 ■■■■□`: the one-line summary above a file's diff. */
 export function fileSummary(file: ChangedFile, theme: Styler, width: number): string {
   const badge = theme.fg(BADGE_COLOUR[file.status], SHOWN[file.status]);
   const change = changeCell(file, theme);

@@ -11,7 +11,7 @@ git clone https://github.com/KKhosla7/pi-footer-dock
 cd pi-footer-dock
 nix develop    # optional: the pinned Node, npm, Python and Git (flake.nix); without Nix, use Node 24
 npm ci --ignore-scripts
-npm run check      # format, lint, types, architecture rules, tests
+npm run check      # format, lint, no comments, types, architecture rules, tests
 ```
 
 Use Node.js 24 for `npm run check` (CI also runs the tests on Node 22). Try your copy in Pi without installing it: `pi -e ./src/index.ts`.
@@ -25,6 +25,19 @@ Use Node.js 24 for `npm run check` (CI also runs the tests on Node 22). Try your
 - **Files and functions stay small** (the lint limits are the rule, not a suggestion): 220 lines per file, 65 per function, low complexity.
 - **Security matters.** Text from outside (repository content, model names, provider data) is untrusted: strip it before drawing it. Do not add a network request, a stored credential, a repository write or a new place files are written without discussing it first. See [SECURITY.md](SECURITY.md).
 
+## Secrets stay out
+
+[gitleaks](https://github.com/gitleaks/gitleaks) scans for credentials: `sh scripts/check-secrets.sh staged | tree | history | range <git log options>`. Its rules are `.gitleaks.toml` (the default rules plus a refusal of files that hold credentials by name: `auth.json`, `.env`, `*.pem`, SSH keys). Run `sh scripts/install-hooks.sh` once per clone: git then checks every commit before it is made and every push before it leaves. Pull requests run the same check over the whole history in CI. The output names the rule, the file and the line, and never the secret. Without gitleaks installed the check fails instead of passing quietly; `nix develop` provides it. If a real secret was ever pushed, rotate it first; removing it from history does not make it safe again.
+
+## No comments in the code
+
+TypeScript, JavaScript, shell and Python files carry no comments at all (`npm run comments` fails on one; a shebang line is not a comment). A comment is a second copy of a decision that drifts from the code. Instead:
+
+- Say what code does with names: a function, a type or a test whose name says it.
+- Say why in the documentation, next to the behaviour it explains: `docs/footer-configuration.md` for settings and what they do, `docs/extending-footer-dock.md` for extensions, `CHANGELOG.md` for what changed and why. A change that alters behaviour updates the matching document in the same pull request.
+- Say why a test exists in its name; a test that guards a past mistake names the mistake.
+- Settings of the tools (a lint rule switched off for a file) live in the tool's configuration file, which is not code. YAML, Nix and JSON configuration may carry comments.
+
 ## Adding a provider
 
 A provider's limit windows are one small module and one line in a registry. Read [docs/adding-a-provider.md](docs/adding-a-provider.md); it lists what a source must and must not do.
@@ -35,7 +48,7 @@ Pi loads the extension from `dist/index.js`, one file built from `src/` (`npm ru
 
 ## What `npm run check` runs
 
-Prettier (format), ESLint (types-aware), `tsc`, dependency-cruiser (architecture), a check that `dist/index.js` is up to date, and the test suite (`node:test` through `tsx`). Tests that need Git create throwaway repositories; none touches your real Pi folder or network.
+Prettier (format), ESLint (types-aware), a check that the code has no comments, `tsc`, dependency-cruiser (architecture), a check that `dist/index.js` is up to date, and the test suite (`node:test` through `tsx`). Tests that need Git create throwaway repositories; none touches your real Pi folder or network.
 
 ## Pictures
 

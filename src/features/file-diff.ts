@@ -12,7 +12,6 @@ type Style = Parameters<typeof diffLine>[1];
 const REFRESH_MS = 2000;
 const MIN_GUTTER = 3;
 
-/** A diff read, with its lines numbered once. */
 class DiffView {
   numbered: NumberedLine[] = [];
   constructor(private result: DiffResult) {
@@ -22,13 +21,11 @@ class DiffView {
     this.result = result;
     this.numbered = result.ok ? numberLines(result.lines) : [];
   }
-  /** True when a new read differs from what is on screen. */
   replace(next: DiffResult): boolean {
     const same = JSON.stringify(next) === JSON.stringify(this.result);
     if (!same) this.adopt(next);
     return !same;
   }
-  /** Where the changes are in the file as it is now, for finding them in an editor. */
   header(file: ChangedFile, style: Style): string[] {
     const ranges = this.numbered.length > 0 ? changeRanges(this.numbered) : [];
     const first = ranges[0];
@@ -61,11 +58,6 @@ class DiffView {
   }
 }
 
-/**
- * Enter on a changed file: what changed in it, coloured like `git diff`, with the line numbers it
- * has now in the left margin and the changed stretches listed on top, so it can be found in an
- * editor. It looks again while open. Esc goes back to the list.
- */
 export async function showFileDiff(ctx: ExtensionContext, file: ChangedFile): Promise<void> {
   const view = new DiffView(await readFileDiff(ctx.cwd, file));
   await openInfoScreen(ctx, {

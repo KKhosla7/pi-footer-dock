@@ -11,7 +11,6 @@ import { portableGlyphs } from '../src/ui/glyphs.js';
 import { layoutFooter } from '../src/ui/layout.js';
 import { demoSnapshot } from './reference.js';
 
-/** Item layers: the model's layers and the layers setting. */
 const NOW = 4_000_000_000_000;
 const configWith = (layers: Record<string, boolean>): FooterConfig => ({
   ...defaultFooterConfig(),

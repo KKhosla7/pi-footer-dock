@@ -2,7 +2,6 @@ import { truncateToWidth, visibleWidth } from '@earendil-works/pi-tui';
 import type { Branch, BranchList, BranchResult } from './branches.js';
 import { relativeAge } from './relative-age.js';
 
-/** The part of Pi's theme this screen uses, so lines can be built and tested without a terminal. */
 export interface Palette {
   fg: (
     colour: 'accent' | 'success' | 'error' | 'warning' | 'muted' | 'dim' | 'text',
@@ -11,7 +10,6 @@ export interface Palette {
   bold: (text: string) => string;
 }
 
-/** Entries shown per section; the rest is summarised as `… N more`. */
 export const SECTION_LIMIT = 100;
 const MIN_NAME = 8;
 
@@ -107,7 +105,6 @@ function listLines(list: BranchList, theme: Palette, width: number, now: number)
   return lines;
 }
 
-/** The screen body: every line is at most `width` columns wide. */
 export function branchLines(
   result: BranchResult,
   theme: Palette,
@@ -120,7 +117,6 @@ export function branchLines(
   return lines.map((line) => truncateToWidth(line, Math.max(1, width), '…'));
 }
 
-/** The rows of one list of branches, aligned with each other, as drawn in the branches list. */
 export function branchRows(
   branches: readonly Branch[],
   theme: Palette,

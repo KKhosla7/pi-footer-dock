@@ -24,7 +24,6 @@ export interface GateResult {
   failure: QuotaFailure;
   httpStatus: number | null;
   delayMs: number;
-  /** Drop the stored observation, for example after the provider rejected the credential. */
   clear?: boolean;
 }
 
@@ -95,7 +94,6 @@ function outcome(data: RecordLike | undefined) {
     ? { observation, lastAttemptAt, lastSuccessAt, httpStatus, failure }
     : undefined;
 }
-/** Strict parse of one gate file; anything unexpected is treated as no state. */
 export function parseGateState(text: string): GateState | undefined {
   let data: RecordLike | undefined;
   try {
@@ -112,10 +110,6 @@ export function parseGateState(text: string): GateState | undefined {
 
 const MAX_GATE_MS = 3_600_000;
 const CLOCK_SKEW_MS = 5000;
-/**
- * Whether a caller may start a new request now. Stored times are bounded relative to when the
- * state was written, and state written "in the future" (the clock moved back) never blocks.
- */
 export function admits(state: GateState | undefined, now: number, flightMs: number): boolean {
   if (!state) return true;
   const written = state.lastAttemptAt ?? 0;

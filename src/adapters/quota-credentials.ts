@@ -8,7 +8,6 @@ import { withAcquisitionDeadline } from './acquisition-deadline.js';
 
 const RESOLVE_MS = 3000;
 
-/** Resolves the source's credential within a deadline; a resolver throws typed problems only. */
 export function resolveCredential(
   ctx: QuotaContext,
   source: ProviderQuotaSource,

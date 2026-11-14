@@ -6,7 +6,6 @@ import { cost } from './items/cost.js';
 import { quota } from './items/quota.js';
 import { speed } from './items/speed.js';
 
-/** Every item that has an explainer; an item not listed falls back to its plain help text. */
 export const explainers: readonly Explainer[] = [
   ...catalogue,
   contextUsage,

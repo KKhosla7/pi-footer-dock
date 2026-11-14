@@ -21,7 +21,6 @@ function status(view: SharedQuotaView): string | null {
         : 'quota unavailable';
   }
 }
-/** Model labels are presentation only; they do not enter account admission/cache identity. */
 export function presentAccountQuota(
   view: SharedQuotaView,
   model: Pick<RateLimits, 'provider' | 'model'>,

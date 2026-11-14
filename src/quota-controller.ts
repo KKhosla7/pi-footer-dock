@@ -13,11 +13,6 @@ const NONE: QuotaState = { limits: null, status: null };
 const OFF: QuotaState = { limits: null, status: 'limits off' };
 const observedNow = () => ({ ageMs: 0, receivedMono: performance.now(), observedAt: Date.now() });
 
-/**
- * Composes the quota to show; it stores no copy of what a source knows. A quota source that serves
- * the provider is the only authority for it. For any other provider the observation pushed by
- * response headers or stream events counts, then the one restored from the session.
- */
 export class QuotaController {
   private ctx: ExtensionContext | undefined;
   private key = '';
@@ -41,7 +36,6 @@ export class QuotaController {
     });
   }
 
-  /** What to show right now for the model in use. */
   snapshot(): QuotaState {
     if (!this.enabled() && quotaSourceFor(this.ctx?.model?.provider ?? '')) return OFF;
     return this.provider.state() ?? this.pushed ?? this.restored;
@@ -51,11 +45,9 @@ export class QuotaController {
     this.updateContext(ctx);
     this.resume();
   }
-  /** The footer is on screen again: ask once; the service then schedules itself while you are active. */
   resume(): void {
     if (this.ctx && this.enabled()) this.provider.refresh(this.ctx);
   }
-  /** The session or its model may have changed: what was pushed for another model is dropped. */
   updateContext(ctx: ExtensionContext): void {
     this.ctx = ctx;
     const key = `${ctx.model?.provider ?? ''}/${ctx.model?.id ?? ''}`;

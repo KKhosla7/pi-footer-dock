@@ -11,7 +11,6 @@ import { demoSnapshot } from './reference.js';
 const NOW = 1_800_000_000;
 const config = defaultFooterConfig();
 const options = { paint: (text: string) => text, glyphs: portableGlyphs, now: NOW * 1000 };
-/** Reference content: every optional value present, so each look has something to give up. */
 const snapshot = {
   ...demoSnapshot,
   cacheUsage: { input: 1200, read: 239_000, write: 100, prompt: 240_300, reusePercent: 99.5 },

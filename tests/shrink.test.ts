@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import { DEFAULT_PLAN, planWithExtensions, shrinkRow } from '../src/core/shrink.js';
 import type { RowModel, RowState } from '../src/core/shrink.js';
 
-/** The pure shrink solver, on a row made of numbers instead of text. */
 const WIDTHS: Record<string, number[]> = {
   workspace: [30, 20, 10],
   branch: [12],

@@ -4,7 +4,6 @@ import { quotaView } from '../core/quota-state.js';
 import type { SharedQuotaView } from '../core/quota-state.js';
 import type { GateState } from './gate-state.js';
 
-/** The shared gate file as the same view type the Codex source uses, so age and staleness agree. */
 export function gateView(state: GateState, now: number): SharedQuotaView {
   const observation = state.observation && { ...state.observation, observedMono: 0 };
   return quotaView(
@@ -31,7 +30,6 @@ export function presentGate(
     : shown;
 }
 
-/** Counters and timestamps only; never a credential, scope or response text. */
 export function viewDiagnostics(view: SharedQuotaView | undefined) {
   return {
     httpStatus: view?.httpStatus ?? null,

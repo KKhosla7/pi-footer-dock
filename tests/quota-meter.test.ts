@@ -27,7 +27,7 @@ await test('quota meters have seven fixed cells, actual rounded values and no de
     [68, 5],
     [100, 7],
   ]) {
-    const meter = quotaMeter(percent ?? 0, options, {});
+    const meter = quotaMeter(percent ?? 0, options);
     assert.equal(visibleWidth(meter), 7);
     assert.equal(stripVTControlCharacters(meter).split('▰').length - 1, expected);
   }
@@ -50,12 +50,12 @@ await test('meter theme fallback and warning priority are configurable without r
       return text;
     },
   };
-  quotaMeter(68, themed, { meterColor: 'theme' });
-  assert.ok(tones.includes('cyan'));
+  quotaMeter(68, themed);
+  assert.ok(tones.includes('accent'));
   tones.length = 0;
-  quotaMeter(23, themed, {});
-  assert.ok(tones.includes('yellow'));
-  assert.ok(!tones.includes('lavender'));
+  quotaMeter(23, themed);
+  assert.ok(tones.includes('warning'));
+  assert.ok(!tones.includes('accent'));
   assert.equal(
     parseFooterConfig({ slots: { quota: { meterColor: 'theme', animation: false } } }).slots.quota
       ?.animation,

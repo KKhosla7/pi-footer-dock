@@ -1,7 +1,6 @@
 import type { TuiMouseEvent } from '@earendil-works/pi-tui';
 import type { HitRegion } from './layout.js';
 
-/** Shared normalized gesture policy, independent of slot names and action IDs. */
 export function pointerRejection(event: TuiMouseEvent): string | undefined {
   if (event.type !== 'click' && event.type !== 'press') return 'non-activation-event';
   if (event.button !== 'left') return 'non-primary-button';

@@ -1,15 +1,11 @@
-/** One line of `git diff` with the line numbers it has in the old and the new file. */
 export interface NumberedLine {
   raw: string;
-  /** Line number in the file as it is now (added and unchanged lines). */
   newNo?: number;
-  /** Line number in the file as it was (removed and unchanged lines). */
   oldNo?: number;
   kind: 'header' | 'hunk' | 'add' | 'del' | 'context' | 'meta';
 }
 const HUNK = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/u;
 
-/** Numbers every line of one file's diff from its `@@ -a,b +c,d @@` headers. */
 export function numberLines(lines: readonly string[]): NumberedLine[] {
   let oldNo = 0;
   let newNo = 0;
@@ -33,17 +29,14 @@ export function numberLines(lines: readonly string[]): NumberedLine[] {
   });
 }
 
-/** A stretch of changed lines in the file as it is now, or the point where lines were removed. */
 export interface ChangeRange {
   from: number;
   to: number;
-  /** Lines were only removed here: `from` is the line that followed them. */
   removedOnly: boolean;
 }
 
 const isChange = (line: NumberedLine): boolean => line.kind === 'add' || line.kind === 'del';
 
-/** One block of consecutive added and removed lines, as a range in new-file numbers. */
 function blockRange(
   block: readonly NumberedLine[],
   after: NumberedLine | undefined,
@@ -54,12 +47,10 @@ function blockRange(
   const last = added.at(-1)?.newNo;
   if (first !== undefined && last !== undefined)
     return { from: first, to: last, removedOnly: false };
-  // Only removals: the point in the new file is the line that follows them.
   const at = after?.newNo ?? before;
   return { from: at, to: at, removedOnly: true };
 }
 
-/** The changed stretches in new-file numbers, in order: what to look for in an editor. */
 export function changeRanges(lines: readonly NumberedLine[]): ChangeRange[] {
   const ranges: ChangeRange[] = [];
   let lastNew = 0;
@@ -80,7 +71,6 @@ export function changeRanges(lines: readonly NumberedLine[]): ChangeRange[] {
   return ranges;
 }
 
-/** `12–17, 40, 52 (removed)`: at most `max` stretches, then how many more. */
 export function formatRanges(ranges: readonly ChangeRange[], max = 8): string {
   const shown = ranges.slice(0, max).map((range) => {
     const text = range.from === range.to ? `${range.from}` : `${range.from}–${range.to}`;

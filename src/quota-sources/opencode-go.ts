@@ -9,7 +9,6 @@ const goKeys = [
   ['weekly', 'week'],
   ['monthly', 'month'],
 ] as const;
-/** One window: `entry` is what the reply holds under its key, if anything. */
 function goWindow(
   label: WindowType,
   entry: RecordLike | undefined,
@@ -25,7 +24,6 @@ function goWindow(
     typeof status === 'string' && status !== 'ok' && /^[a-z][a-z-]{0,23}$/u.test(status);
   return parsed && blocking ? { ...parsed, badge: status } : parsed;
 }
-/** `GET /zen/go/v1/usage`: `usage.{rolling,weekly,monthly}` of `{status, percent, resetsAt}`. */
 export function parseOpenCodeGoUsage(
   body: unknown,
   observe?: ObserveWindow,

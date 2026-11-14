@@ -5,11 +5,6 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { SCENARIOS, WIDTHS, render } from './support/layout-matrix.js';
 
-/**
- * The golden matrix: what the footer prints, as plain text, over many widths and configurations.
- * It records today's behaviour so that every change of the layout is a reviewed diff of
- * `tests/golden/layout-matrix.txt` (regenerate with UPDATE_GOLDEN=1, then read the diff).
- */
 const goldenFile = join(dirname(fileURLToPath(import.meta.url)), 'golden', 'layout-matrix.txt');
 
 function matrix(): string {

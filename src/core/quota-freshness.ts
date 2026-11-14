@@ -11,7 +11,6 @@ function observationAge(snapshot: Snapshot): string | null {
 export function quotaSuffix(snapshot: Snapshot): string {
   return snapshot.quotaStatus === 'quota stale' ? ' (stale)' : '';
 }
-/** Server-published windows (every provider in `quota-sources`): what is shown, how fresh, what blocks. */
 function providerHelp(label: string, snapshot: Snapshot, age: string | null): string {
   const blocked = (snapshot.rateLimits?.windows ?? [])
     .filter((window) => window.badge !== undefined)
@@ -24,7 +23,6 @@ function providerHelp(label: string, snapshot: Snapshot, age: string | null): st
     'These endpoints are not documented as stable; a changed response hides the windows rather than guessing.'
   );
 }
-/** `label` names the server-published source for this provider, when there is one. */
 export function quotaHelp(snapshot: Snapshot, label?: string): string {
   const age = observationAge(snapshot);
   if (label) return providerHelp(label, snapshot, age);

@@ -1,3 +1,4 @@
+import { rowLabel } from '../src/core/settings-labels.js';
 import assert from 'node:assert/strict';
 import { stripVTControlCharacters } from 'node:util';
 import { test } from 'node:test';
@@ -12,7 +13,6 @@ import { layoutFooter } from '../src/ui/layout.js';
 import { plainStyle } from '../src/ui/explain-style.js';
 import { demoSnapshot } from './reference.js';
 
-/** The quota without words, the slim separator, the reset icon. */
 const NOW = 4_000_000_000_000;
 const WORDS = /\b(?:left|used|resets in)\b/u;
 const configFor = (wording?: 'used'): FooterConfig => ({
@@ -44,12 +44,12 @@ await test('a window reads: name, bar, percent, reset icon, time; the separator 
   const wide = quotaRow(300);
   assert.match(
     wide,
-    /5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m {3}│ {3}week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h {3}│ {3}month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h/u,
+    /5h ▰▰▱▱▱▱▱ 34% ↻ 2h 15m {3}│ {3}week ▰▰▰▱▱▱▱ 48% ↻ 3d 10h {3}│ {3}month ▰▱▱▱▱▱▱ 18% ↻ 14d 0h/u,
   );
   const slim = quotaRow(150);
   assert.match(
     slim,
-    /5h ▰▰▱▱▱▱▱ 34% ◌ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ◌ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ◌ 14d 0h/u,
+    /5h ▰▰▱▱▱▱▱ 34% ↻ 2h 15m │ week ▰▰▰▱▱▱▱ 48% ↻ 3d 10h │ month ▰▱▱▱▱▱▱ 18% ↻ 14d 0h/u,
   );
 });
 
@@ -57,7 +57,7 @@ await test('the meter goes before the reset time, so the time outlives the meter
   let sawNoMeterWithTime = false;
   for (let width = 20; width <= 300; width += 1) {
     const row = quotaRow(width, undefined, true);
-    const [meter, time] = [/▰|▱/u.test(row), /◌ \d/u.test(row)];
+    const [meter, time] = [/▰|▱/u.test(row), /↻ \d/u.test(row)];
     if (meter) assert.ok(time, `a meter without the time at ${width}`);
     if (!meter && time) sawNoMeterWithTime = true;
   }
@@ -72,9 +72,9 @@ await test('"used" shows the used share in the number and the bar, and the colou
   assert.match(used, /month ▰▰▰▰▰▰▱ 82%/u);
 });
 
-await test('the reset icon is the reload icon in the Nerd set and ◌ in the plain one', () => {
+await test('the reset icon is the reload icon in both the Nerd set and the plain one', () => {
   assert.equal(nerdGlyphs.reset, '\u{f0453}');
-  assert.equal(portableGlyphs.reset, '◌');
+  assert.equal(portableGlyphs.reset, '↻');
 });
 
 const explained = (quotaShows?: 'left' | 'used'): string => {
@@ -92,10 +92,10 @@ await test('the explainer says whether the footer number is left or used, and wh
   const left = explained();
   assert.match(left, /In the footer/u);
   assert.match(left, /the percent left, then the reload icon/u);
-  assert.match(left, /Limit shows/u);
+  assert.match(left, new RegExp(rowLabel('wording'), 'u'));
   assert.match(left, /dock-settings/u);
   const used = explained('used');
   assert.match(used, /the percent used, then the reload icon/u);
   assert.match(used, /The number is what is used/u);
-  assert.match(used, /"Limit shows": left/u);
+  assert.match(used, new RegExp(`"${rowLabel('wording')}": left`, 'u'));
 });

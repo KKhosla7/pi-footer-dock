@@ -11,7 +11,6 @@ import type { Problem } from '../src/core/problems.js';
 import { checkConfig, checkSettings } from '../src/core/settings-problems.js';
 import { defaultSettings } from '../src/core/settings.js';
 
-/** Configuration problems as records: validators that list every problem. */
 const FILE = '~/.pi/agent/pi-footer-dock.json';
 const complete = (item: Problem): void => {
   for (const field of [item.where, item.setting, item.reason, item.fix])

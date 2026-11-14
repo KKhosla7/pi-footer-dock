@@ -90,7 +90,6 @@ await test('repeated invalid responses back off exponentially', async (t) => {
   const step = async (advance: number, expected: number): Promise<void> => {
     h.advance(advance);
     service.refresh(ctx);
-    // A fetch that is due may be slow on a busy machine: wait for it, then check nothing extra came.
     if (h.fetches.length < expected) await until(() => h.fetches.length >= expected);
     await sleep(120);
     assert.equal(h.fetches.length, expected);

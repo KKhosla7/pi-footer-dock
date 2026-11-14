@@ -3,7 +3,6 @@ import { parseOpenAIRateHeaders } from '../core/openai-rate-headers.js';
 import type { RateLimits } from '../core/rate-limits.js';
 
 type Source = Pick<ExtensionContext, 'model'>;
-/** Tie response metadata to a captured request model; discard on model/lifecycle changes. */
 export class OpenAIHeaderQuota {
   readonly events = { received: 0, accepted: 0 };
   private requestModel: { provider: string; model: string } | undefined;

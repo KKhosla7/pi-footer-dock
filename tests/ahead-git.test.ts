@@ -197,7 +197,6 @@ await test('only read-only git subcommands run, and nothing touches a remote', a
   }
   const calls = readFileSync(log, 'utf8').trim().split('\n');
   assert.ok(calls.length >= 6);
-  // `config` only lists settings (the guard reads them to switch off programs the repo asks for).
   const allowed = new Set([
     'symbolic-ref',
     'for-each-ref',
@@ -209,7 +208,6 @@ await test('only read-only git subcommands run, and nothing touches a remote', a
   for (const call of calls) {
     const words = call.split(' ');
     assert.equal(words[0], '--no-optional-locks');
-    // Leading options are `-c key=value` pairs; the subcommand is the first word after them.
     let at = 1;
     while (words[at] === '-c') at += 2;
     const subcommand = words[at] ?? '';

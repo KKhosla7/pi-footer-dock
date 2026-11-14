@@ -24,7 +24,6 @@ export interface FooterLayout {
 export interface LayoutOptions extends RenderOptions {
   config?: FooterConfig;
 }
-/** While configuration problems exist the marker is first on the first row (it is not a setting). */
 function withProblemMarker(
   config: FooterConfig,
   problems: RenderOptions['problems'],
@@ -51,7 +50,6 @@ function regions(
     const width = visibleWidth(clipped);
     const icon = Math.min(segment.iconWidth, width);
     const at = { x: bounds.x + x, y: bounds.y, height: 1 };
-    // The icon and the text are separate click targets: the icon may act, the text explains.
     if (icon > 0 && icon < width) {
       result.push({ ...at, target: iconTarget(segment.id), width: icon });
       result.push({ ...at, target: segment.id, x: at.x + icon, width: width - icon });
@@ -60,7 +58,6 @@ function regions(
   return result;
 }
 
-/** One renderer/geometry pipeline for stock and user-declared semantic slots. */
 export function layoutFooter(
   fullSnapshot: Snapshot,
   width: number,

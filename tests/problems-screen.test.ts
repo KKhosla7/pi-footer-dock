@@ -13,7 +13,6 @@ import { SettingsController } from '../src/settings-controller.js';
 import { plainStyle } from '../src/ui/explain-style.js';
 import { harness } from './support/interactions-harness.js';
 
-/** The problems screen, the click, re-reading the file. */
 const problems = [
   problem(
     '~/.pi/agent/pi-footer-dock.json',

@@ -8,10 +8,8 @@ export const flat = (lines: string[]) =>
 export interface Input {
   handleInput(data: string): void;
 }
-/** A context whose custom screen hands back the component and lets the test close it. */
 export function fakeContext() {
   const colours: string[] = [];
-  /** Stands in for Pi's theme: text unchanged, but every colour asked for is recorded. */
   const theme = {
     fg: (colour: string, text: string) => {
       colours.push(colour);
@@ -43,7 +41,6 @@ export function fakeContext() {
   return { ctx, state };
 }
 
-/** Moves down until the selected row (marked with an arrow) is the one called `label`. */
 export function selectRow(component: Component & Input, label: string, width = 100): void {
   for (let step = 0; step < 30; step += 1) {
     const selected = flat(component.render(width))

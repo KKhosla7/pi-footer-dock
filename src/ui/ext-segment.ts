@@ -8,13 +8,12 @@ import { iconSpan, paintIcon } from './segment-parts.js';
 const TONES: Record<FormTone, Tone> = {
   text: 'text',
   muted: 'muted',
-  accent: 'cyan',
-  success: 'green',
-  warning: 'yellow',
-  error: 'red',
+  accent: 'accent',
+  success: 'success',
+  warning: 'warning',
+  error: 'error',
 };
 
-/** The form for a look: the nearest one given at this look or a richer one; `hide` removes the item. */
 export function formAt(item: ExtItem, look: Look): Form | 'hide' {
   for (let index = LOOKS.indexOf(look); index >= 0; index -= 1) {
     const key = LOOKS[index];
@@ -24,7 +23,6 @@ export function formAt(item: ExtItem, look: Look): Form | 'hide' {
   return item.at.xl;
 }
 
-/** An extension's item as footer text, with its icon as a token of its own when the icon takes clicks. */
 export function renderExtensionItem(
   item: ExtItem,
   look: Look,

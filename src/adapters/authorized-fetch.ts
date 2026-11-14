@@ -2,13 +2,11 @@ import { QUOTA_MAX_BODY_BYTES } from '../core/quota-limits.js';
 
 export type EndpointErrorCode =
   'bad-endpoint' | 'bad-credential' | 'timeout' | 'network' | 'too-large' | 'invalid-json';
-/** Carries a fixed code only, never a URL, header, credential or response text. */
 export class EndpointError extends Error {
   constructor(readonly code: EndpointErrorCode) {
     super(code);
   }
 }
-/** What may be sent: a bearer token and, for ChatGPT accounts, the account the token belongs to. */
 export interface Credential {
   token: string;
   accountId?: string;
@@ -69,10 +67,6 @@ async function readBody(response: Response): Promise<unknown> {
   }
 }
 
-/**
- * The only place a credential is attached to a request. It refuses any origin other than the
- * pinned one, any non-HTTPS scheme, userinfo, query, fragment or redirect, and bounds the body.
- */
 export async function authorizedGet(
   endpoint: PinnedEndpoint,
   credential: Credential,

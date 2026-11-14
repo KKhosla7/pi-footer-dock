@@ -9,14 +9,12 @@ export const dayString = (date: Date): string =>
 const fromDay = (day: string): Date =>
   new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)));
 
-/** First day of the period that contains `date`: today, the Monday of this week, or the 1st. */
 export function periodStart(period: Period, date: Date): string {
   if (period === 'day') return dayString(date);
   if (period === 'month') return `${date.getFullYear()}-${two(date.getMonth() + 1)}-01`;
   const back = (date.getDay() + 6) % 7;
   return dayString(new Date(date.getFullYear(), date.getMonth(), date.getDate() - back));
 }
-/** The first day of the period `back` periods before the one containing `date`. */
 export function periodStartBack(period: Period, date: Date, back: number): string {
   if (period === 'day')
     return dayString(new Date(date.getFullYear(), date.getMonth(), date.getDate() - back));
@@ -30,13 +28,11 @@ export function periodStartBack(period: Period, date: Date, back: number): strin
 }
 
 export interface Bin {
-  /** First day of the bin. */
   start: string;
   cost: number;
   unpriced: number;
   responses: number;
 }
-/** The last `count` bins of `period`, oldest first, ending with the one that contains `date`. */
 export function series(
   rows: Iterable<HistoryRow>,
   period: Period,

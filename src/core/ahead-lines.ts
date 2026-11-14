@@ -3,7 +3,6 @@ import { truncateToWidth } from '@earendil-works/pi-tui';
 import { relativeTime } from './ahead-parse.js';
 import type { AheadReport, CommitInfo, CommitStat } from './ahead-parse.js';
 
-/** What drawing needs: the theme, the width, and "now" (so tests are deterministic). */
 export interface AheadView {
   theme: Pick<Theme, 'fg' | 'bold'>;
   width: number;
@@ -28,7 +27,6 @@ function statText(commit: CommitInfo, view: AheadView): string {
   );
 }
 
-/** One commit: `hash  subject`, then author, date and stat under the subject. */
 function commitLines(commit: CommitInfo, view: AheadView): string[] {
   const { theme } = view;
   const prefix = `  ${commit.hash}  `;
@@ -144,7 +142,6 @@ function sections(report: AheadReport, view: AheadView): string[][] {
   return [ahead, [...behind, ...commitList(report.behind, counts.behind, view)]];
 }
 
-/** The whole screen body for one width. */
 export function aheadLines(report: AheadReport, view: AheadView): string[] {
   return [whereBlock(report, view), ...sections(report, view)].flatMap((block, index) =>
     index ? ['', ...block] : block,

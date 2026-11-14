@@ -29,7 +29,6 @@ await test('default loaded cache shows latest-response values without configurin
     await session.prompt('Synthetic primary response with default footer.');
     const wide = capture.render(200).map(stripVTControlCharacters).join('\n');
     assert.match(wide, /last 80% · 800 read · 100 written/u);
-    // At 110 columns the row cannot hold the full cache text and speed: cache shortens, speed stays.
     const narrow = capture.render(110).map(stripVTControlCharacters).join('\n');
     assert.match(narrow, /last 80%(?! ·)/u);
     assert.match(narrow, /tok\/s/u);

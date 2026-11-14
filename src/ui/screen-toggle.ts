@@ -1,9 +1,7 @@
 import type { ExtensionContext } from '@earendil-works/pi-coding-agent';
 import { closeInfoScreen } from './info-screen.js';
 
-/** A click target opens its screen; the same target again closes it; another one switches. */
 export class ScreenToggle {
-  /** The target whose screen is open now. */
   private open: string | undefined;
 
   async toggle(

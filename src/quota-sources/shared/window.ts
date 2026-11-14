@@ -20,7 +20,6 @@ function resetSeconds(value: unknown): number | undefined {
     ? Math.floor(milliseconds / 1000)
     : undefined;
 }
-/** A window is shown only when the provider gave both a valid used share and a reset time. */
 export function windowOf(
   label: WindowType,
   used: unknown,

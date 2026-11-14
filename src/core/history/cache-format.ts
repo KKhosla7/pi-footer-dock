@@ -3,12 +3,10 @@ import type { GapBucket, HistoryRow, ProjectInfo } from './rows.js';
 import type { FileState } from './scan.js';
 import { record } from '../usage-values.js';
 
-/** What the cache remembers about one log file. */
 export interface FileEntry {
   path: string;
   size: number;
   mtimeMs: number;
-  /** One-way hash of the log's first line: a different one means the file was replaced. */
   headerHash: string;
   project: ProjectInfo;
   state: FileState;
@@ -84,7 +82,6 @@ function parseEntry(value: unknown): FileEntry | undefined {
 const rowId = (row: HistoryRow): string =>
   [row.day, row.project, row.provider, row.model, row.api, row.gap].join('|');
 
-/** Strict: a cache that is not exactly what this version writes is ignored whole and rebuilt. */
 export function parseCache(value: unknown): CacheFile | undefined {
   const cache = record(value);
   if (

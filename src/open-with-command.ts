@@ -3,7 +3,6 @@ import { defaultOpener, parseOpenWith, splitCommand } from './core/open-folder.j
 import type { SettingsController } from './settings-controller.js';
 import { say } from './notify.js';
 
-/** `/dock-open-with`: show, set (`thunar {path}`) or clear (`default`) the app that opens the folder. */
 export function runOpenWith(
   args: string,
   ctx: ExtensionContext,

@@ -118,7 +118,6 @@ await test('a repository that configures an external diff or a text conversion c
     mkdirSync(join(repo.cwd, 'sub'));
     writeFileSync(join(repo.cwd, 'tracked.txt'), 'fixture\nchanged\n');
     writeFileSync(join(repo.cwd, 'sub', 'new.txt'), 'n\n');
-    // The control: plain git in this repository does run the program, so the test can fail.
     await repo.git('diff', '--', 'tracked.txt').catch(() => undefined);
     assert.equal(existsSync(marker), true, 'plain git runs the configured program');
     rmSync(marker);

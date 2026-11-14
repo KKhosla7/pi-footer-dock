@@ -2,7 +2,7 @@ name: Release
 # Publishes to npm when a version tag is pushed, with a provenance statement that links the
 # package to this repository and this run, then creates the GitHub release from CHANGELOG.md.
 # Publishing uses npm trusted publishing (OIDC): there is no npm token or secret anywhere. npm must
-# list this repository and this workflow as the package's trusted publisher; see RELEASING.md.
+# list this repository and this workflow as the package's trusted publisher.
 # The workflow only STAGES the release (`npm stage publish`, the one action a trusted publisher may
 # always do). Nothing is public until the maintainer approves the staged version on npm with
 # two-factor authentication: a human decision for every release.

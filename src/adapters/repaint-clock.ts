@@ -1,4 +1,3 @@
-/** Redraws on a slow timer so relative times (resets, ages) keep moving while nothing else happens. */
 export class RepaintClock {
   private timer: ReturnType<typeof setInterval> | undefined;
 

@@ -8,13 +8,11 @@ import { defaultSettings } from '../src/core/settings.js';
 import type { Settings } from '../src/core/settings.js';
 
 const published = ['5h', 'week', 'month'];
-/** The windows that stay when collapsed, sorted. */
 function stays(settings: Settings): string[] {
   const quota = settings.slots.quota;
   assert.ok(quota);
   return [...(quota.collapsedShow ?? [])].sort();
 }
-/** Every row at any depth, groups excluded. */
 const leaves = (entries: readonly MenuEntry[]): MenuEntry[] =>
   entries.flatMap((entry) => (entry.children ? leaves(entry.children) : [entry]));
 
@@ -31,13 +29,13 @@ await test('related rows are clubbed and the icon set stays on the top level', (
   assert.deepEqual(
     entries.map((entry) => entry.label),
     [
+      'Appearance',
       'Project and Git',
       'Model',
       'Context and tokens',
       'Cache, speed and cost',
       'Limit usage',
-      'Item clicks',
-      'Icons',
+      'Clicking an item',
     ],
   );
   const limits = entries.find((entry) => entry.id === 'group:quota');
@@ -48,14 +46,13 @@ await test('related rows are clubbed and the icon set stays on the top level', (
       'window:5h',
       'window:week',
       'window:month',
-      'limits',
       'wording',
+      'layer:quota:meter',
+      'layer:quota:reset',
       'group:collapse',
       'expanded',
       'animation',
-      'meter',
-      'layer:quota:meter',
-      'layer:quota:reset',
+      'limits',
     ],
   );
   assert.equal(entries.at(-1)?.children, undefined);
@@ -66,16 +63,17 @@ await test('a group says whether anything in it differs from the defaults', () =
     menuEntries(settings, published).map((entry) => entry.current);
   assert.ok(
     summaryOf()
-      .slice(0, 5)
+      .slice(0, 6)
       .every((text) => text === 'all default'),
   );
   let settings = choose(defaultSettings(), 'item:cache', 'hidden');
-  settings = choose(settings, 'item:speed', 'hidden from sm');
+  settings = choose(settings, 'item:speed', 'sm');
   settings = choose(settings, 'window:month', 'hidden');
   const summaries = summaryOf(settings);
-  assert.equal(summaries[3], '2 changed');
-  assert.equal(summaries[4], '1 changed');
+  assert.equal(summaries[4], '2 changed');
+  assert.equal(summaries[5], '1 changed');
   assert.equal(summaries[0], 'all default');
+  assert.equal(summaries[1], 'all default');
 });
 
 await test('every row, in a group or not, says what it does, so none shows or hides text as you move', () => {
@@ -86,28 +84,28 @@ await test('every row, in a group or not, says what it does, so none shows or hi
     assert.ok(row.description.length > 0, `${row.id} has a description`);
 });
 
-await test('"Limit windows" is a group of its own: the mode, then a row per window for what stays', () => {
+await test('"Collapse windows" is a group of its own: the mode, then a row per window for what stays', () => {
   const entries = menuEntries(defaultSettings(), published);
   const windows = findEntry(entries, 'group:collapse');
   assert.ok(windows);
-  assert.equal(windows.label, 'Limit windows');
+  assert.equal(windows.label, 'Collapse windows');
   assert.equal(windows.current, 'when tight', 'its value is the mode');
   assert.deepEqual(
     windows.children?.map((row) => [row.id, row.current]),
     [
-      ['collapse', 'when tight'],
+      ['collapse', 'tight'],
       ['collapsed:5h', 'shown'],
       ['collapsed:week', 'shown'],
       ['collapsed:month', 'hidden'],
     ],
     'by default every window stays except the last',
   );
-  const always = choose(defaultSettings(), 'collapse', 'always collapsed');
+  const always = choose(defaultSettings(), 'collapse', 'always');
   assert.equal(
     menuEntries(always, published)
       .find((entry) => entry.id === 'group:quota')
       ?.children?.find((entry) => entry.id === 'group:collapse')?.current,
-    'always collapsed',
+    'always',
   );
 });
 

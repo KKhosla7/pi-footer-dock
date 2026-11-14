@@ -12,7 +12,6 @@ export interface FetchPolicy {
 }
 const MAX_RETRY_AFTER_MS = 3_600_000;
 
-/** Doubling backoff while failures repeat, never below the interval, honouring Retry-After. */
 export function backoff(
   policy: FetchPolicy,
   previous: GateState | undefined,
@@ -24,7 +23,6 @@ export function backoff(
   return Math.ceil(Math.max(bounded, Math.min(retryAfterMs ?? 0, MAX_RETRY_AFTER_MS)));
 }
 
-/** Turns one reply into a gate result: strict parse on success, typed failure otherwise. */
 export function classify(
   policy: FetchPolicy,
   reply: EndpointReply,
@@ -52,7 +50,6 @@ export function classify(
   };
 }
 
-/** One bounded request. Never throws: any transport problem is a `network-or-timeout` result. */
 export async function fetchResult(
   policy: FetchPolicy,
   call: {

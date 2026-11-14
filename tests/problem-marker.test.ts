@@ -13,7 +13,6 @@ import { createPaint } from '../src/ui/palette.js';
 import { ProblemBlink } from '../src/ui/problem-blink.js';
 import { demoSnapshot } from './reference.js';
 
-/** The problems marker, the blink, the problems screen. */
 const NOW = 4_000_000_000_000;
 const named = (color: string, text: string): string => `<${color}>${text}</${color}>`;
 const tagged = createPaint({

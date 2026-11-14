@@ -1,4 +1,5 @@
 import { stripTerminalSequences, truncateToWidth } from '@earendil-works/pi-tui';
+import { noop } from './noop.js';
 import { safeLabel } from './model.js';
 
 export interface ActionBus {
@@ -52,7 +53,6 @@ function registration(value: unknown, targets: ReadonlySet<string>): UIAction | 
   return label ? { id: data.id, target: data.target, label } : undefined;
 }
 
-/** Session-scoped protocol consumer. It knows nothing about footer geometry or providers. */
 export class UIActionRegistry {
   private readonly records = new Map<string, UIAction>();
   private subscriptions: (() => void)[] = [];
@@ -62,9 +62,7 @@ export class UIActionRegistry {
   constructor(
     private readonly bus: ActionBus,
     private readonly targets: ReadonlySet<string>,
-    private readonly trace: (metadata: Record<string, unknown>) => void = () => {
-      /* Diagnostics are off unless supplied by the consumer. */
-    },
+    private readonly trace: (metadata: Record<string, unknown>) => void = noop,
   ) {}
 
   start(): void {
@@ -152,7 +150,6 @@ export class UIActionRegistry {
     if (actions.length === 1) return actions[0];
     this.selecting = true;
     const generation = this.generation;
-    // Ordinals keep labels unambiguous even when providers advertise identical labels.
     const labels = actions.map((action, index) => `${index + 1}. ${action.label}`);
     try {
       const answer = await select(labels);

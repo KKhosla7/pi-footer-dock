@@ -1,7 +1,8 @@
 import { LOOKS, isLook } from './looks.js';
+import { METER_STYLES, isMeterStyle } from './meter-styles.js';
 import { HIDDEN, SHOWN, row, savable, withNote } from './menu-row.js';
 import type { MenuRow } from './menu-row.js';
-import { settingsItems, withSlot } from './settings.js';
+import { settingsItems, withSlot, withoutSetting } from './settings.js';
 import {
   collapsedChoice,
   collapsedLabel,
@@ -10,7 +11,9 @@ import {
   windowChoice,
   windowRows,
 } from './settings-collapse.js';
-import { compactionText, costText, itemText, quotaText } from './settings-text.js';
+import { colorChoice, colorRows, isColorRow } from './settings-colors.js';
+import type { IconKind } from './settings-colors.js';
+import { itemText, textRow } from './settings-labels.js';
 import {
   isKnownLayerRow,
   isLayerRow,
@@ -23,27 +26,27 @@ import type { CostPeriod } from './history/costs.js';
 import type { Settings } from './settings.js';
 
 export type { MenuRow };
-/** shown, then hidden from a narrower look on, then hidden always (the richest look is the first). */
-const choices: Record<string, string[]> = {
+const OPTIONS: Record<string, string[]> = {
   unit: ['tokens', 'percent'],
-  period: ['day', 'week', 'month', 'session'],
+  period: [...COST_PERIODS],
+  limits: ['off', 'on'],
   wording: ['left', 'used'],
-  collapse: ['when tight', 'always collapsed'],
+  collapse: ['tight', 'always'],
   expanded: ['no', 'yes'],
   animation: ['on', 'off'],
-  meter: ['lavender', 'theme'],
-  glyphs: ['nerd', 'portable'],
-  clicks: ['do things', 'explain only'],
-  limits: ['off', 'on'],
+  clicks: ['actions', 'explain'],
+  glyphs: ['auto', 'nerd', 'portable'],
+  meterStyle: [...METER_STYLES],
 };
 const isPeriod = (value: string): value is CostPeriod =>
   (COST_PERIODS as readonly string[]).includes(value);
-const visibility = [SHOWN, ...LOOKS.slice(1).map((look) => `hidden from ${look}`), HIDDEN];
+const visibility = [SHOWN, ...LOOKS.slice(1), HIDDEN];
 
 function visibilityOf(hideAt: string | undefined): string {
   if (hideAt === undefined) return SHOWN;
-  return hideAt === LOOKS[0] ? HIDDEN : `hidden from ${hideAt}`;
+  return hideAt === LOOKS[0] ? HIDDEN : hideAt;
 }
+const options = (id: string): string[] => OPTIONS[id] ?? [];
 
 function itemRows(settings: Settings): MenuRow[] {
   return settingsItems().map((id) =>
@@ -58,98 +61,45 @@ function itemRows(settings: Settings): MenuRow[] {
     ),
   );
 }
-function limitsRow(settings: Settings): MenuRow {
-  return withNote(
-    row(
-      'limits',
-      'Ask providers for limits',
-      settings.limits === 'on' ? 'on' : 'off',
-      choices.limits ?? [],
-    ),
-    quotaText.network,
-  );
-}
-function clicksRow(settings: Settings): MenuRow {
-  const current = settings.clicks === 'explain' ? 'explain only' : 'do things';
-  return withNote(
-    row('clicks', 'Item clicks', current, choices.clicks ?? []),
-    'The folder icon opens the folder.',
-  );
-}
-function compactionRow(settings: Settings): MenuRow {
-  const current = settings.slots.compaction?.unit ?? 'tokens';
-  return withNote(row('unit', 'Compaction unit', current, choices.unit ?? []), compactionText);
-}
-function costRow(settings: Settings): MenuRow {
-  const current = settings.slots.cost?.period ?? DEFAULT_COST_PERIOD;
-  return {
-    ...withNote(row('period', 'Cost period', current, choices.period ?? []), costText.period),
-    default: DEFAULT_COST_PERIOD,
-  };
-}
+const valued = (id: string, current: string | undefined): MenuRow =>
+  textRow(id, current ?? options(id)[0] ?? '', options(id));
+const defaultPeriod = (): MenuRow => ({
+  ...valued('period', undefined),
+  default: DEFAULT_COST_PERIOD,
+});
 function quotaRows(settings: Settings): MenuRow[] {
   const quota = settings.slots.quota ?? {};
-  const pick = (id: keyof typeof choices) => choices[id] ?? [];
   return [
-    withNote(
-      row('wording', 'Limit shows', quota.wording ?? 'left', pick('wording')),
-      quotaText.wording,
-    ),
-    withNote(
-      row(
-        'collapse',
-        'Collapse',
-        quota.collapse === 'always' ? 'always collapsed' : 'when tight',
-        pick('collapse'),
-      ),
-      quotaText.collapse,
-    ),
-    withNote(
-      row(
-        'expanded',
-        'Limits start expanded',
-        settings.quotaExpanded ? 'yes' : 'no',
-        pick('expanded'),
-      ),
-      quotaText.expanded,
-    ),
-    withNote(
-      row(
-        'animation',
-        'Limit animation',
-        quota.animation === false ? 'off' : 'on',
-        pick('animation'),
-      ),
-      quotaText.animation,
-    ),
-    withNote(
-      row('meter', 'Meter colour', quota.meterColor ?? 'lavender', pick('meter')),
-      quotaText.meter,
-    ),
+    valued('wording', quota.wording),
+    valued('collapse', quota.collapse === 'always' ? 'always' : 'tight'),
+    valued('expanded', settings.quotaExpanded ? 'yes' : 'no'),
+    valued('animation', quota.animation === false ? 'off' : 'on'),
+    valued('meterStyle', quota.meterStyle),
   ];
 }
 
-/** Rows for the menu: every item, the quota's windows and options, then the icon set. */
-export function menuRows(settings: Settings, published: readonly string[]): MenuRow[] {
+export function menuRows(
+  settings: Settings,
+  published: readonly string[],
+  icons: IconKind = settings.glyphs ?? 'nerd',
+): MenuRow[] {
   return [
     ...itemRows(settings),
-    compactionRow(settings),
-    costRow(settings),
+    valued('unit', settings.slots.compaction?.unit),
+    { ...defaultPeriod(), current: settings.slots.cost?.period ?? DEFAULT_COST_PERIOD },
     ...windowRows(settings, published),
-    limitsRow(settings),
+    valued('limits', settings.limits === 'on' ? 'on' : 'off'),
     ...quotaRows(settings),
     ...layerRows(settings),
     ...collapsedRows(settings, published),
-    clicksRow(settings),
-    withNote(
-      row('glyphs', 'Icons', settings.glyphs ?? 'nerd', choices.glyphs ?? []),
-      quotaText.glyphs,
-    ),
+    valued('clicks', settings.clicks === 'explain' ? 'explain' : 'actions'),
+    ...colorRows(settings, icons),
+    valued('glyphs', settings.glyphs ?? 'auto'),
   ];
 }
 
 function visibilityChoice(settings: Settings, id: string, value: string): Settings {
-  const look = value === HIDDEN ? LOOKS[0] : value.replace('hidden from ', '');
+  const look = value === HIDDEN ? LOOKS[0] : value;
   return withSlot(settings, id, { hideAt: value !== SHOWN && isLook(look) ? look : undefined });
 }
 
@@ -160,13 +110,13 @@ function allowed(id: string): string[] | undefined {
     return savable(id.slice('window:'.length)) ? [SHOWN, HIDDEN] : undefined;
   if (isCollapsedRow(id)) return savable(collapsedLabel(id)) ? [SHOWN, HIDDEN] : undefined;
   if (isLayerRow(id)) return isKnownLayerRow(id) ? layerValues() : undefined;
-  return choices[id];
+  return OPTIONS[id];
 }
 
 function globalChoice(settings: Settings, id: string, value: string): Settings {
   switch (id) {
     case 'clicks':
-      return { ...settings, clicks: value === 'explain only' ? 'explain' : 'actions' };
+      return { ...settings, clicks: value === 'explain' ? 'explain' : 'actions' };
     case 'period':
       return withSlot(settings, 'cost', {
         period: value !== DEFAULT_COST_PERIOD && isPeriod(value) ? value : undefined,
@@ -178,12 +128,13 @@ function globalChoice(settings: Settings, id: string, value: string): Settings {
     case 'expanded':
       return { ...settings, quotaExpanded: value === 'yes' };
     case 'glyphs':
-      return { ...settings, glyphs: value === 'portable' ? 'portable' : 'nerd' };
+      return value === 'auto'
+        ? withoutSetting(settings, 'glyphs')
+        : { ...settings, glyphs: value === 'portable' ? 'portable' : 'nerd' };
     default:
       return quotaChoice(settings, id, value);
   }
 }
-/** The provider-limits switch: stored only when it is on; off is the default and leaves the file alone. */
 function withLimits(settings: Settings, value: string): Settings {
   const next = { ...settings };
   if (value === 'on') next.limits = 'on';
@@ -197,23 +148,25 @@ function quotaChoice(settings: Settings, id: string, value: string): Settings {
     case 'wording':
       return withSlot(settings, 'quota', { wording: value === 'used' ? 'used' : undefined });
     case 'collapse':
-      return withSlot(settings, 'quota', {
-        collapse: value === 'always collapsed' ? 'always' : undefined,
-      });
+      return withSlot(settings, 'quota', { collapse: value === 'always' ? 'always' : undefined });
     case 'animation':
       return withSlot(settings, 'quota', { animation: value === 'off' ? false : undefined });
+    case 'meterStyle':
+      return withSlot(settings, 'quota', {
+        meterStyle: isMeterStyle(value) && value !== 'slanted' ? value : undefined,
+      });
     default:
-      return withSlot(settings, 'quota', { meterColor: value === 'theme' ? 'theme' : undefined });
+      return settings;
   }
 }
 
-/** The settings after the user picked `value` in row `id`; unknown rows or values change nothing. */
 export function choose(
   settings: Settings,
   id: string,
   value: string,
   published: readonly string[] = [],
 ): Settings {
+  if (isColorRow(id)) return colorChoice(settings, id, value);
   if (!allowed(id)?.includes(value)) return settings;
   if (id.startsWith('item:')) return visibilityChoice(settings, id.slice('item:'.length), value);
   if (id.startsWith('window:')) return windowChoice(settings, id.slice('window:'.length), value);

@@ -66,7 +66,7 @@ await test('a body longer than the window shows a scroll bar whose thumb moves w
       .join('');
   const top = bars();
   assert.match(top, /^┃+│+$/u, 'thumb at the top');
-  view.handleInput('\u001b[F'); // End
+  view.handleInput('\u001b[F');
   assert.match(bars(), /^│+┃+$/u, 'thumb at the bottom');
   view.handleInput('\u001b');
   await closed;
@@ -111,7 +111,7 @@ await test('a live screen that is no longer drawn stops its own timer', () => {
     view.render(40);
     mock.timers.tick(1000);
     assert.equal(state.renders, 1);
-    mock.timers.tick(1000); // nothing drew it since: the host dropped it
+    mock.timers.tick(1000);
     mock.timers.tick(5000);
     assert.equal(state.renders, 1);
   } finally {

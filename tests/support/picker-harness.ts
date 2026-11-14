@@ -10,7 +10,6 @@ const theme = {
   bold: (text: string) => text,
 } as unknown as Theme;
 
-/** A fake Pi: the pieces a picker feature touches, recording what it calls. */
 export function fakePi(options: {
   models?: { provider: string; id: string; name: string; reasoning?: boolean }[];
   current?: {

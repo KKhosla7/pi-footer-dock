@@ -18,9 +18,7 @@ await test('registry has a hard cap while allowing existing providers to upsert 
           handlers.delete(channel);
         };
       },
-      emit: () => {
-        /* No providers are needed to test bounded admission. */
-      },
+      emit: () => {},
     },
     new Set(targets),
   );

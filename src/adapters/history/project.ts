@@ -7,7 +7,6 @@ import { gitLine, gitOutput } from '../git-command.js';
 
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
-/** The folder as the project: a Git repository's main working tree, so its worktrees join it. */
 async function projectRoot(cwd: string, signal: AbortSignal): Promise<string> {
   const real = await realpath(cwd).catch(() => cwd);
   try {
@@ -20,7 +19,6 @@ async function projectRoot(cwd: string, signal: AbortSignal): Promise<string> {
   }
 }
 
-/** Resolves log folders to projects, remembering each folder so Git is asked once. */
 export class ProjectResolver {
   private readonly known = new Map<string, ProjectInfo>();
   async resolve(cwd: string, signal: AbortSignal): Promise<ProjectInfo> {

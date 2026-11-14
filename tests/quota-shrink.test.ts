@@ -19,7 +19,6 @@ function render(windows: RateLimitWindow[], budget: number): string {
   };
   return stripVTControlCharacters(renderQuota(snapshot, options, { icon: '', budget, slot }));
 }
-/** The state a live OpenCode Go account reported: monthly cap exhausted. */
 const blocked: RateLimitWindow[] = [
   { label: '5h', remainingPercent: 100, resetAt: NOW + 18_000 },
   { label: 'week', remainingPercent: 100, resetAt: NOW + 68_940 },
@@ -35,23 +34,23 @@ await test('the full form has no words, in 5h, week, month order', () => {
   const text = render(blocked, Infinity);
   assert.equal(
     text,
-    '5h ▰▰▰▰▰▰▰ 100% ◌ 5h 0m   │   ' +
-      'week ▰▰▰▰▰▰▰ 100% ◌ 19h 9m   │   ' +
-      'month ▱▱▱▱▱▱▱ 0% ◌ 5d 4h',
+    '5h ▰▰▰▰▰▰▰ 100% ↻ 5h 0m   │   ' +
+      'week ▰▰▰▰▰▰▰ 100% ↻ 19h 9m   │   ' +
+      'month ▱▱▱▱▱▱▱ 0% ↻ 5d 4h',
   );
   assert.equal(
     render(healthy, Infinity),
-    '5h ▰▰▰▰▰▰▰ 94% ◌ 1h 59m   │   ' +
-      'week ▰▰▰▱▱▱▱ 48% ◌ 3d 6h   │   ' +
-      'month ▰▰▰▰▱▱▱ 53% ◌ 18d 23h',
+    '5h ▰▰▰▰▰▰▰ 94% ↻ 1h 59m   │   ' +
+      'week ▰▰▰▱▱▱▱ 48% ↻ 3d 6h   │   ' +
+      'month ▰▰▰▰▱▱▱ 53% ↻ 18d 23h',
   );
 });
 
 await test('at the budget a 140-column footer leaves, all three windows keep their bars', () => {
   const text = render(blocked, 98);
-  assert.match(text, /5h ▰{7} 100% ◌/u);
-  assert.match(text, /week ▰{7} 100% ◌/u);
-  assert.match(text, /month ▱{7} 0% ◌/u);
+  assert.match(text, /5h ▰{7} 100% ↻/u);
+  assert.match(text, /week ▰{7} 100% ↻/u);
+  assert.match(text, /month ▱{7} 0% ↻/u);
   assert.ok(visibleWidth(text) <= 98);
 });
 
@@ -83,12 +82,12 @@ await test('healthy windows give up detail first: the wide separator, then the m
   const widths = [200, 120, 100, 85, 70, 48];
   const seen = widths.map((budget) => render(healthy, budget));
   const [wide = '', , , slim = '', noMeter = '', bare = ''] = seen;
-  assert.match(wide, /▰.* ◌ .* {3}│ {3}/u);
+  assert.match(wide, /▰.* ↻ .* {3}│ {3}/u);
   assert.match(slim, /▰.* │ /u);
   assert.doesNotMatch(slim, / {3}│ {3}/u);
   assert.doesNotMatch(noMeter, /▰|▱/u);
-  assert.match(noMeter, /◌ \d/u, 'the reset outlives the meter');
-  assert.doesNotMatch(bare, /▰|▱|◌/u);
+  assert.match(noMeter, /↻ \d/u, 'the reset outlives the meter');
+  assert.doesNotMatch(bare, /▰|▱|↻/u);
   assert.match(bare, /94%/u);
   for (const [index, text] of seen.entries()) {
     assert.doesNotMatch(text, /\b(?:left|used|resets in)\b/u, `${widths[index]}`);
@@ -112,7 +111,6 @@ await test('the footer never overflows and nothing reappears as the window narro
     const layout = footerAt(width);
     for (const text of layout.lines) assert.ok(visibleWidth(text) <= width, `fits ${width}`);
     const visible = new Set(layout.hitRegions.map((region) => region.target));
-    // The chevron legitimately appears once the quota collapses; every other item only leaves.
     if (previous)
       for (const id of visible)
         assert.ok(previous.has(id) || id === QUOTA_TOGGLE, `${id} reappeared at ${width}`);
@@ -125,7 +123,6 @@ await test('no value is cut mid-value while the essentials fit, and the project 
     const layout = footerAt(width);
     for (const text of layout.lines) assert.ok(!/…\s*$/u.test(text), `no cut at ${width}`);
     const ids = new Set(layout.hitRegions.map((region) => region.target));
-    // A window is only ever left out together with the › that brings it back.
     assert.ok(
       /month (?:▱{7} )?0%/u.test(line(layout, 1)) || ids.has('quota-more'),
       `month is visible or recoverable at ${width}`,
@@ -156,7 +153,6 @@ await test('hideAt hides a slot at that look and narrower, on the real layout', 
 });
 
 await test('within a row a less important item never outlives a more important one', () => {
-  // Owner ranking, per row: project, branch, model, thinking on the first; limit, context on the second.
   const rows = [
     ['workspace', 'branch', 'model', 'thinking'],
     ['quota', 'context-usage'],
@@ -179,7 +175,6 @@ await test('the project name outlives everything, and a row that fits is not emp
     const visible = new Set(footerAt(width).hitRegions.map((region) => region.target));
     if (visible.size > 0) assert.ok(visible.has('workspace'), `project survives at ${width}`);
   }
-  // Row 1 has to drop items at 50 columns; row 2 fits on its own line and keeps its values.
   const targets = footerAt(50).hitRegions.filter((region) => region.y === 1);
   assert.ok(targets.length > 0, 'row 2 keeps something at 50 columns');
 });

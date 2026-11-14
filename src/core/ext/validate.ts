@@ -131,7 +131,6 @@ function parseRow(value: unknown, problems: Problems): SettingRow | undefined {
   };
 }
 
-/** A registration, cleaned and bounded; items and rows that are not valid are dropped and reported. */
 export function parseRegistration(value: unknown): {
   registration?: Registration;
   problems: Problems;

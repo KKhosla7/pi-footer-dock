@@ -1,4 +1,5 @@
 import type { GitState } from '../core/model.js';
+import { noop } from '../core/noop.js';
 import { readGit, unknownGit } from './git.js';
 import type { GitWatchLimits } from './git-inventory.js';
 import { GitWatchSet } from './git-watch-set.js';
@@ -21,13 +22,10 @@ export interface GitMonitorOptions {
   watch?: GitWatchFactory;
   maxWatches?: number;
   maxEntries?: number;
-  /** Minimum time between two rescans of the watch topology. */
   topologyIntervalMs?: number;
-  /** Minimum time between two status reads. */
   readIntervalMs?: number;
 }
 
-/** Native notifications and Pi hints wake one actor. No periodic/debounce/retry timer. */
 export class GitMonitor {
   private pending = 0;
   private scheduled = false;
@@ -37,7 +35,6 @@ export class GitMonitor {
   private value: GitState | undefined;
   private health: GitHealth = 'initializing';
   private failure: string | undefined;
-  /** Watching could not cover this repository: refresh on request only. */
   private eventsOnly = false;
   private readonly rescans: Throttle;
   private readonly reads: Throttle;
@@ -100,7 +97,6 @@ export class GitMonitor {
     this.pending = 0;
     this.active?.abort();
     this.accept(unknownGit, 'unavailable');
-    // Recovery needs a new real/Pi/manual invalidation, never a self-retry loop.
   }
   private run(): void {
     if (this.disposed || this.active || !this.pending) return;
@@ -121,16 +117,12 @@ export class GitMonitor {
         if (this.active === controller) this.active = undefined;
         if (!this.disposed && this.pending) this.request(Boolean(this.pending & 2));
       })
-      .catch(() => {
-        /* Completion and subscriber failures cannot leak rejections. */
-      });
+      .catch(noop);
   }
-  /** The topology bit is dropped while the last rescan is too recent; one timer asks again. */
   private rescanFlags(flags: number): number {
     if (!(flags & 2) || !this.ready || this.eventsOnly) return flags;
     return this.rescans.allow() ? flags : flags & ~2;
   }
-  /** Gives up watching (but not reading): every watcher closed, values still read on request. */
   private degrade(error: unknown): void {
     this.eventsOnly = true;
     this.ready = true;
@@ -160,7 +152,6 @@ export class GitMonitor {
       this.counts.activeReads -= 1;
     }
     signal.throwIfAborted();
-    // Publish the completed observation even when more hints are queued; never await quiescence.
     if (!this.disposed)
       this.accept(this.observed(value), value.branch === null ? 'unknown' : 'ready');
   }

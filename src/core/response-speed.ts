@@ -16,11 +16,9 @@ export interface ResponseTiming {
   firstContentMs: number | null;
   firstTextMs: number | null;
 }
-/** Why a finished response has no figure: the provider gave no duration, a tiny one, or no output. */
 export type Unmeasured = 'no-duration' | 'too-short' | 'no-output';
 const deltas = new Set(['text_delta', 'thinking_delta', 'toolcall_delta']);
 
-/** Keep tiny positive rates nonzero without inventing precision. */
 export function formatResponseRate(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '—';
   return value < 0.1 ? '<0.1' : value.toFixed(1);
@@ -45,14 +43,12 @@ function whyUnmeasured(result: Result): Unmeasured {
     : 'no-duration';
 }
 
-/** SDK-timed reported throughput; local time only anchors observed first-content latency. */
 export class ResponseSpeed {
   private started: number | undefined;
   private firstContent: number | null = null;
   private firstText: number | null = null;
   value: number | null = null;
   sample: ResponseTiming | null = null;
-  /** After a successful response without a figure: the reason; otherwise null. */
   unmeasured: Unmeasured | null = null;
 
   constructor(private readonly now: () => number = () => performance.now()) {}
@@ -73,7 +69,6 @@ export class ResponseSpeed {
     if (type === 'text_delta') this.firstText = elapsed;
   }
 
-  /** True only for a paired successful primary completion, even when timing is unavailable. */
   end(result: Result): boolean {
     if (this.started === undefined) return false;
     this.started = undefined;

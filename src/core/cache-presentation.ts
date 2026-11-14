@@ -2,7 +2,6 @@ import type { CacheKind } from './cache-class.js';
 import type { CacheUsage } from './cache-usage.js';
 import { formatTokens } from './model.js';
 
-/** A rounded non-full share must never claim complete reuse. Zero remains ambiguous. */
 export function formatCacheReuse(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > 100) return '—';
   if (value < 0.1) return '<0.1%';
@@ -21,10 +20,6 @@ function reuseParts(cache: CacheUsage, short: boolean, kind: CacheKind): string[
     ...(short && known ? [] : [`${formatTokens(cache.read)} read`]),
   ];
 }
-/**
- * Fixed scalar presentation of the last completed response, never live cache occupancy.
- * `kind` says how to read a zero: a miss (`none`) or a counter the provider never sends (`unreported`).
- */
 export function formatCacheSummary(
   cache: CacheUsage | null | undefined,
   short = false,

@@ -9,10 +9,8 @@ import type { PickerChoice } from '../ui/list-picker.js';
 import { showFileDiff } from './file-diff.js';
 
 type Theme = Parameters<typeof changedFilesParts>[1];
-/** How often the open list looks again; a slow repository stretches this to three times its own read. */
 const REFRESH_MS = 2000;
 
-/** Two reads that would draw the same list. */
 const signature = (state: ChangedFilesState): string =>
   state.kind === 'files'
     ? state.files
@@ -23,7 +21,6 @@ const signature = (state: ChangedFilesState): string =>
         .join('\n')
     : state.kind;
 
-/** The changed files as the open screen shows them; replaced whole when a new read differs. */
 class ChangedList {
   files: ChangedFile[] = [];
   choices: PickerChoice[] = [];
@@ -42,7 +39,6 @@ class ChangedList {
       row: (theme, width) => this.rowAt(index, theme, width),
     }));
   }
-  /** The rows for each width, computed once per width: they are aligned over the whole list. */
   private rowAt(index: number, theme: Theme, width: number): string {
     let rows = this.rows.get(width);
     if (!rows) {
@@ -51,7 +47,6 @@ class ChangedList {
     }
     return (rows[index] ?? '').slice(1);
   }
-  /** Reads again; true when the list is different now. */
   async refresh(cwd: string): Promise<boolean> {
     const next = await readChangedFiles(cwd);
     if (signature(next) === signature(this.state)) return false;
@@ -74,11 +69,6 @@ class ChangedList {
   }
 }
 
-/**
- * Click on the changed-files icon: the changed files with their size and added/removed lines, a
- * cursor and a search box; Enter shows that file's diff and Esc comes back to the same row. While
- * it is open it looks again every couple of seconds, so new changes appear by themselves.
- */
 export async function showChangedFiles(ctx: ExtensionContext): Promise<void> {
   const list = new ChangedList(await readChangedFiles(ctx.cwd));
   let start: string | undefined;
@@ -96,7 +86,6 @@ export async function showChangedFiles(ctx: ExtensionContext): Promise<void> {
       refresh: { everyMs: REFRESH_MS, work: () => list.refresh(ctx.cwd) },
     });
     const file = list.files.find((candidate) => candidate.path === picked);
-    // Closed by a click on its own icon, or by another screen taking over: do not reopen the list.
     if (!file || outsideCloses() !== before) return;
     await showFileDiff(ctx, file);
     if (outsideCloses() !== before) return;

@@ -1,9 +1,4 @@
 #!/bin/sh
-# Keeps personal details out of the public repository: commit addresses and trailers, emails and
-# home-folder paths in tracked files, and bytecode or cache files. It reads, never writes, and its
-# messages never repeat what it found (the log of a public run is public).
-# Usage: scripts/check-hygiene.sh [<base>]
-# Checks the commits after <base> (only the last commit when <base> is missing or unknown) and every tracked file.
 set -eu
 cd "$(dirname "$0")/.."
 base="${1:-}"
@@ -19,7 +14,6 @@ else
   commits=$(git rev-list --no-merges -n 1 HEAD)
 fi
 
-# GitHub's own addresses: the account's noreply form (what web edits and web merges use) and the web committer.
 noreply='^([0-9]+\+[A-Za-z0-9-]+@users\.noreply\.github\.com|noreply@github\.com)$'
 for commit in $commits; do
   short=$(git rev-parse --short "$commit")
@@ -31,7 +25,6 @@ for commit in $commits; do
   fi
 done
 
-# Matches of a shape in tracked text files that are not an allowed fixture: prints file:line only.
 unexpected() {
   git grep -I -n -o -E "$1" | while IFS= read -r line; do
     match=${line##*:}
@@ -44,6 +37,20 @@ paths=$(unexpected '(/home|/Users)/[A-Za-z0-9._-]+/' '^(/home|/Users)/(someone|p
 [ -z "$paths" ] || fail "a home-folder path in: $(echo "$paths" | tr '\n' ' ')"
 cache=$(git ls-files | grep -E '\.pyc$|(^|/)__pycache__/|(^|/)\.DS_Store$' || true)
 [ -z "$cache" ] || fail "tracked cache files: $(echo "$cache" | tr '\n' ' ')"
+
+exported=$(mktemp)
+leftout=$(mktemp)
+trap 'rm -f "$exported" "$leftout"' EXIT
+if sh scripts/public-files.sh > "$leftout" && [ -s "$leftout" ]; then
+  tr '\0' '\n' < "$leftout" | LC_ALL=C sort > "$exported"
+  git ls-files | LC_ALL=C sort | LC_ALL=C comm -23 - "$exported" > "$leftout"
+  if [ -s "$leftout" ]; then
+    names=$(tr '\n' '\0' < "$exported" | xargs -0 git grep -I -n -o -F -f "$leftout" -- || true)
+    [ -z "$names" ] || fail "an exported file names a file the export leaves out: $(echo "$names" | tr '\n' ' ')"
+  fi
+else
+  fail "scripts/public-files.sh gave no list of exported files"
+fi
 
 [ "$failed" -eq 0 ] || exit 1
 echo "hygiene: ok"

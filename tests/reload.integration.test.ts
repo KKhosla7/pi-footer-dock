@@ -21,7 +21,6 @@ await test('/reload and shutdown with work still pending cause no uncaught error
   const first = await captureFooter(session);
   try {
     await session.prompt('Respond without tools.');
-    // The refresh after persistence is still queued when the reload starts.
     await session.prompt('And again.');
     await session.reload();
     const second = await captureFooter(session);

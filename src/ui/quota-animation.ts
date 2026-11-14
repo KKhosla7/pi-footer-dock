@@ -1,6 +1,5 @@
 import type { Snapshot } from '../core/model.js';
 
-/** One finite highlight sweep on real remaining-value changes; no synthetic usage. */
 export class QuotaAnimation {
   frame = -1;
   private identity = '';

@@ -23,7 +23,6 @@ function assertBeforeDeadline(
   throw error;
 }
 
-/** Bound the await, abort cooperative work, and observe late rejections safely. */
 export async function withAcquisitionDeadline<T>(
   run: (signal: AbortSignal) => Promise<T>,
   milliseconds: number,
@@ -58,7 +57,6 @@ export async function withAcquisitionDeadline<T>(
     });
     const result = await Promise.race([work, aborted]);
     if (caller?.aborted) throw new AcquisitionCancelledError();
-    // A paused event loop can resume a promise before its overdue timer runs.
     assertBeforeDeadline(started, milliseconds, now, controller);
     return result;
   } finally {

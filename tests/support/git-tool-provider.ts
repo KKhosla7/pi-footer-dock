@@ -2,7 +2,6 @@ import { createServer } from 'node:http';
 import type { ServerResponse } from 'node:http';
 import { once } from 'node:events';
 
-/** Two real Pi write/edit calls, followed by a response held until the test releases it. */
 export async function startGitToolProvider() {
   let requests = 0;
   let held: ServerResponse | undefined;

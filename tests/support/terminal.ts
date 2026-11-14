@@ -1,6 +1,5 @@
 import type { Terminal } from '@earendil-works/pi-tui';
 
-/** Test-only terminal sink: render the real TUI without manipulating stdin/stdout. */
 export class MemoryTerminal implements Terminal {
   columns = 140;
   rows = 60;
@@ -30,31 +29,13 @@ export class MemoryTerminal implements Terminal {
   write(data: string): void {
     this.output += data;
   }
-  moveBy(): void {
-    /* Renderer coordinates are not needed by the sink. */
-  }
-  hideCursor(): void {
-    /* No physical cursor. */
-  }
-  showCursor(): void {
-    /* No physical cursor. */
-  }
-  clearLine(): void {
-    /* Captured component renders are asserted directly. */
-  }
-  clearFromCursor(): void {
-    /* Captured component renders are asserted directly. */
-  }
-  clearScreen(): void {
-    /* Captured component renders are asserted directly. */
-  }
-  setTitle(): void {
-    /* No window. */
-  }
-  setProgress(): void {
-    /* No window. */
-  }
-  setProgramStatus(): void {
-    /* No shell integration. */
-  }
+  moveBy(): void {}
+  hideCursor(): void {}
+  showCursor(): void {}
+  clearLine(): void {}
+  clearFromCursor(): void {}
+  clearScreen(): void {}
+  setTitle(): void {}
+  setProgress(): void {}
+  setProgramStatus(): void {}
 }

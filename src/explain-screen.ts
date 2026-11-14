@@ -14,25 +14,18 @@ const GONE: ExplainDoc = {
   body: [{ kind: 'note', text: 'This item is no longer in the footer.' }],
 };
 
-/** The explanation as text, for a notice (the keyboard path) and for tests. */
 export function explainText(doc: ExplainDoc, ascii = false): string {
   return renderBlocks([...doc.headline, ...doc.body], plainStyle, TEXT_WIDTH, ascii)
     .map((line) => line.trimEnd())
     .join('\n');
 }
 
-/**
- * The explanation as a live screen: `current` is asked on every repaint, so times and values move
- * while it is open. The headline stays pinned; the body scrolls. A screen with a period switch
- * (cost, cache) gets the keys d, w and m, and shows what they do in its hint.
- */
 export async function openExplainScreen(
   ctx: ExtensionContext,
   screen: {
     title: string;
     current: (period: Period) => ExplainDoc | undefined;
     ascii: () => boolean;
-    /** The period shown first by a screen with a period switch. */
     initial?: Period;
   },
 ): Promise<void> {

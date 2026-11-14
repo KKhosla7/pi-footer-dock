@@ -1,10 +1,5 @@
 import { execFile } from 'node:child_process';
 
-/**
- * Config keys that make a read-only git command run a program. Only a repository's OWN config is
- * untrusted (a cloned or unpacked folder can carry any); the user's global and system config is
- * theirs, so a filter set there (git-lfs, for example) keeps working.
- */
 const RUNS_PROGRAMS = new RegExp(
   '^(' +
     [
@@ -24,13 +19,8 @@ const RUNS_PROGRAMS = new RegExp(
   'iu',
 );
 const UNTRUSTED_SCOPES = new Set(['local', 'worktree']);
-/** Always off, whatever the config says: the one that fires on every status. */
 const ALWAYS = ['-c', 'core.fsmonitor=false'];
 
-/**
- * `git config --list --show-scope -z` is `scope NUL key NEWLINE value NUL` repeated. Returns the
- * `-c key=` overrides that switch off every program the repository's own config asks git to run.
- */
 export function inertOverrides(configList: string): string[] {
   const keys = new Set<string>();
   const fields = configList.split('\0');
@@ -56,7 +46,6 @@ function listConfig(cwd: string, signal: AbortSignal): Promise<string> {
       'git',
       ['--no-optional-locks', 'config', '--list', '--show-scope', '-z'],
       { cwd, signal, timeout: 3000, maxBuffer: 1024 * 1024, env: { ...process.env } },
-      // A failed read is no reason to skip the protection that does not depend on it.
       (error, stdout) => {
         accept(error ? '' : stdout);
       },
@@ -64,7 +53,6 @@ function listConfig(cwd: string, signal: AbortSignal): Promise<string> {
   });
 }
 
-/** The arguments every git call must carry for this folder, remembered for a few seconds. */
 export async function inertArguments(cwd: string, signal: AbortSignal): Promise<string[]> {
   const now = Date.now();
   const known = cache.get(cwd);
@@ -74,7 +62,6 @@ export async function inertArguments(cwd: string, signal: AbortSignal): Promise<
   cache.set(cwd, { at: now, args });
   return args;
 }
-/** For tests: forget what was learned about a folder. */
 export function forgetInert(): void {
   cache.clear();
 }

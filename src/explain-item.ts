@@ -8,7 +8,7 @@ import { compose, fallbackDoc } from './core/explain/explainer.js';
 import type { ExplainContext, ExplainDoc } from './core/explain/explainer.js';
 import { explainerFor } from './core/explain/registry.js';
 import { quotaSourceFor } from './quota-sources/registry.js';
-import { itemText } from './core/settings-text.js';
+import { itemText } from './core/settings-labels.js';
 import { portableGlyphs } from './ui/glyphs.js';
 import type { Period } from './core/history/period.js';
 import type { Glyphs } from './ui/glyphs.js';
@@ -23,13 +23,11 @@ interface DocContext {
   extensions?: ExtensionRegistry;
 }
 
-/** What an explainer may look at: the item as the footer draws it, the snapshot, the time. */
 function explainContext(id: string, context: DocContext): ExplainContext {
   const { config, snapshot, glyphs } = context;
   const value = renderSegment(
     id,
     snapshot,
-    // An explanation lists everything: a collapsed quota would leave its last window out.
     {
       paint: (text) => text,
       glyphs,
@@ -50,10 +48,6 @@ function explainContext(id: string, context: DocContext): ExplainContext {
   };
 }
 
-/**
- * The item's explanation as blocks, for the current snapshot and time; undefined for an item that
- * is not in the footer. A slot with its own configured help keeps that text.
- */
 export function explainDoc(id: string, context: DocContext): ExplainDoc | undefined {
   const { config } = context;
   const external = context.extensions?.find(id);

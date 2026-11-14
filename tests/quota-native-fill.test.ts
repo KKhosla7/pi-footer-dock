@@ -29,7 +29,7 @@ await test('original text meter has discrete cells, not the requested fractional
     [50, 4, 50],
     [85, 6, 95],
   ] as const) {
-    const text = stripVTControlCharacters(quotaMeter(percent, options, {}));
+    const text = stripVTControlCharacters(quotaMeter(percent, options));
     assert.match(text, /^[▰▱]{7}$/u);
     assert.equal(visibleWidth(text), 7);
     assert.equal(text.split('▰').length - 1, wholeCells);

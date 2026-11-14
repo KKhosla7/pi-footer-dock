@@ -1,4 +1,3 @@
-/** `45s`, `12m`, `2h 10m`, `3d 4h`: two units at most, for reading rather than for sums. */
 export function formatDuration(milliseconds: number): string {
   const seconds = Math.max(0, Math.round(milliseconds / 1000));
   if (seconds < 60) return `${seconds}s`;

@@ -8,8 +8,6 @@ import { setImmediate } from 'node:timers/promises';
 import { startProviderServer } from './support/provider-server.js';
 import { captureFooter, createStreamingSession } from './support/sdk-session.js';
 
-// The fake provider reports 900 input, 25 output and 200 cache-read tokens per response.
-// At 3000/15000/300 USD per million tokens that is (2.7M + 375k + 60k) / 1M = 3.135.
 const PRICED = { input: 3_000, output: 15_000, cacheRead: 300, cacheWrite: 0 };
 
 await test('a non-OpenAI model priced in Pi’s registry shows a real ≈$ figure; an unpriced one makes it partial', async () => {

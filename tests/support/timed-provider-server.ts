@@ -54,7 +54,6 @@ function handler(options: Options, schedule: Schedule, begin: () => number): Req
   };
 }
 
-/** Local HTTP/SSE only; permits independent header and body latency. */
 export async function startTimedProvider(options: Options = {}) {
   const timers = new Set<ReturnType<typeof setTimeout>>();
   let requests = 0;

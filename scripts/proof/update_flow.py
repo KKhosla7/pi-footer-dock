@@ -8,7 +8,7 @@ must start again with the footer drawn and no notice. Usage: scripts/proof/updat
 import hashlib, base64, http.server, json, os, pathlib, re, shutil, subprocess, sys, tarfile, tempfile, threading
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / 'capture'))
-from terminal import Terminal  # noqa: E402
+from terminal import Terminal
 
 repo = pathlib.Path(os.environ['REPO'])
 pi = os.environ['PI_BIN']

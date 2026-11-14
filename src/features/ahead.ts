@@ -5,7 +5,6 @@ import { aheadLines } from '../core/ahead-lines.js';
 import type { AheadReport } from '../core/ahead-parse.js';
 import { openInfoScreen } from '../ui/info-screen.js';
 
-/** Click on the ahead icon: where the branch is, and the commits ahead of its upstream. */
 export async function showAhead(ctx: ExtensionContext): Promise<void> {
   const now = Date.now();
   let report: AheadReport | undefined;

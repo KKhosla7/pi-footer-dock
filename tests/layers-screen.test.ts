@@ -5,7 +5,6 @@ import { defaultSettings, parseSettings } from '../src/core/settings.js';
 import { menuEntries } from '../src/core/settings-groups.js';
 import { choose, menuRows } from '../src/core/settings-menu.js';
 
-/** Item layers: the settings screen rows. */
 const menu = (settings = defaultSettings()) => menuRows(settings, []);
 const layerIds = (): string[] =>
   menu()

@@ -10,7 +10,6 @@ const BINARY_SNIFF_BYTES = 8 * 1024;
 const CHUNK_BYTES = 64 * 1024;
 const NEWLINE = 10;
 
-/** Total reads across all files, so a tree of many large files cannot stall the screen. */
 export interface ReadBudget {
   bytes: number;
   deadline: AbortSignal;
@@ -52,10 +51,6 @@ async function readRegular(path: string): Promise<FileSize> {
   }
 }
 
-/**
- * Size of one working-tree file by its repository-relative path. Never follows a symlink, never
- * reads outside the (real) repository root, reads at most 2 MB, and says what it could not read.
- */
 export async function measureFile(
   root: string,
   relative: string,

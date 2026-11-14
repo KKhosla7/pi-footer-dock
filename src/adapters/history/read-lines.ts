@@ -5,9 +5,7 @@ import { LineSplitter } from './line-splitter.js';
 const CHUNK = 64 * 1024;
 
 export interface ReadResult {
-  /** Bytes consumed up to the end of the last complete line. */
   offset: number;
-  /** Lines too long to read, passed over. */
   tooLong: number;
 }
 export interface ReadOptions {
@@ -15,12 +13,10 @@ export interface ReadOptions {
   from: number;
   to: number;
   onLine: (line: string) => void;
-  /** Called between chunks; awaiting it gives the event loop a turn. */
   pause: () => Promise<void>;
   signal: AbortSignal;
 }
 
-/** Reads complete lines from `from` to `to` in chunks, never following a link. */
 export async function readLines(options: ReadOptions): Promise<ReadResult> {
   const handle = await open(options.path, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {

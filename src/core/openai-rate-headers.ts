@@ -1,6 +1,5 @@
 import type { RateLimits, RateLimitWindow } from './rate-limits.js';
 
-/** OpenAI's documented API rate-limit headers; not ChatGPT subscription windows. */
 function resetDelay(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const units = new Map([

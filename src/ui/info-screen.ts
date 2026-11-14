@@ -1,44 +1,31 @@
 import type { ExtensionContext, Theme } from '@earendil-works/pi-coding-agent';
+import { noop } from '../core/noop.js';
 import { PRODUCT } from '../core/product.js';
 import { startLive } from './live.js';
 import type { Refresh } from './live.js';
 import { Key, matchesKey, truncateToWidth } from '@earendil-works/pi-tui';
 import type { Component, TUI, TuiMouseEvent } from '@earendil-works/pi-tui';
 
-/** A read-only screen: a title and lines the feature builds from Pi's theme. */
 export interface InfoScreen {
-  /** Shown after "Footer", for example `Branches`. */
   title: string;
-  /** The body, already styled; called on every render so it can adapt to the width. */
   lines: (theme: Theme, width: number) => string[];
-  /** Lines that stay above the scrolling body (a summary). */
   header?: (theme: Theme, width: number) => string[];
-  /** Lines that stay below it (a legend), so they are never scrolled out of sight. */
   footer?: (theme: Theme, width: number) => string[];
-  /** Repaint once a second while open, for a body that depends on time or on data that changes. */
   live?: boolean;
-  /** Work repeated while the screen is open, for a body that depends on files that can change. */
   refresh?: Refresh;
-  /** Keys that do something in this screen (a period switch), by the key as typed. */
   keys?: Readonly<Record<string, () => void>>;
-  /** Said in the hint line for those keys, for example `d/w/m period`. */
   hint?: string;
 }
 
-/** Rows the screen draws besides the list: two rules, the title, a blank, a blank and the hint. */
 const CHROME_ROWS = 6;
-/** Rows that stay on screen under the screen (the footer) plus room for Pi's own lines above. */
 const RESERVED_ROWS = CHROME_ROWS + 6;
-/** Like Pi's own lists: a fixed window of this many rows, scrolled, never most of the terminal. */
 const MAX_ROWS = 12;
 const MIN_ROWS = 4;
 const WHEEL_STEP = 3;
 
-/** Frames and scrolls the lines like Pi's own menus; Esc, q or Ctrl+C closes it. */
 class InfoView implements Component {
   private offset = 0;
   private lastWidth = 80;
-  /** Set by every render; the live timer clears it, and stops itself if nothing sets it again. */
   drawn = false;
   constructor(
     private readonly screen: InfoScreen,
@@ -53,14 +40,12 @@ class InfoView implements Component {
       bottom: this.screen.footer?.(this.theme, width) ?? [],
     };
   }
-  /** The scrolling window: fixed, and smaller on a short terminal by what is pinned around it. */
   private visibleRows(pinned = 0): number {
     return Math.max(MIN_ROWS, Math.min(MAX_ROWS, this.rows() - RESERVED_ROWS - pinned));
   }
   private body(width: number): string[] {
     return this.screen.lines(this.theme, width);
   }
-  /** Rows of the scrolling window at the width last drawn. */
   private windowRows(): number {
     const { top, bottom } = this.pinned(this.lastWidth);
     return this.visibleRows(top.length + bottom.length);
@@ -69,7 +54,6 @@ class InfoView implements Component {
     this.offset = Math.max(0, Math.min(Math.max(0, total - rows), this.offset + by));
   }
 
-  /** The last column of each body row: a track with a thumb, only when the body scrolls. */
   private bar(rows: number, shown: number, total: number): string[] {
     if (total <= rows) return Array.from({ length: shown }, () => '');
     const thumb = Math.max(1, Math.round((rows * rows) / total));
@@ -142,12 +126,9 @@ class InfoView implements Component {
     this.scroll(event.wheelDelta < 0 ? -WHEEL_STEP : WHEEL_STEP, this.body(event.width).length);
     return { handled: true };
   }
-  invalidate(): void {
-    /* No cached state: the body is rebuilt on every render. */
-  }
+  readonly invalidate = noop;
 }
 
-/** The screen open now registers how to close it, so the same icon click closes any kind of screen. */
 export function claimScreen(close: () => void): () => void {
   closeOpen = close;
   return () => {
@@ -155,9 +136,7 @@ export function claimScreen(close: () => void): () => void {
   };
 }
 
-/** Closes the screen that is open, if any (a click on the icon that opened it, for example). */
 let closeOpen: (() => void) | undefined;
-/** How many times a screen was closed from outside (a click on its icon): a flow that opened one can tell Esc from that. */
 let closedFromOutside = 0;
 export const outsideCloses = (): number => closedFromOutside;
 export function closeInfoScreen(): void {
@@ -165,7 +144,6 @@ export function closeInfoScreen(): void {
   closeOpen?.();
 }
 
-/** Opens the screen in place of the text area, as Pi's own menus do, and resolves when closed. */
 export async function openInfoScreen(ctx: ExtensionContext, screen: InfoScreen): Promise<void> {
   await ctx.ui.custom<boolean>((tui: TUI, theme, _keys, done) => {
     let stop = (): void => undefined;

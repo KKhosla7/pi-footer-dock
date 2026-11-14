@@ -25,7 +25,6 @@ export function join(segments: Segment[]): Group {
   const spans: Group['spans'] = [];
   for (const segment of segments) {
     if (!segment.text) continue;
-    // The second half of a two-slot item sits against the first only when it directly follows it.
     const attached = segment.attach !== undefined && segment.attach.to === previous;
     text += ' '.repeat(text ? (attached ? (segment.attach?.gap ?? 0) : segment.gap) : 0);
     spans.push({ segment, x: visibleWidth(text) });
@@ -43,11 +42,9 @@ export interface FitContext {
   config: FooterConfig;
   available: number;
 }
-/** The user's `hideAt` for an item (the chevron follows the quota), if any. */
 const hideAtOf = (config: FooterConfig, id: string): Look | undefined =>
   slotOptions(config, leaderOf(id)).hideAt;
 
-/** The configuration without `hideAt`: the shrink plan, not the item's own look, decides when it gives way. */
 export function withoutHideAt(config: FooterConfig): FooterConfig {
   const slots = Object.entries(config.slots).map(([id, slot]) => [
     id,
@@ -56,11 +53,6 @@ export function withoutHideAt(config: FooterConfig): FooterConfig {
   return { ...config, slots: Object.fromEntries(slots) as FooterConfig['slots'] };
 }
 
-/**
- * "Hidden from <look>" keeps its meaning: an item with `hideAt` is dropped once the row would
- * have needed that look, found as before: the richest look at which every item at that one look
- * fits. Only rows that have such an item pay for the measurement.
- */
 function hiddenByLook(row: FooterRow, ctx: FitContext): Set<string> {
   const ids = [...row.left, ...row.right];
   const limits = ids.flatMap((id) => {
@@ -83,11 +75,6 @@ function hiddenByLook(row: FooterRow, ctx: FitContext): Set<string> {
   );
 }
 
-/**
- * One row at the least shortening that fits: each item has its own wordings (what it prints at
- * each look, without repeats), and the shrink plan takes them away one step at a time.
- * `plain` is the configuration without `hideAt`.
- */
 export function fitRow(row: FooterRow, ctx: FitContext, plain: FooterConfig): Placed {
   const memo = new Map<string, Segment>();
   const segment = (id: string, look: Look, expanded: boolean): Segment => {
@@ -103,7 +90,6 @@ export function fitRow(row: FooterRow, ctx: FitContext, plain: FooterConfig): Pl
   const wordingsOf = (id: string): Look[] => {
     const known = wordings.get(id);
     if (known) return known;
-    // The chevron belongs to the quota: one wording of its own, present if it shows at any look.
     if (id === QUOTA_TOGGLE) {
       const shows = LOOKS.some(
         (look) => segment(id, look, ctx.options.quotaExpanded === true).text,

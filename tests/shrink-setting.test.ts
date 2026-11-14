@@ -11,7 +11,6 @@ import { layoutFooter } from '../src/ui/layout.js';
 import { NOW, paint } from './support/layout-matrix.js';
 import { withCost } from './reference.js';
 
-/** The shrink setting. */
 const count = (plan: readonly string[]): Map<string, number> => {
   const counts = new Map<string, number>();
   for (const step of plan) counts.set(step, (counts.get(step) ?? 0) + 1);
@@ -179,7 +178,6 @@ await test('with a user plan the footer properties hold at every width', () => {
       }
       for (const region of layout.hitRegions)
         assert.ok(region.x >= 0 && region.x + region.width <= width, `${width}: region`);
-      // A wider terminal shows at least the items a narrower one shows (the chevron exists only while a window is folded).
       const now = new Set([...targets(width, plan)].filter((id) => id !== 'quota-more'));
       for (const id of previous)
         assert.ok(now.has(id), `${width}: ${id} vanished as the terminal widened`);

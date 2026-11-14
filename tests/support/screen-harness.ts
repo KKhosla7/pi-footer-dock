@@ -10,7 +10,6 @@ const theme = {
   bold: (text: string) => text,
 } as unknown as Theme;
 
-/** A fake Pi context that keeps each opened screen so the test can press keys in it. */
 export function fakeContext(cwd: string, editor = '') {
   const screens: View[] = [];
   const done: ((value: unknown) => void)[] = [];

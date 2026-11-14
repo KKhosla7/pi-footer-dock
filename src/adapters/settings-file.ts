@@ -22,14 +22,11 @@ import type { Settings } from '../core/settings.js';
 const MAX_BYTES = 16 * 1024;
 export interface SettingsLoad {
   settings: Settings;
-  /** Why the file was ignored; absent when it was read, or simply does not exist yet. */
   problem?: string;
-  /** Every problem found in the file; present exactly when `problem` is. */
   problems?: Problem[];
 }
 
 export const settingsPath = (): string => join(getAgentDir(), NAMES.settingsFile);
-/** The files the development builds wrote; read when the current one does not exist yet. */
 const legacyPaths = (): string[] =>
   NAMES.legacySettingsFiles.map((name) => join(getAgentDir(), name));
 
@@ -56,12 +53,10 @@ function readSafely(path: string): string | undefined {
   }
 }
 
-/** The path as the user knows it: `~` for the home folder. */
 const tidy = (path: string): string => {
   const home = homedir();
   return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
 };
-/** A problem with the file itself (not with a setting in it), with what to do about it. */
 function fileProblem(error: unknown, path: string): Problem {
   const where = tidy(path);
   if (error instanceof SyntaxError)
@@ -80,10 +75,6 @@ function fileProblem(error: unknown, path: string): Problem {
   return problem(where, '(file)', message, fix);
 }
 
-/**
- * Never throws: a missing file yields the defaults; a file with any problem yields the defaults
- * and every problem found, and is not applied in part.
- */
 export function loadSettings(path = settingsPath()): SettingsLoad {
   let text: string | undefined;
   try {
@@ -119,7 +110,6 @@ const refused = (problems: Problem[]): SettingsLoad => ({
   problems,
 });
 
-/** Complete-or-nothing: the previous file stays until the new one is fully written. */
 export function saveSettings(settings: Settings, path = settingsPath()): void {
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   try {

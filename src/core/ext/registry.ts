@@ -9,17 +9,10 @@ export interface Found {
   item: ExtItem;
 }
 
-/**
- * What the extensions that are loaded have registered, in memory for this session. It stores no
- * preference and writes nothing; it knows no extension by name. Everything it holds came through
- * the messages of the protocol and was cleaned and bounded on the way in.
- */
 export class ExtensionRegistry {
   private readonly registrations = new Map<string, Registration>();
-  /** Counts every change, so a view can tell when it has to be drawn again. */
   version = 0;
 
-  /** Replaces the extension's registration (the same message twice is the same as once). */
   register(raw: unknown): Problems {
     const { registration, problems } = parseRegistration(raw);
     if (!registration) return problems;
@@ -30,7 +23,6 @@ export class ExtensionRegistry {
     return problems;
   }
 
-  /** Changes item forms, item explanations and setting values of a registered extension. */
   update(raw: unknown): Problems {
     const message = fields(raw);
     const registration = validId(message.ext) ? this.registrations.get(message.ext) : undefined;
@@ -78,7 +70,6 @@ export class ExtensionRegistry {
     this.version += 1;
   }
 
-  /** The user picked a value in the extension's menu: show it until the extension confirms or changes it. */
   setCurrent(ext: string, row: string, value: string): boolean {
     const target: SettingRow | undefined = this.registrations
       .get(ext)
@@ -95,7 +86,6 @@ export class ExtensionRegistry {
   all(): Registration[] {
     return [...this.registrations.values()];
   }
-  /** The footer id of an item: `<extension>:<item>`. */
   static idOf(ext: string, item: string): string {
     return `${ext}:${item}`;
   }
@@ -108,7 +98,6 @@ export class ExtensionRegistry {
   has(id: string): boolean {
     return this.find(id) !== undefined;
   }
-  /** Footer ids placed in a region, in registration order. */
   ids(region: Region): string[] {
     return this.all().flatMap((registration) =>
       registration.items
@@ -116,7 +105,6 @@ export class ExtensionRegistry {
         .map((item) => ExtensionRegistry.idOf(registration.ext, item.id)),
     );
   }
-  /** Regions that have items, so rows appear only when something is in them. */
   usedRegions(): Region[] {
     return REGIONS.filter((region) => this.ids(region).length > 0);
   }

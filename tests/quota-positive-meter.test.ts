@@ -9,7 +9,7 @@ await test('positive quota never looks exhausted: seven fixed cells, monotonic f
   let previous = 0;
   for (let index = 0; index <= 10_000; index += 1) {
     const percent = index / 100;
-    const meter = quotaMeter(percent, options, {});
+    const meter = quotaMeter(percent, options);
     const filled = meter.split('▰').length - 1;
     assert.equal(meter.length, 7);
     assert.match(meter, /^[▰▱]{7}$/u, 'preserve the approved slanted meter appearance');
@@ -17,25 +17,21 @@ await test('positive quota never looks exhausted: seven fixed cells, monotonic f
     assert.ok(percent === 0 ? filled === 0 : filled >= 1);
     previous = filled;
   }
-  assert.equal(quotaMeter(7, options, {}), '▰▱▱▱▱▱▱');
-  assert.equal(quotaMeter(85, options, {}), '▰▰▰▰▰▰▱');
-  assert.equal(quotaMeter(100, options, {}), '▰▰▰▰▰▰▰');
+  assert.equal(quotaMeter(7, options), '▰▱▱▱▱▱▱');
+  assert.equal(quotaMeter(85, options), '▰▰▰▰▰▰▱');
+  assert.equal(quotaMeter(100, options), '▰▰▰▰▰▰▰');
 });
 await test('seven-percent filled cell stays amber and six empty cells stay muted', () => {
   const tones: string[] = [];
-  const meter = quotaMeter(
-    7,
-    {
-      ...options,
-      paint: (text, tone) => {
-        tones.push(tone ?? 'text');
-        return text;
-      },
+  const meter = quotaMeter(7, {
+    ...options,
+    paint: (text, tone) => {
+      tones.push(tone ?? 'text');
+      return text;
     },
-    {},
-  );
+  });
   assert.equal(meter, '▰▱▱▱▱▱▱');
-  assert.deepEqual(tones, ['yellow', 'muted', 'muted', 'muted', 'muted', 'muted', 'muted']);
+  assert.deepEqual(tones, ['warning', 'muted', 'muted', 'muted', 'muted', 'muted', 'muted']);
 });
 await test('rendered positive fractions do not contradict a filled meter by reporting zero percent', () => {
   for (const [percent, label] of [

@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import { registerColorCommand } from './color-command.js';
 import { runOpenWith } from './open-with-command.js';
 import { DockRuntime } from './runtime.js';
 import { say } from './notify.js';
@@ -34,7 +35,6 @@ export default function footerDock(pi: ExtensionAPI): void {
     runtime.modelChanged(ctx);
   });
   pi.on('thinking_level_select', (_event, ctx) => {
-    // The last response still happened; only a model change makes its figures about another model.
     runtime.refresh(ctx);
   });
   pi.on('tool_execution_end', () => {
@@ -86,7 +86,7 @@ function registerInteractionCommands(pi: ExtensionAPI, runtime: DockRuntime): vo
   });
   pi.registerCommand('dock-settings', {
     description: 'Open the footer settings: what to show or hide, limits, icons',
-    handler: (_args, ctx) => runtime.openSettings(ctx),
+    handler: (_args, ctx) => runtime.commands.openSettings(ctx),
   });
   pi.registerCommand('dock-open', {
     description: 'Open the project folder in your file manager (keyboard form of the click)',
@@ -128,22 +128,23 @@ function registerInteractionCommands(pi: ExtensionAPI, runtime: DockRuntime): vo
 
 function registerCommands(pi: ExtensionAPI, runtime: DockRuntime): void {
   registerInteractionCommands(pi, runtime);
+  registerColorCommand(pi, runtime);
   pi.registerCommand('dock-context', {
     description: 'Invoke an optional registered context UI action',
-    handler: (_args, ctx) => runtime.contextAction(ctx),
+    handler: (_args, ctx) => runtime.commands.contextAction(ctx),
   });
   pi.registerCommand('dock-debug', {
     description:
       'Show loaded source, bound session and live/cached usage (no conversation content)',
     handler: (_args, ctx) => {
-      say(ctx, runtime.diagnostics(ctx), 'info');
+      say(ctx, runtime.commands.diagnostics(ctx), 'info');
       return Promise.resolve();
     },
   });
   pi.registerCommand('dock-glyphs', {
-    description: 'Toggle Nerd Font / portable glyphs',
+    description: 'Switch between Nerd Font icons and plain symbols',
     handler: (_args, ctx) => {
-      runtime.toggleGlyphs(ctx);
+      runtime.commands.toggleGlyphs(ctx);
       return Promise.resolve();
     },
   });

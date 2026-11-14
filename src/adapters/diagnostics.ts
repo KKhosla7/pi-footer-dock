@@ -12,11 +12,9 @@ import type { GitMonitor } from './git-monitor.js';
 const fileName = (path: string | undefined): string | undefined =>
   path === undefined ? undefined : basename(path);
 
-/** Where the extension runs from, without saying where on the disk. */
 export const runsFrom = (moduleUrl: string): string =>
   moduleUrl.includes('/node_modules/') ? 'installed package' : 'development checkout';
 
-/** The report is pasted into bug reports: the home folder (which carries the user name) becomes `~`. */
 export function withoutPersonalPaths(text: string): string {
   const home = homedir();
   return home.length > 3 ? text.split(home).join('~') : text;
@@ -46,12 +44,10 @@ function describe(ctx: ExtensionContext | undefined): unknown {
   };
 }
 
-/** Metadata and counters only: never include prompts, responses, or credentials. */
 export function diagnosticReport(options: {
   command: ExtensionContext;
   bound: ExtensionContext | undefined;
   cached: Snapshot | undefined;
-  /** The extension's own module address (`import.meta.url`). */
   source: string;
   quotaEvents?: { received: number; parsed: number; accepted: number };
   quotaProvider?: ReturnType<ProviderQuotaService['diagnostics']>;

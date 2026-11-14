@@ -2,7 +2,6 @@ import { facts, gap, heading, note } from './explain/blocks.js';
 import type { Block } from './explain/blocks.js';
 import type { Problem } from './problems.js';
 
-/** The lines above the list: what happened and what to do about it. */
 export function problemsHeader(problems: readonly Problem[]): Block[] {
   if (problems.length === 0)
     return [
@@ -18,7 +17,6 @@ export function problemsHeader(problems: readonly Problem[]): Block[] {
   ];
 }
 
-/** Every problem with where it is, which setting, what is wrong and what to change. */
 export function problemBlocks(problems: readonly Problem[]): Block[] {
   return problems.flatMap((item, index) => [
     heading(`Problem ${index + 1} of ${problems.length}`),

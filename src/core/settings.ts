@@ -1,5 +1,7 @@
 import { QUOTA_TOGGLE, slotHelp } from './footer-config.js';
 import type { FooterConfig } from './footer-config.js';
+import { parseColors } from './colors.js';
+import type { ColorSettings } from './colors.js';
 import { checkLayers } from './layers.js';
 import { layerNames } from './looks.js';
 import { parseSlotOptions } from './slot-options.js';
@@ -8,24 +10,19 @@ import { parseOpenWith } from './open-folder.js';
 import { parseShrink } from './shrink.js';
 import { record } from './validation.js';
 
-/** Preferences that hold across sessions; the session configuration still wins per option. */
 export interface Settings {
   version: 1;
   glyphs?: 'nerd' | 'portable';
-  /** The one-time note about icons that are not drawn has been shown. */
   glyphHintShown?: boolean;
   quotaExpanded?: boolean;
-  /** `explain` keeps the old click on items (an explanation); the default acts (opens, picks). */
+  colors?: ColorSettings;
+  iconBold?: boolean;
   clicks?: 'actions' | 'explain';
-  /** The user's own app for opening the project folder, as a command with `{path}`. */
   openWith?: string[];
-  /** `on` asks the provider's own usage service for its limits (about every 30 s, shared by all Pi windows); the default is off and sends nothing. */
   limits?: 'on' | 'off';
-  /** What gives way first when a row is too wide: step names, `...` marks where the rest go. */
   shrink?: string[];
   slots: Record<string, SlotOptions>;
 }
-/** `undefined` clears an option. */
 export type SlotPatch = { [K in keyof SlotOptions]?: SlotOptions[K] | undefined };
 
 const QUOTA_ONLY = [
@@ -35,8 +32,8 @@ const QUOTA_ONLY = [
   'hideWindows',
   'animation',
   'meterColor',
+  'meterStyle',
 ];
-/** Options that only one item has: the quota's own, the compaction unit, the cost period. */
 const ownOption = (id: string, key: string): boolean => {
   if (key === 'layers') return layerNames.has(id);
   if (id === 'quota') return QUOTA_ONLY.includes(key);
@@ -47,6 +44,8 @@ export const SETTING_KEYS = [
   'glyphs',
   'glyphHintShown',
   'quotaExpanded',
+  'colors',
+  'iconBold',
   'clicks',
   'openWith',
   'limits',
@@ -55,7 +54,6 @@ export const SETTING_KEYS = [
 ];
 
 export const defaultSettings = (): Settings => ({ version: 1, slots: {} });
-/** Items that can be configured: every stock item except the chevron, which follows the quota. */
 export const settingsItems = (): string[] =>
   [...slotHelp.keys()].filter((id) => id !== QUOTA_TOGGLE);
 
@@ -80,20 +78,19 @@ export function parseSettings(value: unknown): Settings {
   if (data.version !== 1) throw new Error('Unsupported settings version');
   const result = defaultSettings();
   readChoices(data, result);
+  if (data.colors !== undefined) result.colors = parseColors(data.colors);
   if (data.openWith !== undefined) result.openWith = parseOpenWith(data.openWith);
   if (data.shrink !== undefined) result.shrink = parseShrink(data.shrink);
   if (data.slots !== undefined) result.slots = slots(data.slots);
   return result;
 }
-/** The settings that are on or off. */
 function readFlags(data: Record<string, unknown>, result: Settings): void {
-  for (const key of ['glyphHintShown', 'quotaExpanded'] as const) {
+  for (const key of ['glyphHintShown', 'quotaExpanded', 'iconBold'] as const) {
     if (data[key] === undefined) continue;
     if (typeof data[key] !== 'boolean') throw new Error(`${key} must be true or false`);
     result[key] = data[key];
   }
 }
-/** The settings that are one of a few fixed values. */
 function readChoices(data: Record<string, unknown>, result: Settings): void {
   if (data.glyphs !== undefined) {
     if (data.glyphs !== 'nerd' && data.glyphs !== 'portable')
@@ -112,7 +109,6 @@ function readChoices(data: Record<string, unknown>, result: Settings): void {
   }
 }
 
-/** Defaults < settings < session: an option the session sets itself is never overridden. */
 export function applySettings(config: FooterConfig, settings: Settings): FooterConfig {
   const merged = { ...config.slots };
   for (const [id, options] of Object.entries(settings.slots))
@@ -121,7 +117,15 @@ export function applySettings(config: FooterConfig, settings: Settings): FooterC
   return { ...config, slots: merged, ...(shrink ? { shrink } : {}) };
 }
 
-/** A copy of the settings with one item's options changed; an item left without options is dropped. */
+export function withoutSetting(
+  settings: Settings,
+  key: 'colors' | 'iconBold' | 'glyphs',
+): Settings {
+  return Object.fromEntries(
+    Object.entries(settings).filter(([name]) => name !== key),
+  ) as unknown as Settings;
+}
+
 export function withSlot(settings: Settings, id: string, patch: SlotPatch): Settings {
   const options = Object.entries({ ...settings.slots[id], ...patch }).filter(
     ([, value]) => value !== undefined,

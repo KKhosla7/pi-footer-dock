@@ -1,15 +1,9 @@
-/* Matching terminal escape sequences is the point of this file, so control characters are expected. */
-/* eslint-disable no-control-regex */
 import { truncateToWidth } from '@earendil-works/pi-tui';
 
 const ESCAPE =
   /\u001b\[[0-?]*[ -/]*[@-~]|\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)?|\u001b[@-_]/gu;
 const COLOUR = /^\u001b\[[0-9;:]*m$/u;
 
-/**
- * Another extension's status text, made safe: whitespace collapsed, colour codes kept (extensions
- * colour their status with the theme), every other escape sequence and control character removed.
- */
 export function cleanStatus(text: string): string {
   const kept = text
     .replace(/[\r\n\t]/gu, ' ')
@@ -25,10 +19,6 @@ export function cleanStatus(text: string): string {
     .trim();
 }
 
-/**
- * The line Pi's own footer prints for `ctx.ui.setStatus`: statuses sorted by key, joined with a
- * space, cut to the width. Absent when nothing is set, so the footer does not grow for nothing.
- */
 export function statusLine(
   statuses: ReadonlyMap<string, string>,
   width: number,

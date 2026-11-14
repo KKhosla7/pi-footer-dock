@@ -1,7 +1,6 @@
 import process from 'node:process';
 import { SessionManager } from '@earendil-works/pi-coding-agent';
 
-// Persist only synthetic history to obtain a reopenable CLI session, without inference.
 const session = SessionManager.create(process.cwd(), process.argv[2]);
 session.appendMessage({ role: 'user', content: 'Offline quota UI fixture', timestamp: 1 });
 const assistant = session.appendMessage({
@@ -21,7 +20,6 @@ const assistant = session.appendMessage({
   stopReason: 'stop',
   timestamp: 2,
 });
-// Reproduce the live-session reload regression: summaries have usage but no model identity.
 for (let index = 0; index < 5; index += 1) {
   session.appendCompaction(
     'Synthetic compaction metadata fixture.',

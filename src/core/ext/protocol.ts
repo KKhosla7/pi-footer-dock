@@ -1,7 +1,6 @@
 import type { Block, Tone as BlockTone } from '../explain/blocks.js';
 import type { Look } from '../looks.js';
 
-/** The event-bus channels of the extension protocol, version 1. See docs/extending-footer-dock.md. */
 export const CHANNELS = {
   ready: 'footer-dock/ready/v1',
   hello: 'footer-dock/hello/v1',
@@ -13,7 +12,6 @@ export const CHANNELS = {
   rejected: 'footer-dock/rejected/v1',
 } as const;
 
-/** Everything an extension can ask for is bounded; a registration over a bound is cut or dropped. */
 export const LIMITS = {
   extensions: 8,
   items: 12,
@@ -31,7 +29,6 @@ export const LIMITS = {
   bullets: 8,
 } as const;
 
-/** Icons are names; Footer Dock owns the glyphs for each icon set. */
 export const ICON_NAMES = [
   'folder',
   'branch',
@@ -70,14 +67,12 @@ export const REGIONS = [
 ] as const;
 export type Region = (typeof REGIONS)[number];
 
-/** How one item looks at one look: what to say, an icon, a colour. */
 export interface Form {
   text: string;
   icon?: IconName;
   tone?: FormTone;
   dim?: boolean;
 }
-/** `xl` is required; a look not given inherits the nearest richer one; `hide` removes the item. */
 export type At = { xl: Form | 'hide' } & Partial<Record<Exclude<Look, 'xl'>, Form | 'hide'>>;
 
 export interface ExtExplain {
@@ -88,13 +83,10 @@ export interface ExtExplain {
   blocks: Block[];
 }
 export interface ExtItem {
-  /** Local id; the footer id is `<ext>:<id>`. */
   id: string;
   region: Region;
   at: At;
-  /** What a click on the icon does: nothing, or send an event to the extension. */
   icon: 'none' | 'event';
-  /** What a click on the text does: Footer Dock's explanation (the default), an event, or nothing. */
   text: 'explain' | 'event' | 'none';
   explain?: ExtExplain;
 }

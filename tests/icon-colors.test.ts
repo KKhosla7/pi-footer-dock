@@ -7,14 +7,19 @@ import { createPaint } from '../src/ui/palette.js';
 import { renderSegment } from '../src/ui/segments.js';
 import { demoSnapshot } from './reference.js';
 
+const theirLook = () => ({ colors: { accent: 'theme', highlight: 'warning' }, iconBold: false });
+
 await test('every stock footer icon shares the robot accent in both glyph sets and live themes', () => {
   let accent = '36';
-  const paint = createPaint({
-    fg: (color, text) =>
-      `\u001b[${color === 'accent' ? accent : color === 'warning' ? '33' : '90'}m${text}\u001b[39m`,
-    bold: (text) => text,
-    underline: (text) => text,
-  });
+  const paint = createPaint(
+    {
+      fg: (color, text) =>
+        `\u001b[${color === 'accent' ? accent : color === 'warning' ? '33' : '90'}m${text}\u001b[39m`,
+      bold: (text) => text,
+      underline: (text) => text,
+    },
+    theirLook,
+  );
   const config = defaultFooterConfig();
   const snapshot = { ...demoSnapshot, outputTokensPerSecond: 12.3 };
   for (const color of ['36', '35']) {
@@ -58,11 +63,14 @@ await test('every stock footer icon shares the robot accent in both glyph sets a
 });
 
 await test('overridden and templated icons use the same accent without changing text or spacing', () => {
-  const paint = createPaint({
-    fg: (color, text) => `\u001b[${color === 'accent' ? '36' : '90'}m${text}\u001b[39m`,
-    bold: (text) => text,
-    underline: (text) => text,
-  });
+  const paint = createPaint(
+    {
+      fg: (color, text) => `\u001b[${color === 'accent' ? '36' : '90'}m${text}\u001b[39m`,
+      bold: (text) => text,
+      underline: (text) => text,
+    },
+    theirLook,
+  );
   const config = defaultFooterConfig();
   config.slots.thinking = { icon: '★' };
   config.slots.custom = { icon: '☆', text: '{icon} {provider}: {thinking} {icon}' };
@@ -76,11 +84,14 @@ await test('overridden and templated icons use the same accent without changing 
 
 await test('branch name uses normal value text while its icon retains the shared accent', () => {
   const codes: Record<string, string> = { accent: '36', text: '37', dim: '90' };
-  const paint = createPaint({
-    fg: (color, text) => `\u001b[${codes[color] ?? '90'}m${text}\u001b[39m`,
-    bold: (text) => text,
-    underline: (text) => text,
-  });
+  const paint = createPaint(
+    {
+      fg: (color, text) => `\u001b[${codes[color] ?? '90'}m${text}\u001b[39m`,
+      bold: (text) => text,
+      underline: (text) => text,
+    },
+    theirLook,
+  );
   const options = { paint, glyphs: nerdGlyphs };
   const settings = { config: defaultFooterConfig(), look: 'xl' as const };
   const branch = renderSegment('branch', demoSnapshot, options, settings);

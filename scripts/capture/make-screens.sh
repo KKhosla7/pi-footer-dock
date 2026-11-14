@@ -1,8 +1,4 @@
 #!/bin/sh
-# Takes the README pictures from a real Pi session: Pi runs in a pseudo-terminal against a local
-# stand-in provider and a throw-away project and agent folder (no account, no network, none of your
-# own settings), the screen is read with pyte and drawn with a real font by headless Chromium.
-# Usage: scripts/capture/make-screens.sh [picture-name ...]   (default: all)   (needs: nix develop, Chromium or Chrome)
 set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
@@ -14,12 +10,18 @@ server=$!
 
 mkdir -p "$work/home/projects" "$work/agent" "$work/remote.git"
 cat > "$work/agent/models.json" <<JSON
-{"providers":{"example":{"baseUrl":"http://127.0.0.1:$port/v1","api":"openai-completions","apiKey":"demo",
-"models":[{"id":"example-coder","name":"Example Coder","contextWindow":200000,"maxTokens":8192,"reasoning":false,
+{"providers":{
+"anthropic":{"baseUrl":"http://127.0.0.1:$port/v1","api":"openai-completions","apiKey":"demo",
+"models":[{"id":"claude-sonnet-5-5","name":"Claude Sonnet 5.5","contextWindow":1000000,"maxTokens":64000,"reasoning":true,
+"cost":{"input":2,"output":10,"cacheRead":0.1,"cacheWrite":2.5}}]},
+"clinepass":{"baseUrl":"https://api.cline.bot/api/v1","api":"openai-completions","apiKey":"demo",
+"models":[{"id":"cline-pass/deepseek-v4.1-flash","name":"DeepSeek V4.1 Flash","contextWindow":256000,"maxTokens":32000,"reasoning":true,
+"cost":{"input":0.14,"output":0.28,"cacheRead":0.014,"cacheWrite":0.14}}]},
+"example":{"baseUrl":"http://127.0.0.1:$port/v1","api":"openai-completions","apiKey":"demo",
+"models":[{"id":"example-coder","name":"Example Coder","contextWindow":200000,"maxTokens":8192,"reasoning":true,
 "cost":{"input":1.5,"output":6,"cacheRead":0.15,"cacheWrite":1.9}}]}}}
 JSON
 
-# Install the package the way a user gets it: pack it, unpack the tarball, and let Pi install that.
 (cd "$repo" && npm pack --silent --pack-destination "$work" >/dev/null)
 mkdir -p "$work/pkg" && tar -xzf "$work"/pi-footer-dock-*.tgz -C "$work/pkg" --strip-components=1
 HOME="$work/home" PI_CODING_AGENT_DIR="$work/agent" PI_OFFLINE=1 PI_TELEMETRY=0 "${PI_BIN:-$repo/node_modules/.bin/pi}" install "$work/pkg" >/dev/null
@@ -43,4 +45,4 @@ echo "describe('login', () => {});" >> tests/login.test.ts
 printf 'export function validateLogin() {}\n' > src/auth/validate.ts
 
 cd "$repo"
-PI_BIN="${PI_BIN:-$repo/node_modules/.bin/pi}" WORK="$work" REPO="$repo" python3 "$here/capture.py" "$@"
+PI_BIN="${PI_BIN:-$repo/node_modules/.bin/pi}" WORK="$work" REPO="$repo" PORT="$port" python3 "${CAPTURE_PY:-$here/capture.py}" "$@"

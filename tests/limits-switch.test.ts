@@ -21,7 +21,7 @@ await test('asking providers for limits is off by default, saved only when on, a
 });
 
 await test('with the switch off (the default) a provider that has a limit source is not asked and the footer says limits off', () => {
-  let enabled = false; // the default
+  let enabled = false;
   const pi = {
     appendEntry: () => undefined,
     events: { on: () => () => undefined, emit: () => undefined },

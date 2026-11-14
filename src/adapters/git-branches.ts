@@ -18,7 +18,6 @@ function failure(error: unknown): string {
   return 'Could not read the branches from git (it failed or took too long).';
 }
 
-/** One bounded read-only `git for-each-ref`; it never uses the network and never throws. */
 export async function loadBranches(cwd: string, signal: AbortSignal): Promise<BranchResult> {
   try {
     return { ok: true, list: parseBranches(await gitOutput(cwd, ARGS, signal)) };

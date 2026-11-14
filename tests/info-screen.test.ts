@@ -39,7 +39,6 @@ function open(lines: string[], rows = 20, pinned: { header?: string[]; footer?: 
   });
   assert.ok(state.view);
   const view = state.view;
-  // The scroll bar is the last column of a body row; these tests are about the words.
   const text = (width = 60) =>
     view.render(width).map((line) => stripVTControlCharacters(line).replace(/\s*[┃│]$/u, ''));
   return { view, state, closed, text };

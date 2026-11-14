@@ -28,9 +28,7 @@ const advertisement = {
   label: 'Details',
 };
 
-const noop = () => {
-  /* No external resources or render cache in fixture components. */
-};
+const noop = () => {};
 
 function fixture(glyphs: Glyphs) {
   const terminal = new MemoryTerminal();
@@ -71,7 +69,6 @@ function fixture(glyphs: Glyphs) {
     tui.requestRender();
   });
   registry.start();
-  // Real layout node offsets + a legacy forwarding container exercise both coordinate transforms.
   const container = new Container();
   container.addChild(footer);
   tui.setLayoutRoot(
@@ -139,7 +136,6 @@ await test('real fullscreen repeat/multi-click, idle, rerender, move/drag and re
     await settle();
     await f.click();
     assert.equal(f.count(), 9);
-    // Rapid double/triple clicks while a provider rerender is queued still dispatch once each.
     const { x, y } = f.point();
     for (let index = 0; index < 3; index += 1) {
       f.terminal.send(sgr(0, x, y));

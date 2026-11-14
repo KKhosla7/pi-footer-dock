@@ -8,7 +8,6 @@ const SAFE = /^[\w./:-]{1,128}$/u;
 const label = (value: unknown): string =>
   typeof value === 'string' && SAFE.test(value) ? value : '(unassigned)';
 
-/** The first line of a Pi session log. */
 export interface SessionHeader {
   cwd: string;
   version: number;
@@ -29,17 +28,13 @@ export function parseHeader(line: string): SessionHeader | undefined {
   }
 }
 
-/** One response's worth of usage from a log line. */
 export interface Contribution {
-  /** When Pi began the response, epoch ms, or null when the line does not say. */
   startMs: number | null;
-  /** When the entry was written, epoch ms. */
   endMs: number;
   provider: string;
   model: string;
   api: string;
   usage: TokenUsage;
-  /** Dollars, or null when it could not be priced. */
   cost: number | null;
 }
 
@@ -51,11 +46,6 @@ function jsonRecord(line: string): Record<string, unknown> | null {
   }
 }
 
-/**
- * What a log line contributes, by the same rule as the session total (`contribution`): an
- * assistant response, a standalone usage entry or a summary that carries usage. Any other line
- * returns `undefined`; a line that claims usage but is unusable returns `'invalid'`.
- */
 export function parseContribution(
   line: string,
   prices: PriceSource,

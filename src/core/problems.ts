@@ -1,11 +1,5 @@
-/**
- * A configuration problem as the user needs it: where it is, which setting, what is wrong in plain
- * words and what to change.
- */
 export interface Problem {
-  /** The settings file (its path), `/dock-config`, or the settings screen. */
   where: string;
-  /** The key path, for example `slots.model.layers.provider`, or `(file)`. */
   setting: string;
   reason: string;
   fix: string;
@@ -21,7 +15,6 @@ const bounded = (text: string): string => {
   return clean.length > MAX_TEXT ? `${clean.slice(0, MAX_TEXT - 1)}…` : clean;
 };
 
-/** A value from outside as a short piece of text: no controls, cut at 40 characters. */
 export function shown(value: unknown): string {
   let text: string;
   try {
@@ -49,7 +42,6 @@ function distance(a: string, b: string): number {
   }
   return row[b.length] ?? 0;
 }
-/** The candidate a mistyped name is most likely meant for, or nothing when none is close. */
 export function closest(name: string, candidates: Iterable<string>): string | undefined {
   let best: { name: string; steps: number } | undefined;
   for (const candidate of candidates) {
@@ -63,7 +55,6 @@ export function closest(name: string, candidates: Iterable<string>): string | un
 export function problem(where: string, setting: string, reason: string, fix: string): Problem {
   return { where, setting, reason: bounded(reason), fix: bounded(fix) };
 }
-/** The value of a setting is not accepted; the validator's own sentence says what is. */
 export function invalidValue(
   where: string,
   setting: string,
@@ -78,7 +69,6 @@ export function invalidValue(
     message.endsWith('.') ? message : `${message}.`,
   );
 }
-/** A name that is not one of the known ones, with the nearest known name when there is one. */
 export function unknownName(
   where: string,
   setting: string,
@@ -96,7 +86,6 @@ export function unknownName(
   );
 }
 
-/** The notice for a list of problems: every one with where, setting, reason and fix. */
 export function formatProblems(heading: string, problems: readonly Problem[]): string {
   const shownProblems = problems.slice(0, MAX_PROBLEMS);
   const lines = shownProblems.map(

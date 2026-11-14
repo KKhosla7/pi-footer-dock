@@ -14,31 +14,25 @@ import { loadCache, saveCache } from './cache.js';
 import { ProjectResolver } from './project.js';
 import { readLines } from './read-lines.js';
 
-/** Log versions this reader understands; a newer Pi's file is skipped, not guessed at. */
 const SUPPORTED_VERSIONS = { min: 1, max: 10 };
 const HEADER_BYTES = 8192;
 
 export interface ScanOptions {
-  /** Pi's `sessions` directory. */
   root: string;
   cachePath: string;
   prices: () => PriceSource;
-  /** Milliseconds of work between turns of the event loop. */
   sliceMs?: number;
   now?: () => number;
 }
 export interface History {
   rows: HistoryRow[];
-  /** Project key to folder name, for the keys that appear in the rows. */
   projects: Record<string, string>;
   files: number;
-  /** Lines or files passed over because they could not be read as usage. */
   skipped: number;
 }
 
 const hash = (text: string): string => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
-/** The log's first line, when it is a header this reader understands. */
 async function readHeader(path: string): Promise<{ hash: string; cwd: string } | undefined> {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW).catch(() => undefined);
   if (!handle) return undefined;
@@ -59,12 +53,10 @@ async function readHeader(path: string): Promise<{ hash: string; cwd: string } |
     await handle.close();
   }
 }
-/** A copy to feed: if the read fails half way, the saved state must stay as it was. */
 function cloneState(state: FileState): FileState {
   return { ...state, rows: new Map([...state.rows].map(([key, row]) => [key, { ...row }])) };
 }
 
-/** Rolls Pi's session logs up into rows, reading only what was appended since the last scan. */
 export class UsageScanner {
   private readonly resolver = new ProjectResolver();
   private entries = new Map<string, FileEntry>();
@@ -89,7 +81,6 @@ export class UsageScanner {
     );
   }
 
-  /** Every log: new and grown files are read from where they were left; unchanged ones cost nothing. */
   async scan(signal: AbortSignal): Promise<History> {
     await this.load();
     const pause = this.pauser();
@@ -103,7 +94,6 @@ export class UsageScanner {
     await this.save();
     return this.merge();
   }
-  /** One log, after it grew (the session in use): only the appended lines are read. */
   async refresh(path: string, signal: AbortSignal): Promise<History> {
     await this.load();
     const log = await statLog(path);

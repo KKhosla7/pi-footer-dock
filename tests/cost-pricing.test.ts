@@ -27,7 +27,6 @@ const response = (cost?: unknown, model = 'm') => ({
   model,
   usage: { ...tokens, ...(cost ? { cost } : {}) },
 });
-// 1000*1 + 500*2 + 2000*0.5 + 100*3 = 3300 per million
 const REPRICED = 3300 / 1_000_000;
 
 await test('Pi recorded cost wins over the registry rate, which only fills in when Pi recorded none', () => {
@@ -85,7 +84,6 @@ await test('registry validation rejects malformed prices instead of guessing', (
   assert.equal(validRates({ ...flat, tiers: 'x' }), undefined);
   assert.deepEqual(validRates({ ...flat, junk: 1 }), flat);
 });
-/** Checks our arithmetic against pi-ai's at several input sizes; returns how many differed by tier. */
 function parityFor(model: Model<Api>): number {
   const rates = validRates(model.cost);
   assert.ok(rates, `${model.provider}/${model.id} has valid rates`);

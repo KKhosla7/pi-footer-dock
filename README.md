@@ -28,7 +28,7 @@ pi install npm:pi-footer-dock
 
 Then restart Pi (or run `/reload`). That is all. Full instructions, updating, removing and troubleshooting: **[SETUP.md](SETUP.md)**.
 
-**Icons need a [Nerd Font](https://www.nerdfonts.com/) in your terminal.** If the icons show up as empty boxes, your font does not have them: run `/dock-glyphs` for plain symbols that every font has, or install a Nerd Font. Footer Dock mentions this once, the first time it starts.
+**Icons need a [Nerd Font](https://www.nerdfonts.com/) in your terminal.** If the icons show up as empty boxes, your font does not have them: run `/dock-glyphs` for plain symbols that nearly every font has (`/dock-glyphs` again switches back), or install a Nerd Font. Footer Dock mentions this once, the first time it starts. On a Linux console, a `dumb` terminal or a terminal with a legacy character set it picks the plain symbols by itself; a choice in Appearance › Icons always wins.
 
 ## What the footer shows
 
@@ -112,22 +112,23 @@ Other providers show no limits (`quota unsupported`); OpenAI-style APIs that sen
 ## Requirements
 
 - Pi 1.2 or newer, and Node.js 22.19 or newer (the same as Pi).
-- A terminal with mouse support for clicking (everything also works from the keyboard and with `/dock-*` commands). A Nerd Font gives the best icons; `/dock-glyphs` switches to portable symbols.
+- A terminal with mouse support for clicking (everything also works from the keyboard and with `/dock-*` commands). A Nerd Font gives the best icons; `/dock-glyphs` switches to plain symbols.
 - Tested on Linux. macOS and Windows are expected to work; opening the project folder with the system file manager has not been run on them yet.
 
 ## Commands
 
-| Command               | What it does                                               |
-| --------------------- | ---------------------------------------------------------- |
-| `/dock-settings`      | The settings menu                                          |
-| `/dock-info [item]`   | Explains a footer item                                     |
-| `/dock-quota`         | Shows or hides the collapsed limit windows                 |
-| `/dock-open`          | Opens the project folder in your file manager              |
-| `/dock-open-with ...` | Chooses another app for that, for example `thunar {path}`  |
-| `/dock-glyphs`        | Switches between Nerd Font and portable icons              |
-| `/dock-refresh`       | Reads Git and usage again                                  |
-| `/dock-config ...`    | Session-only footer configuration as JSON                  |
-| `/dock-debug`         | Safe diagnostics for a bug report (no content, no secrets) |
+| Command               | What it does                                                |
+| --------------------- | ----------------------------------------------------------- |
+| `/dock-settings`      | The settings menu                                           |
+| `/dock-info [item]`   | Explains a footer item                                      |
+| `/dock-quota`         | Shows or hides the collapsed limit windows                  |
+| `/dock-open`          | Opens the project folder in your file manager               |
+| `/dock-open-with ...` | Chooses another app for that, for example `thunar {path}`   |
+| `/dock-glyphs`        | Switches between Nerd Font icons and plain symbols          |
+| `/dock-color ...`     | Footer colours and bold icons, for example `accent #aa55cc` |
+| `/dock-refresh`       | Reads Git and usage again                                   |
+| `/dock-config ...`    | Session-only footer configuration as JSON                   |
+| `/dock-debug`         | Safe diagnostics for a bug report (no content, no secrets)  |
 
 ## Large repositories
 

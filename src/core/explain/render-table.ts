@@ -5,7 +5,6 @@ import type { Ctx } from './style.js';
 const GAP = '  ';
 const MIN_COLUMN = 4;
 
-/** Column widths: as wide as the longest cell, the widest column giving way when the room is short. */
 function columnWidths(
   rows: readonly (readonly string[])[],
   columns: number,

@@ -9,9 +9,7 @@ import { layoutFooter } from '../src/ui/layout.js';
 import type { Paint } from '../src/ui/palette.js';
 
 const paint: Paint = (text) => text;
-const noop = () => {
-  /* No external resources in this fixture. */
-};
+const noop = () => {};
 
 function mouse(width: number, extra: Partial<TuiMouseEvent> = {}): TuiMouseEvent {
   return {

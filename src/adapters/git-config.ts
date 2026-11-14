@@ -8,7 +8,6 @@ function includePath(source: string, value: string): string {
   return isAbsolute(value) ? value : resolve(dirname(source), value);
 }
 
-/** Select ignore/include origins only; never enumerate unrelated credential/config values. */
 export async function gitConfigFiles(root: string, signal: AbortSignal): Promise<string[]> {
   const xdg = process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config');
   const files = new Set(
