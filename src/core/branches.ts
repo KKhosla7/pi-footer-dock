@@ -1,9 +1,7 @@
 import { safeLabel } from './model.js';
 
-/** Ref names cannot contain control characters, so neither this nor a newline can occur in one. */
 const SEPARATOR = '\u001f';
 
-/** The `--format` for `git for-each-ref`; `parseBranches` reads exactly these fields. */
 export const BRANCH_FORMAT = [
   '%(HEAD)',
   '%(refname)',
@@ -18,23 +16,18 @@ export interface Upstream {
   name: string;
   ahead: number;
   behind: number;
-  /** The upstream branch no longer exists. */
   gone: boolean;
 }
 export interface Branch {
   name: string;
   current: boolean;
   hash: string;
-  /** Last commit time in seconds since the epoch, when git reported one. */
   time: number | undefined;
   upstream: Upstream | undefined;
 }
 export interface BranchList {
-  /** Current branch first, then newest commit first. */
   locals: Branch[];
-  /** Remote-tracking branches, newest commit first; the symbolic `origin/HEAD` is left out. */
   remotes: Branch[];
-  /** Local branches exist but none is checked out. */
   detached: boolean;
 }
 export type BranchResult = { ok: true; list: BranchList } | { ok: false; message: string };
@@ -68,7 +61,6 @@ function newestFirst(a: Branch, b: Branch): number {
   return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
 }
 
-/** Local branches: the current one first, then newest commit first. */
 function localOrder(a: Branch, b: Branch): number {
   if (a.current !== b.current) return a.current ? -1 : 1;
   return newestFirst(a, b);
@@ -87,7 +79,6 @@ function branchOf(fields: string[], name: string): Branch | undefined {
   };
 }
 
-/** Parses the output of `git for-each-ref --format=BRANCH_FORMAT refs/heads refs/remotes`. */
 export function parseBranches(raw: string): BranchList {
   const locals: Branch[] = [];
   const remotes: Branch[] = [];

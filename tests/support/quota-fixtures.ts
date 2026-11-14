@@ -24,11 +24,6 @@ export const quotaHeaders = {
 export function quotaIdentity(name = 'account-a'): string {
   return createHash('sha256').update(name).digest('hex');
 }
-/**
- * A throw-away folder. `stopWriters` runs first, and the folder is removed without blocking the event
- * loop: a write that is still finishing needs the loop to run, and a blocking removal would keep the
- * folder non-empty for as long as it retries.
- */
 export function quotaRoot(t: TestContext, stopWriters: () => void = () => undefined): string {
   const root = mkdtempSync(join(tmpdir(), 'pi-footer-dock-quota-test-'));
   t.after(async () => {

@@ -3,11 +3,8 @@ import type { HistoryRow, ProjectInfo } from './rows.js';
 import { parseContribution } from './entry.js';
 import type { PriceSource } from '../price-source.js';
 
-/** What is kept about one log file between scans. */
 export interface FileState {
-  /** Bytes of the file already read. */
   offset: number;
-  /** When the previous assistant response in this file was written, for the idle gap. */
   prevEnd: number | null;
   rows: Map<string, HistoryRow>;
   skipped: number;
@@ -25,7 +22,6 @@ const dayOf = (ms: number): string => {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
 };
 
-/** Folds one log line into the file's state. Pure: no I/O, so the same lines always give the same rows. */
 export function feedLine(
   state: FileState,
   line: string,

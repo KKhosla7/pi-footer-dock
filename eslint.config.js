@@ -19,6 +19,7 @@ export default tseslint.config(
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
       'no-console': 'error',
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'no-eval': 'error',
       'no-new-func': 'error',
       'no-implied-eval': 'error',
@@ -32,7 +33,14 @@ export default tseslint.config(
     },
   },
   {
-    // Every message goes through say() (src/notify.ts): cleaned, bounded and never throwing.
+    files: ['tests/**/*.ts'],
+    rules: { '@typescript-eslint/no-empty-function': 'off' },
+  },
+  {
+    files: ['src/core/diff-lines.ts', 'src/core/history/rows.ts', 'src/ui/statuses.ts'],
+    rules: { 'no-control-regex': 'off' },
+  },
+  {
     files: ['src/**/*.ts'],
     ignores: ['src/notify.ts'],
     rules: {
@@ -46,7 +54,6 @@ export default tseslint.config(
     },
   },
   {
-    // The picture generator is a development tool written as one script, not product code.
     files: ['scripts/screenshots.ts'],
     rules: { 'max-lines': 'off', 'max-params': 'off' },
   },

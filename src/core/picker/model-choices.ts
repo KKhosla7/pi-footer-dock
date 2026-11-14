@@ -1,6 +1,5 @@
 import type { Choice } from './state.js';
 
-/** The part of a model the picker needs. */
 export interface ModelEntry {
   provider: string;
   id: string;
@@ -16,10 +15,6 @@ export interface ModelChoice extends Choice {
 export const modelKey = (model: Pick<ModelEntry, 'provider' | 'id'>): string =>
   `${model.provider}/${model.id}`;
 
-/**
- * What `/model` lists, in its order: the current model first, the default second, then by provider.
- * Searching matches the id, the provider and the name, and the word `default` finds the default.
- */
 export function modelChoices(
   models: readonly ModelEntry[],
   current: Pick<ModelEntry, 'provider' | 'id'> | undefined,

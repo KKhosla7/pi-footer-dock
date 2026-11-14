@@ -12,17 +12,13 @@ await test('disabled pointer tracing does not construct diagnostic-only metadata
     paint: (text) => text,
     glyphs: portableGlyphs,
     snapshot: () => demoSnapshot,
-    dispose: () => {
-      /* No fixture resources. */
-    },
+    dispose: () => {},
     trace: () => {
       calls += 1;
     },
     traceEnabled: () => enabled,
     isInteractive: () => true,
-    onActivate: () => {
-      /* Metadata-only fixture. */
-    },
+    onActivate: () => {},
   });
   const event: TuiMouseEvent = {
     type: 'press',
@@ -57,9 +53,7 @@ await test('pointer diagnostics identify rejection layer and deduplicate unchang
     paint: (text) => text,
     glyphs: portableGlyphs,
     snapshot: () => demoSnapshot,
-    dispose: () => {
-      /* No fixture resources. */
-    },
+    dispose: () => {},
     trace: (record) => records.push(record),
     isInteractive: () => false,
   });

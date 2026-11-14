@@ -30,11 +30,8 @@ import {
 export interface Segment {
   id: string;
   text: string;
-  /** Columns before this item when it follows another item. */
   gap: number;
-  /** Set for the second half of an item drawn by two slots: its gap when it directly follows the first. */
   attach?: { to: string; gap: number };
-  /** Columns of the leading icon token (glyph and its space); 0 when the icon is not a click target of its own. */
   iconWidth: number;
 }
 interface Rendering {
@@ -58,7 +55,6 @@ const iconKeys = new Map<string, keyof Glyphs>([
   ['speed', 'speed'],
   [PROBLEM_MARKER, 'warn'],
 ]);
-/** Construct dispatch/closures once, not once per slot per frame. */
 const stockTexts = new Map<string, StockFormatter>([
   ['workspace', (s, { paint: p }, r) => workspace(s, p, r)],
   ['branch', (s, { paint: p }, { icon }) => gitBranch(s, p, icon)],
@@ -80,7 +76,7 @@ const stockTexts = new Map<string, StockFormatter>([
   ],
   ['context', (_s, { paint: p }, { icon }) => paintIcon(p, `${icon} `)],
   ['context-usage', (s, { paint: p }, { variant }) => usage(s, p, variant)],
-  ['compaction', (s, { paint: p }, { slot }) => p(compaction(s, slot.unit), 'yellow')],
+  ['compaction', (s, { paint: p }, { slot }) => p(compaction(s, slot.unit), 'highlight')],
   [
     'input',
     (s, { paint: p }, { icon }) => paintIcon(p, `${icon} `) + p(formatTokens(s.totals.input)),
@@ -116,7 +112,6 @@ const stockTexts = new Map<string, StockFormatter>([
   [QUOTA_TOGGLE, (s, o, r) => quotaToggle(s, o, r.look, r.slot)],
   [
     'cost',
-    // Nothing to say without an amount: an "n/a" would only take room from values that exist.
     (s, { paint: p }, { slot }) => {
       const text = costDisplay(s, slot.period);
       return text === '' ? '' : p(text);
@@ -148,7 +143,6 @@ function template(text: string, snapshot: Snapshot, icon: string): string {
     (match, key: string) => templateValues.get(key)?.(snapshot, icon) ?? match,
   );
 }
-/** The chevron belongs to the quota, so it follows the quota's hiding and collapsing. */
 function ownSlot(config: FooterConfig, id: string): SlotOptions {
   const own = slotOptions(config, id);
   if (id !== QUOTA_TOGGLE) return own;
@@ -161,7 +155,6 @@ function ownSlot(config: FooterConfig, id: string): SlotOptions {
   };
 }
 
-/** One item as footer text: a registered extension's item, or one of Footer Dock's own. */
 export function renderSegment(
   id: string,
   snapshot: Snapshot,
@@ -198,7 +191,6 @@ function renderStock(
             .split('{icon}')
             .map((part) => options.paint(template(part, snapshot, icon)))
             .join(paintIcon(options.paint, icon));
-  // The icon is a token of its own only when the item really starts with it (not "Git unavailable").
   const hasIcon = text && slot.text === undefined && stripTerminalSequences(text).startsWith(icon);
   const iconWidth = hasIcon && ICON_ACTION_IDS.has(id) ? iconSpan(id, icon) : 0;
   return { id, text, gap: segmentGap(settings.config, id), ...attachment(id, slot), iconWidth };

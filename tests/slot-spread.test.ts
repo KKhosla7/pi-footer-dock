@@ -4,14 +4,6 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-/**
- * A ratchet on how far each stock slot is spread over the source.
- * A slot's id quoted in many files means a new slot, or a change to one, touches many places. The
- * numbers below are today's counts and may only go down; the goal is 7 or fewer. A
- * count includes unrelated uses of a plain word (`'input'`, `'model'`), which is why it is a
- * ratchet and not a rule: lower a number when the code improves, raise one only with a reason in
- * the commit that does it.
- */
 const BASELINE: Record<string, number> = {
   workspace: 9,
   branch: 9,

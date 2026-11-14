@@ -19,16 +19,13 @@ export interface ApiCostEstimate {
   amount: number | null;
   responses: number;
   unavailable: number;
-  /** Complete amount stays null when coverage is partial. */
   pricedAmount?: number | null;
   pricedResponses?: number;
   coverage?: 'complete' | 'partial' | 'none';
   reasons?: Partial<Record<CostReason, number>>;
   models?: Readonly<Record<string, number>>;
   tokens?: TokenUsage;
-  /** How many priced responses used Pi's recorded cost versus a repricing from its registry. */
   pricedBy?: Readonly<Record<PriceBasis, number>>;
-  /** Where the priced money went, by category and by model. */
   breakdown?: CostBreakdown;
 }
 function failure(response: Record<string, unknown>, usage: TokenUsage | null): CostReason | null {
@@ -38,7 +35,6 @@ function failure(response: Record<string, unknown>, usage: TokenUsage | null): C
     ? 'unassigned-model'
     : null;
 }
-/** Metadata only. Never retains messages, credentials or raw session entries. */
 export class ApiCostAccumulator {
   private amount: number | null = 0;
   private responses = 0;
@@ -126,7 +122,6 @@ export class ApiCostAccumulator {
     };
   }
 }
-/** Exact historical model/token categories, not the currently selected model. */
 export function estimateApiCost(
   responses: readonly unknown[],
   prices: PriceSource = NO_PRICES,
@@ -140,10 +135,6 @@ export function costAmount(amount: number | null | undefined): string {
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) return NO_COST;
   return amount > 0 && amount < 0.01 ? '≈<$0.01' : `≈$${amount.toFixed(2)}`;
 }
-/**
- * The footer label. A partial total is a lower bound, so a trailing `+` ("at least") says so in one
- * character; under a cent the bound says nothing, so nothing is drawn. The explanation has the rest.
- */
 export function costLabel(estimate: ApiCostEstimate | undefined): string {
   if (estimate?.coverage === 'partial') {
     const subtotal = estimate.pricedAmount;
@@ -151,7 +142,6 @@ export function costLabel(estimate: ApiCostEstimate | undefined): string {
   }
   return costAmount(estimate?.amount);
 }
-/** Whether there is any amount to show, whole or partial; the footer shows nothing otherwise. */
 export function hasCost(estimate: ApiCostEstimate | undefined): boolean {
   return costLabel(estimate) !== NO_COST;
 }

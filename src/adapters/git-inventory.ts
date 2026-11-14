@@ -70,7 +70,6 @@ async function metadataTargets(logical: string): Promise<Set<string>> {
   return targets;
 }
 
-/** Watch-before-scan inventory; ignored trees are pruned unless tracked descendants require them. */
 class GitInventory {
   readonly desired = new Set<string>();
   private readonly roles = new Map<string, Role>();

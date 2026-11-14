@@ -1,6 +1,5 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
-/** Independent protocol fixture: no consumer imports and no production provider dependency. */
 export default function fixtureProvider(pi: ExtensionAPI): void {
   let subscriptions: (() => void)[] = [];
   const advertise = () => {

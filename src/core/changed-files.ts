@@ -1,7 +1,5 @@
-/** One-letter badge: modified, added, deleted, renamed, untracked, conflicted. */
 export type FileStatus = 'M' | 'A' | 'D' | 'R' | '?' | 'U';
 
-/** What the working-tree file turned out to be; `lines` is its total line count. */
 export type FileSize =
   | { kind: 'lines'; lines: number }
   | {
@@ -16,14 +14,12 @@ export type FileSize =
         | 'skipped';
     };
 
-/** A path the footer counts, as `git status` reports it. */
 export interface StatusEntry {
   path: string;
   status: FileStatus;
   submodule: boolean;
 }
 
-/** Added and removed lines from `git diff --numstat`; null for a binary file. */
 export interface Numstat {
   added: number | null;
   removed: number | null;
@@ -33,7 +29,6 @@ export interface ChangedFile {
   path: string;
   status: FileStatus;
   size: FileSize;
-  /** null when it cannot be counted (binary, too large, not read). */
   added: number | null;
   removed: number | null;
 }
@@ -55,7 +50,6 @@ function letter(xy: string, renamed: boolean): FileStatus {
   return xy.startsWith('A') || xy.endsWith('A') ? 'A' : 'M';
 }
 
-/** Parses `status --porcelain=v2 -z`: the records the footer counts (`1`, `2`, `u`, `?`). */
 export function parseStatusEntries(output: string): StatusEntry[] {
   const records = output.split('\0');
   const entries: StatusEntry[] = [];
@@ -67,7 +61,7 @@ export function parseStatusEntries(output: string): StatusEntry[] {
       entries.push({ path: pathAfter(record, 8), status: letter(xy, false), submodule });
     } else if (record.startsWith('2 ')) {
       entries.push({ path: pathAfter(record, 9), status: letter(xy, true), submodule });
-      index += 1; // the original path of a rename or copy follows as its own record
+      index += 1;
     } else if (record.startsWith('u ')) {
       entries.push({ path: pathAfter(record, 10), status: 'U', submodule });
     } else if (record.startsWith('? ')) {
@@ -80,7 +74,6 @@ export function parseStatusEntries(output: string): StatusEntry[] {
 const COUNT = (value: string | undefined): number | null =>
   value === undefined || value === '-' ? null : Number(value);
 
-/** Parses `diff --numstat -z`; a rename is keyed by its new path. */
 export function parseNumstat(output: string): Map<string, Numstat> {
   const tokens = output.split('\0');
   const stats = new Map<string, Numstat>();
@@ -106,7 +99,6 @@ function counts(entry: StatusEntry, size: FileSize, stat: Numstat | undefined) {
   return stat ?? { added: 0, removed: 0 };
 }
 
-/** One file per status entry, sorted by path; line counts come from numstat or the file itself. */
 export function mergeChangedFiles(
   entries: readonly StatusEntry[],
   numstat: ReadonlyMap<string, Numstat>,
@@ -128,7 +120,6 @@ export interface Totals {
   files: number;
   added: number;
   removed: number;
-  /** An untracked file was not read (budget or deadline), so the totals are a lower bound. */
   partial: boolean;
 }
 

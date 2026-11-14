@@ -6,7 +6,6 @@ import { gitInventory } from './git-inventory.js';
 import type { GitWatchLimits } from './git-inventory.js';
 import type { GitWatchSet } from './git-watch-set.js';
 
-/** Opens a watcher for every directory whose changes can change the status, within the limits. */
 export async function bootstrapWatches(
   cwd: string,
   watches: GitWatchSet,

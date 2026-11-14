@@ -10,7 +10,6 @@ import { demoSnapshot } from './reference.js';
 
 const NOW = 1_800_000_000;
 const iso = (seconds: number): string => new Date((NOW + seconds) * 1000).toISOString();
-/** The response shape observed from the live ClinePass endpoint, with synthetic values. */
 function cline(limits: unknown[]): unknown {
   return { success: true, data: { limits } };
 }
@@ -19,7 +18,6 @@ const clineFixture = cline([
   { type: 'weekly', percentUsed: 52, resetsAt: iso(286_960) },
   { type: 'monthly', percentUsed: 47, resetsAt: iso(1_641_592) },
 ]);
-/** The response shape observed from the live OpenCode Go endpoint, with synthetic values. */
 function go(rolling: unknown, weekly: unknown, monthly: unknown): unknown {
   return { usage: { rolling, weekly, monthly } };
 }
@@ -139,7 +137,7 @@ await test('the footer shows the percent left and no badge text for the blocking
   );
   assert.match(text, /5h .* 100%/u);
   assert.match(text, /week .* 100%/u);
-  assert.match(text, /month .*0% ◌/u);
+  assert.match(text, /month .*0% ↻/u);
   assert.doesNotMatch(text, /rate-limited/u);
 });
 
@@ -175,7 +173,7 @@ await test('the blocked window is drawn in red; healthy windows are not', () => 
     { ...demoSnapshot, rateLimits: { provider: 'opencode-go', model: 'm', windows } },
     {
       paint: (text: string, tone?: string) => {
-        if (tone === 'red') red.push(text);
+        if (tone === 'error') red.push(text);
         return text;
       },
       glyphs: portableGlyphs,

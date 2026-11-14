@@ -1,10 +1,6 @@
 import { formatProblems, problem } from './problems.js';
 import { checkConfig } from './settings-problems.js';
 
-/**
- * What to tell the user when `/dock-config` was given something that cannot be applied: every
- * problem with the setting, the reason and the fix, and that nothing changed.
- */
 export function explainConfig(args: string): string {
   const where = '/dock-config';
   if (args.length > 16_384)

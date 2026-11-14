@@ -27,7 +27,6 @@ const lines = (n: number) => Array.from({ length: n }, (_, i) => `line ${i + 1}\
 
 const HOSTILE = 'ev\u001b[31mil\u0007\nname.txt';
 
-/** A repository with one of every kind of change. */
 async function mixedRepository(t: TestContext) {
   const { cwd, git, write } = await tempRepository(t);
   await write('a.txt', lines(5));
@@ -37,15 +36,15 @@ async function mixedRepository(t: TestContext) {
   await write('bin.dat', Buffer.from([1, 2, 0, 3]));
   await git('add', '.');
   await git('commit', '-m', 'seed');
-  await write('a.txt', 'line 1\nCHANGED\nline 3\nline 4\nline 5\nline 6\n'); // +2 -1
+  await write('a.txt', 'line 1\nCHANGED\nline 3\nline 4\nline 5\nline 6\n');
   await write('both.txt', 'one\ntwo\nthree\n');
   await git('add', 'both.txt');
-  await write('both.txt', 'one\ntwo\nthree\nfour\n'); // staged and unstaged: one row
+  await write('both.txt', 'one\ntwo\nthree\nfour\n');
   await rm(join(cwd, 'gone.txt'));
   await git('mv', 'old name.txt', 'new ünï.txt');
   await write('bin.dat', Buffer.from([9, 0, 0, 0]));
-  await write('untracked.txt', 'a\nb\nc'); // no trailing newline: 3 lines
-  await write('deep/er/nested.txt', 'n\n'); // nested untracked
+  await write('untracked.txt', 'a\nb\nc');
+  await write('deep/er/nested.txt', 'n\n');
   await write('data.bin', Buffer.from([0, 1, 2]));
   await write(HOSTILE, 'x\n');
   await symlink('/etc/hostname', join(cwd, 'link'));
@@ -143,7 +142,7 @@ await test('large and symlinked files are labelled, never read', async (t) => {
   await write('seed.txt', 'a\n');
   await git('add', '.');
   await git('commit', '-m', 'seed');
-  await write('huge.txt', 'x\n'.repeat(1_100_000)); // 2.2 MB
+  await write('huge.txt', 'x\n'.repeat(1_100_000));
   const outside = join(quotaRoot(t), 'outside');
   await mkdir(outside);
   await write('../outside/secret.txt', 'one\ntwo\n');

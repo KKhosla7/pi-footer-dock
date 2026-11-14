@@ -9,7 +9,6 @@ import type {
 const FOOTER_LINES = 2;
 const noop = (): void => undefined;
 
-/** The theme with the hint's "Esc to cancel" reworded for where the list sits (go back, close). */
 export function withEscape(theme: SettingsListTheme, wording: string): SettingsListTheme {
   return {
     ...theme,
@@ -17,7 +16,6 @@ export function withEscape(theme: SettingsListTheme, wording: string): SettingsL
   };
 }
 
-/** The tallest this set of lists ever renders, over every row being selected in turn. */
 export function tallest(
   lists: SettingItem[][],
   width: number,
@@ -34,17 +32,11 @@ export function tallest(
   return height;
 }
 
-/**
- * Keeps a list the same height whichever row is selected, so nothing above or below it moves on
- * arrow keys. The padding goes before the list's own blank line and hint, so the hint stays put too.
- */
 export class StableList implements Component {
   constructor(
     private readonly list: SettingsList,
     private readonly height: (width: number) => number,
-    /** Lines drawn above the list (a title); they are not part of the padded height. */
     private readonly header: (width: number) => string[] = () => [],
-    /** Lines drawn below the list (a closing rule). */
     private readonly footer: (width: number) => string[] = () => [],
   ) {}
 
@@ -65,7 +57,6 @@ export class StableList implements Component {
     this.list.handleInput(data);
   }
   handleMouse(event: TuiMouseEvent) {
-    // Rows are drawn below the header, so a click's row is counted from the first line under it.
     return this.list.handleMouse({ ...event, y: event.y - this.header(event.width).length });
   }
   invalidate(): void {

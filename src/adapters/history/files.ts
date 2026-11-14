@@ -10,7 +10,6 @@ export interface LogFile {
   mtimeMs: number;
 }
 
-/** One log file if it is a regular file of the user's within the size cap, else nothing. */
 export async function statLog(path: string): Promise<LogFile | undefined> {
   const info = await lstat(path).catch(() => undefined);
   if (!info?.isFile() || info.size > MAX_FILE_BYTES) return undefined;
@@ -19,10 +18,6 @@ export async function statLog(path: string): Promise<LogFile | undefined> {
   return { path, size: info.size, mtimeMs: info.mtimeMs };
 }
 
-/**
- * The session logs under `root`: regular files owned by the user, never a link, within the size
- * cap; the newest `MAX_FILES`. Anything else is passed over silently (it is not ours to read).
- */
 export async function discoverLogs(root: string): Promise<LogFile[]> {
   const found: LogFile[] = [];
   for (const folder of await readdir(root).catch(() => [] as string[])) {

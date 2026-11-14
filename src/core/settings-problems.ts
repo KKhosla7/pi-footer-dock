@@ -4,12 +4,6 @@ import type { Problem } from './problems.js';
 import { SETTING_KEYS, parseSettings, settingsItems } from './settings.js';
 import { SLOT_OPTION_KEYS } from './slot-options.js';
 
-/**
- * Every problem in a settings file or a `/dock-config` command, in one pass and without throwing.
- * The existing validators are the single source of what is
- * valid: each part is checked on its own through them, so nothing is written twice. An empty
- * list means the whole is valid.
- */
 const isObject = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const kindOf = (value: unknown): string =>
@@ -33,7 +27,6 @@ const notAnObject = (where: string, setting: string, what: string, value: unknow
 const versionProblems = (where: string, value: unknown): Problem[] =>
   value === 1 ? [] : [invalidValue(where, 'version', value, new Error('The version must be 1'))];
 
-/** Checks the options of each item in `slots`, one option at a time. */
 function slotProblems(
   where: string,
   value: unknown,
@@ -56,7 +49,6 @@ function slotProblems(
   });
 }
 
-/** `slots` in the settings file: unknown items are named, the known ones are checked option by option. */
 function settingsSlotProblems(where: string, value: unknown): Problem[] {
   if (!isObject(value)) return [notAnObject(where, 'slots', 'slots', value)];
   const items = settingsItems();
@@ -94,7 +86,6 @@ export function checkSettings(value: unknown, where: string): Problem[] {
     ...missing,
     ...Object.entries(value).flatMap(([key, item]) => settingProblems(where, key, item)),
   ];
-  // Whatever the parts cannot show (a rule that spans parts): the whole, once.
   return found.length > 0
     ? found
     : attempt(where, '(settings)', undefined, () => parseSettings(value));

@@ -13,7 +13,6 @@ const isolated = {
   GIT_TERMINAL_PROMPT: '0',
 };
 
-/** Points the code under test at no user or system Git configuration for the whole test. */
 export function isolateGitConfig(t: TestContext): void {
   const before = Object.fromEntries(Object.keys(isolated).map((key) => [key, process.env[key]]));
   Object.assign(process.env, isolated);
@@ -25,7 +24,6 @@ export function isolateGitConfig(t: TestContext): void {
   });
 }
 
-/** An empty temporary repository (`main`, no commits) with a helper to run Git and write files. */
 export async function tempRepository(t: TestContext) {
   isolateGitConfig(t);
   const cwd = join(quotaRoot(t), 'repo');

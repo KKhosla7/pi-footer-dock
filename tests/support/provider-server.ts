@@ -2,7 +2,6 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { emitResponses } from './responses-fixture.js';
 
-/** Local wire-protocol fixture. Real HTTP/SSE, no paid provider or mocked Pi APIs. */
 export async function startProviderServer(
   quotaEvent?: object,
   headers: Record<string, string> = {},

@@ -50,7 +50,6 @@ export function harness(
   const now = () => clock;
   const gate = new SharedGate({ root, now, flightMs: 45_000 });
   const fetches: { url: string; authorization: string | undefined }[] = [];
-  /** The same requests with every header they carried. */
   const requests: { url: string; headers: Record<string, string> }[] = [];
   const fake = ((input: URL | string, init?: RequestInit) => {
     const headers = init?.headers as Record<string, string> | undefined;
@@ -69,7 +68,6 @@ export function harness(
       clock += ms;
     },
     last: () => states.at(-1),
-    /** The same gate, fake network and clock, for a controller that builds its own service. */
     options: () => ({ gate, fetch: fake, now }),
     service: () => {
       const service: ProviderQuotaService = new ProviderQuotaService(

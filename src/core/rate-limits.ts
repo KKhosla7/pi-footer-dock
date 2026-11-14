@@ -5,7 +5,6 @@ export interface RateLimitWindow {
   label: string;
   remainingPercent: number;
   resetAt: number;
-  /** A provider-published blocking status, such as `rate-limited`. Absent when the window is fine. */
   badge?: string;
 }
 
@@ -35,7 +34,6 @@ export function windowLabel(minutes: number): string {
   return `${minutes}m`;
 }
 
-/** What is valid in one window's fields; the one place that says so (the parser and the report). */
 function windowChecks(item: RecordLike | undefined) {
   const usedPercent = finite(item?.used_percent);
   const minutes = finite(item?.window_minutes);
@@ -88,7 +86,6 @@ function additionalWindows(value: unknown): RateLimitWindow[] {
   return parseWindowPair(record(item?.rate_limits) ?? item);
 }
 
-/** Parse only the documented Codex stream event shape; unknown fields are ignored. */
 export function parseRateLimits(
   provider: string,
   model: string,
@@ -104,7 +101,6 @@ export function parseRateLimits(
   return windows.length > 0 ? { provider, model, windows } : undefined;
 }
 
-/** ChatGPT account usage uses seconds, unlike Codex stream window_minutes. */
 export function parseCodexUsage(
   provider: string,
   model: string,
@@ -162,7 +158,6 @@ function parseStoredWindow(candidate: unknown): RateLimitWindow | undefined {
   return { label: window.label, remainingPercent, resetAt };
 }
 
-/** Validate quota state restored from a session custom entry. */
 export function parseStoredRateLimits(data: unknown): RateLimits | undefined {
   const value = record(data);
   if (

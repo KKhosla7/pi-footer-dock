@@ -11,25 +11,14 @@ import { parseSettings } from '../src/core/settings.js';
 import { createGitRepository } from './support/git-fixtures.js';
 import { captureFooter, createStreamingSession } from './support/sdk-session.js';
 
-/**
- * An item that is hidden does not exist, so nothing runs for
- * it. Each case has a control (the item is shown, and the thing we watch for must happen), so a
- * missing signal cannot pass for "nothing ran". The hidden cases fail on today's code, which
- * starts Git and the cost history whatever is shown; they are `todo` until sources start only on demand.
- *
- * Observed from outside, as a user would: a `git` shim at the front of PATH logs every call, and
- * the cost history leaves its rollup file in the cache folder.
- */
-const SETTLE_MS = 1800; // the history scan starts 300 ms after start; Git reads at start
+const SETTLE_MS = 1800;
 
 const HIDDEN = { hideAt: 'xl' } as const;
-/** Written the way the product writes it: the file must be private (mode 600) or it is ignored. */
 const writeSettings = (slots: Record<string, unknown>): void => {
   saveSettings(parseSettings({ version: 1, slots }));
 };
 const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Runs a session for a moment with the given items hidden; returns what it did. */
 async function observe(
   hidden: string[],
 ): Promise<{ gitCalls: string[]; rollup: boolean; text: string }> {

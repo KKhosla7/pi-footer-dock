@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 
-/** Check every printable character, including padding between styled spans. */
 export function assertPaintedSurface(row: string, background: string | string[]): void {
   const allowed = new Set(typeof background === 'string' ? [background] : background);
   let painted = false;

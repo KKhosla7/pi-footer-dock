@@ -34,7 +34,6 @@ export function sum(rows: Iterable<HistoryRow>): Totals {
   }
   return total;
 }
-/** Rows that fall in the period containing `date` (today, this week from Monday, this month). */
 export function inPeriod(rows: Iterable<HistoryRow>, period: Period, date: Date): HistoryRow[] {
   const from = periodStart(period, date);
   const to = dayString(date);
@@ -49,7 +48,6 @@ export function groupBy(rows: Iterable<HistoryRow>, by: GroupKey): Map<string, T
   }
   return new Map([...groups].map(([key, list]) => [key, sum(list)]));
 }
-/** Reuse over many responses: all reads over all prompt tokens, never a mean of percentages. Null without reads. */
 export function cacheShare(total: Totals): number | null {
   const prompt = total.input + total.read + total.write;
   return total.read > 0 && prompt > 0 ? (total.read / prompt) * 100 : null;

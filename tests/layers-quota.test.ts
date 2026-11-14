@@ -12,7 +12,6 @@ import { portableGlyphs } from '../src/ui/glyphs.js';
 import { layoutFooter } from '../src/ui/layout.js';
 import { demoSnapshot } from './reference.js';
 
-/** Item layers: the quota's layers. */
 const NOW = 4_000_000_000_000;
 
 const quotaConfig = (layers: Record<string, boolean>): FooterConfig => ({
@@ -36,12 +35,12 @@ await test('the meter off never prints a bar; the reset off never prints the ico
     const noReset = quotaRow(width, { reset: false });
     const neither = quotaRow(width, { meter: false, reset: false });
     assert.doesNotMatch(noMeter, /▰|▱/u, `${width}`);
-    assert.doesNotMatch(noReset, /◌/u, `${width}`);
-    assert.doesNotMatch(neither, /▰|▱|◌/u, `${width}`);
+    assert.doesNotMatch(noReset, /↻/u, `${width}`);
+    assert.doesNotMatch(neither, /▰|▱|↻/u, `${width}`);
     for (const row of [noMeter, noReset, neither])
       assert.ok(visibleWidth(row) <= width, `${width}`);
   }
-  assert.match(quotaRow(300, { meter: false }), /5h 34% ◌ 2h 15m {3}│ {3}week 48% ◌ 3d 10h/u);
+  assert.match(quotaRow(300, { meter: false }), /5h 34% ↻ 2h 15m {3}│ {3}week 48% ↻ 3d 10h/u);
   assert.match(
     quotaRow(300, { reset: false }),
     /5h ▰▰▱▱▱▱▱ 34% {3}│ {3}week ▰▰▰▱▱▱▱ 48% {3}│ {3}month ▰▱▱▱▱▱▱ 18%/u,
@@ -57,8 +56,7 @@ await test('a quota layer that is on is printed wherever the same footer prints 
     const base = quotaRow(width, {});
     const same = quotaRow(width, { meter: true, reset: true });
     assert.equal(same, base, `${width}`);
-    // Dropping the meter only ever makes room: the times are kept wherever they were, and more.
-    if (/◌ \d/u.test(base)) assert.match(quotaRow(width, { meter: false }), /◌ \d/u, `${width}`);
+    if (/↻ \d/u.test(base)) assert.match(quotaRow(width, { meter: false }), /↻ \d/u, `${width}`);
   }
 });
 

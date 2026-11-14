@@ -17,10 +17,8 @@ const git = (cwd: string, ...args: string[]): string =>
     env: { ...process.env, ...ENV },
     encoding: 'utf8',
   });
-/** `scope NUL key NEWLINE value NUL`, as `git config --list --show-scope -z` prints it. */
 const entry = (scope: string, key: string, value = 'x'): string => `${scope}\0${key}\n${value}\0`;
 
-/** A repository whose own config tries to run a program every time git reads it. */
 function hostileRepository(t: TestContext): { dir: string; marker: string } {
   const dir = quotaRoot(t);
   git(dir, 'init', '-q');

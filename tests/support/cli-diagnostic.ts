@@ -44,7 +44,6 @@ function cliArgs(options: CliDiagnosticOptions): string[] {
   ];
 }
 
-/** Launch the real Pi CLI, not a mocked ExtensionContext or SDK adapter. */
 export async function cliDiagnostic(options: CliDiagnosticOptions): Promise<string> {
   const child = spawn(process.execPath, cliArgs(options), {
     cwd: options.cwd,

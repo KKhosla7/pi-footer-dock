@@ -18,7 +18,6 @@ function clineWindow(item: unknown, observe?: ObserveWindow): RateLimitWindow | 
   }
   return windowOf(label, entry?.percentUsed, entry?.resetsAt, observe);
 }
-/** `GET /api/v1/users/me/plan/usage-limits`: `data.limits[]` of `{type, percentUsed, resetsAt}`. */
 export function parseClinePassLimits(
   body: unknown,
   observe?: ObserveWindow,

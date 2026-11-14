@@ -8,9 +8,6 @@ import { layoutFooter } from '../src/ui/layout.js';
 import { NOW, SCENARIOS, paint } from './support/layout-matrix.js';
 import type { Scenario } from './support/layout-matrix.js';
 
-/**
- * Properties of the footer that must hold at every width, for every scenario.
- */
 const layout = (scenario: Scenario, width: number) =>
   layoutFooter(scenario.snapshot, width, {
     paint,
@@ -44,7 +41,6 @@ await test('invariant 4: no row starts or ends with a separator and no separator
   });
 });
 
-/** Pairs that are one item drawn by two slots, so their zero gap is intended. */
 const ONE_ITEM = new Set(['context|context-usage', 'quota|quota-more']);
 const MOVED = 'slots moved';
 
@@ -96,15 +92,12 @@ await test('invariant 4b: no two items are glued in the stock arrangements', () 
       assert.deepEqual(glued(scenario, width), [], where(scenario, width));
 });
 
-// A slot moved behind another one used to be glued to it
-// when its default gap was zero. Only the two halves of one item (`ONE_ITEM`) sit against each other.
 await test('invariant 4b: no two items are glued after slots are moved', () => {
   for (const scenario of SCENARIOS.filter((s) => s.name.startsWith(MOVED)))
     for (const width of WIDTHS)
       assert.deepEqual(glued(scenario, width), [], where(scenario, width));
 });
 
-/** How many quota windows the second row shows (each shows its percentage with "left"). */
 const quotaWindows = (scenario: Scenario, width: number): number =>
   (stripVTControlCharacters(layout(scenario, width).lines[1] ?? '').match(/\d+% left/gu) ?? [])
     .length;
@@ -113,16 +106,11 @@ const scenario = (name: string): Scenario => {
   if (!found) throw new Error(`no scenario ${name}`);
   return found;
 };
-/** The same scenario without the tokens-per-second value. */
 const withoutSpeed = (base: Scenario): Scenario => ({
   ...base,
   snapshot: { ...base.snapshot, outputTokensPerSecond: null },
 });
 
-// The reported flicker: the speed value appears after every response and disappears at the next
-// turn. It cannot be free (it needs room), but it must behave like an item of fixed size: while it
-// is shown, the quota is exactly what it would be without it in a row narrower by its footprint
-// (the shrink plan takes the same steps either way until it drops the speed).
 await test('invariant 10: the speed value takes a fixed footprint and changes nothing else', () => {
   for (const name of ['speed shown, three', 'month hidden, speed shown']) {
     const shown = scenario(name);
@@ -147,15 +135,12 @@ await test('invariant 2 (observable): a wider terminal never shows fewer quota w
     let before = 0;
     for (const width of WIDTHS) {
       const now = quotaWindows(shown, width);
-      // Only the full-width footers are compared: below 60 columns the quota may be cut by design.
       if (width >= 60) assert.ok(now >= before, `${where(shown, width)}: ${now} after ${before}`);
       if (width >= 60) before = now;
     }
   }
 });
 
-// Very wide terminals (an ultrawide monitor can give 400 columns or more): nothing caps, breaks or
-// changes once the whole footer fits; the extra width only widens the gap between the groups.
 await test('very wide terminals: no overflow, no cap, the same content as at 300 columns', () => {
   const squeeze = (text: string): string => text.replace(/\s{4,}/gu, ' … ');
   const content = (scenario: Scenario, width: number): string =>

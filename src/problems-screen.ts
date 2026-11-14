@@ -6,10 +6,6 @@ import type { ProblemState } from './problem-state.js';
 import { themeStyle } from './ui/explain-style.js';
 import { openInfoScreen } from './ui/info-screen.js';
 
-/**
- * The screen that lists every configuration problem. Opening it is what stops the marker from
- * blinking. `r` reads the settings file again and applies it if it is now valid.
- */
 export async function openProblemsScreen(
   ctx: ExtensionContext,
   deps: {

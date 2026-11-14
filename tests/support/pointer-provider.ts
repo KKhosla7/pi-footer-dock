@@ -1,6 +1,5 @@
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 
-/** Independent toggling provider and opt-in diagnostic recorder for fullscreen CLI tests. */
 export default function pointerProvider(pi: ExtensionAPI): void {
   let off: (() => void)[] = [];
   let visible = false;
@@ -29,7 +28,7 @@ export default function pointerProvider(pi: ExtensionAPI): void {
           'independent-details',
           visible ? ['Fixture details A', 'Fixture details B', 'Fixture details C'] : undefined,
         );
-        advertise(); // Re-advertising unchanged metadata must not cancel/lose this action.
+        advertise();
       }),
     ];
     advertise();

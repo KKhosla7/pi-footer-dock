@@ -26,8 +26,6 @@ await test('streamed response survives persisted session reopen and footer rebin
     );
     const restoredFooter = await captureFooter(restored.session);
     try {
-      // Compare settled frames, not a newly bound frame still awaiting its initial I/O: the folder
-      // has no Git, so settled means both footers drew the same thing for about 300 ms.
       let steady = 0;
       let previous = '';
       await waitForGit(() => {
@@ -38,7 +36,6 @@ await test('streamed response survives persisted session reopen and footer rebin
       });
       const original = originalFooter.render().map(stripVTControlCharacters).join('\n');
       assert.match(original, /\uf0e4 \d+\.\d+ tok\/s/u);
-      // Latest live-turn telemetry is deliberately cleared on reopen; totals/layout restore.
       const expected = original
         .replace(/ {3}\uf0e4 \d+\.\d+ tok\/s/gu, (text) => ' '.repeat(text.length))
         .replace(/\uf021 last [\d.%<>]+ · \S+ read/u, (text) =>

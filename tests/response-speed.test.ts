@@ -100,8 +100,8 @@ await test('footer shows measured throughput only when available, without changi
     layoutFooter({ ...demoSnapshot, outputTokensPerSecond: speed }, 220, options)
       .lines.map(stripVTControlCharacters)
       .join('\n');
-  assert.match(render(42.35), /⚡ 42.4 tok\/s/u);
-  assert.match(render(0.001), /⚡ <0\.1 tok\/s/u);
+  assert.match(render(42.35), /» 42.4 tok\/s/u);
+  assert.match(render(0.001), /» <0\.1 tok\/s/u);
   assert.doesNotMatch(render(42.35), /\bavg\b/u);
   assert.doesNotMatch(render(null), /tok\/s/u);
 });

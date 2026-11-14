@@ -16,7 +16,6 @@ import {
 
 const pi = { appendEntry: () => undefined } as unknown as ExtensionAPI;
 
-/** A session context for a model; `id` only changes the model, never the account. */
 function session(provider: string, baseUrl: string, id: string): ExtensionContext {
   const made = context(provider, baseUrl);
   const model = { ...(made.ctx.model as object), id } as QuotaContext['model'];

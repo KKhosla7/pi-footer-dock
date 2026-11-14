@@ -85,11 +85,11 @@ await test('the chevron is hidden with the quota, at the same looks', () => {
 await test('"used" mirrors the number and the bar and shows what is spent, with no word for it', () => {
   const used = withSlot(defaultSettings(), 'quota', { wording: 'used' });
   const text = footer(260, used).text;
-  assert.match(text, /\b5h .*0% ◌/u);
-  assert.match(text, /\bweek .*20% ◌/u);
-  assert.match(text, /\bmonth .*100% ◌/u);
+  assert.match(text, /\b5h .*0% ↻/u);
+  assert.match(text, /\bweek .*20% ↻/u);
+  assert.match(text, /\bmonth .*100% ↻/u);
   assert.doesNotMatch(text, /\b(?:left|used|resets in)\b/u);
-  assert.match(footer(260, defaultSettings()).text, /\bmonth .*0% ◌/u);
+  assert.match(footer(260, defaultSettings()).text, /\bmonth .*0% ↻/u);
   assert.doesNotMatch(footer(260, defaultSettings()).text, /\b(?:left|used|resets in)\b/u);
 });
 

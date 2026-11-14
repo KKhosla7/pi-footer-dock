@@ -14,16 +14,13 @@ import { TuiMainScreen } from '@earendil-works/pi-tui';
 import { MemoryTerminal } from './terminal.js';
 import type { Component } from '@earendil-works/pi-tui';
 
-// The footer reads its global settings from the agent directory: keep tests off the real one.
 process.env.PI_CODING_AGENT_DIR ??= mkdtempSync(join(tmpdir(), 'dock-agent-'));
-// The cost history keeps a rebuildable cache: keep it off the real one too.
 process.env.XDG_CACHE_HOME ??= mkdtempSync(join(tmpdir(), 'dock-cache-'));
 
 interface SessionOptions {
   paths?: string[];
   reasoning?: boolean;
   tools?: string[];
-  /** USD-per-million rates by fixture provider; unlisted providers are priced at zero. */
   costs?: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }>;
 }
 
@@ -105,7 +102,6 @@ async function createFixtureRuntime(
   return runtime;
 }
 
-/** Capture the actual extension footer; only terminal I/O is headless. */
 export async function captureFooter(
   session: AgentSession,
   statuses: ReadonlyMap<string, string> = new Map(),
@@ -117,6 +113,7 @@ export async function captureFooter(
   let footer: (Component & { dispose?(): void }) | undefined;
   const notifications: string[] = [];
   const errors: string[] = [];
+  const screens: (Component & { handleInput?(data: string): void })[] = [];
   await session.bindExtensions({
     mode: 'tui',
     uiContext: {
@@ -127,14 +124,16 @@ export async function captureFooter(
           getGitBranch: () => null,
           getExtensionStatuses: () => statuses,
           getAvailableProviderCount: () => 0,
-          onBranchChange: () => () => {
-            /* No git in fixture. */
-          },
+          onBranchChange: () => () => {},
         });
       },
       notify: (message) => {
         notifications.push(message);
       },
+      custom: ((factory: (...args: unknown[]) => Component) =>
+        new Promise((resolve) => {
+          screens.push(factory(tui, baseUI.theme, undefined, resolve));
+        })) as typeof baseUI.custom,
     },
     onError: (error) => {
       errors.push(error.error);
@@ -144,6 +143,7 @@ export async function captureFooter(
     render: (width = 140) => footer?.render(width) ?? [],
     notifications,
     errors,
+    screens,
     dispose: () => {
       footer?.dispose?.();
       tui.stop();

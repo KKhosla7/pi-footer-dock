@@ -7,7 +7,6 @@ const UNITS: readonly (readonly [string, number])[] = [
   ['minute', 60],
 ];
 
-/** `3 days ago`, `just now`; an unknown time is `unknown`. Times in the future count as now. */
 export function relativeAge(time: number | undefined, now: number): string {
   if (time === undefined) return 'unknown';
   const seconds = now - time;

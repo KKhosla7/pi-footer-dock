@@ -5,10 +5,6 @@ import { renderBlocks } from '../src/core/explain/render.js';
 import { plainStyle } from '../src/ui/explain-style.js';
 import { visibleWidth } from '@earendil-works/pi-tui';
 
-/**
- * A blank row between a stacked bar and its legend, and
- * a legend that breaks between entries, never inside one.
- */
 const ENTRIES = [
   '█ uncached input $1.13 36%',
   '▓ cache read $0.94 30%',
@@ -54,7 +50,6 @@ await test('the legend keeps its order, and no row starts or ends with a gap', (
       assert.match(row, /^ \S/u, `${width}: a row starts with a gap: "${row}"`);
       assert.equal(row, row.trimEnd(), `${width}: a row ends with a gap`);
     }
-    // Wrapped inside an entry only below the longest entry; the words must still be in order.
     const words = rows.join(' ').split(/\s+/u).filter(Boolean);
     assert.deepEqual(words, ENTRIES.join(' ').split(' '), `${width}: order or content changed`);
   }
@@ -70,7 +65,7 @@ await test('a wide terminal keeps the whole legend on one row; a narrow one fill
 
 await test('the legend has a blank row after it whatever follows, and never two', () => {
   const prompt = facts({ label: 'Prompt', value: '31.4k tokens', note: 'uncached + read' });
-  const legend = render(100).length; // the bar, a blank row, the legend
+  const legend = render(100).length;
   const direct = renderBlocks([block, prompt], plainStyle, 100);
   assert.equal(direct[legend], '', 'a blank row between the legend and the facts after it');
   assert.match(direct[legend + 1] ?? '', /Prompt/u);

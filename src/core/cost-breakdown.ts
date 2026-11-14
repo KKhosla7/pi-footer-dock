@@ -2,20 +2,17 @@ import { NO_PARTS } from './response-price.js';
 import type { CostParts, PriceBasis } from './response-price.js';
 import type { TokenUsage } from './usage-values.js';
 
-/** What one model (or the whole session) cost: tokens and dollars by category. */
 export interface CostRow {
   responses: number;
   tokens: TokenUsage;
   parts: CostParts;
 }
-/** The most recent priced response, for the worked example. */
 export interface LatestCost extends CostRow {
   model: string;
   basis: PriceBasis;
 }
 export interface CostBreakdown {
   total: CostRow;
-  /** By `provider/model`; at most 16 plus `(other)`. */
   models: Readonly<Record<string, CostRow>>;
   latest?: LatestCost;
 }
@@ -56,7 +53,6 @@ export function modelKey(provider: unknown, model: unknown): string {
   return p && m ? `${p}/${m}` : '(unassigned)';
 }
 
-/** Where the money went, by category and by model. Metadata only, bounded, never any text. */
 export class CostBreakdownAccumulator {
   private total = empty();
   private readonly models = new Map<string, CostRow>();

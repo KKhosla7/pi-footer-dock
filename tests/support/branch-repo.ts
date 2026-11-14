@@ -4,7 +4,6 @@ import { join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { quotaRoot } from './quota-fixtures.js';
 
-/** Keeps the user's git configuration and terminal prompts out of the tests. */
 export const isolatedGit = {
   GIT_CONFIG_GLOBAL: '/nonexistent/dock-gitconfig',
   GIT_CONFIG_SYSTEM: '/nonexistent/dock-gitconfig',
@@ -26,7 +25,6 @@ export function gitIn(cwd: string, date: string | undefined, ...args: string[]):
   );
 }
 
-/** A repository with a bare `origin`, branches ahead, behind and gone, and awkward names. */
 export function createBranchRepo(t: TestContext) {
   const root = quotaRoot(t);
   const cwd = join(root, 'repo');

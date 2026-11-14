@@ -3,23 +3,20 @@ import type { ExtensionBus } from './adapters/ext-bus.js';
 import { extensionEntries, parseRowId } from './core/ext/menu.js';
 import type { FooterInteractions } from './footer-interactions.js';
 import type { SettingsController } from './settings-controller.js';
+import type { Background } from './ui/palette.js';
 import { openSettingsScreen } from './ui/settings-screen.js';
 import { say } from './notify.js';
 
 export interface SettingsCommand {
-  /** The extension protocol: other extensions' settings groups appear in the menu. */
   extensions: ExtensionBus;
   settings: SettingsController;
   interactions: FooterInteractions;
-  /** Quota window labels the provider publishes right now. */
   windows: () => string[];
-  /** The icon set changed: the footer is rebuilt once the menu has closed. */
   iconsChanged: () => void;
-  /** Asking providers for limits was switched: start or stop at once. */
   limitsChanged: () => void;
+  background: () => Background | undefined;
 }
 
-/** `/dock-settings`: the menu in the TUI, the effective settings as text anywhere else. */
 export async function runSettingsCommand(
   ctx: ExtensionContext,
   command: SettingsCommand,
@@ -32,13 +29,14 @@ export async function runSettingsCommand(
   settings.load((message) => {
     say(ctx, message, 'warning');
   });
-  // With a problem in the file the screen could not save: show the problems (and apply a fixed file).
   interactions.problems.load();
   if (interactions.problems.state.count > 0) return interactions.problems.open(ctx);
   const iconsBefore = settings.current.glyphs;
   await openSettingsScreen(ctx, {
     current: () => settings.current,
     windows: command.windows,
+    colours: { background: command.background },
+    icons: () => settings.iconKind,
     extensions: {
       entries: () => extensionEntries(command.extensions.registry),
       pick: (id, value) => {
@@ -49,6 +47,7 @@ export async function runSettingsCommand(
     change: (next) => {
       const previous = settings.current;
       const failure = settings.update(next);
+      if (next.glyphs !== previous.glyphs) settings.followSavedGlyphs();
       interactions.settingsChanged(previous);
       if (next.limits !== previous.limits) command.limitsChanged();
       if (failure) say(ctx, failure, 'warning');

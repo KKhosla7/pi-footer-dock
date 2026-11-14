@@ -24,7 +24,6 @@ const drawers: Drawers = {
 const DATA = new Set<Block['kind']>(['table', 'bars', 'stack', 'facts', 'meters']);
 const PROSE = new Set<Block['kind']>(['note', 'bullets']);
 
-/** Draws blocks into lines no wider than `width`. `ascii` selects the portable bar characters. */
 export function renderBlocks(
   blocks: readonly Block[],
   style: Style,
@@ -36,8 +35,6 @@ export function renderBlocks(
     .flatMap((block, index) => {
       const lines = (drawers[block.kind] as (b: Block, c: Ctx) => string[])(block, ctx);
       const next = blocks[index + 1];
-      // A table or chart followed straight by a sentence needs a blank row between them. A stacked
-      // bar with its legend has air after it whatever follows, unless a gap already provides it.
       const needsAir = (following: Block): boolean =>
         block.kind === 'stack'
           ? following.kind !== 'gap'

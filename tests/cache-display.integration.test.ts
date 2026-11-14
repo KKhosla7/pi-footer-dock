@@ -22,7 +22,6 @@ await test('actual SDK near-full cache stays below 100% and retained samples are
     assert.match(render(), /cache pending/u);
     await session.prompt('Synthetic near-full cache response.');
     assert.match(render(), /last <100% · 222k read/u);
-    // Whole words only: the footer also shows the random name of the temporary folder.
     assert.doesNotMatch(render(), /last 100%|\bW0\b|\bR222k\b/u);
     await session.prompt('Synthetic second response.');
     assert.ok(frames.some((frame) => frame.includes('last <100% · 222k read')));
@@ -52,7 +51,6 @@ await test('default zero-read cache has readable wording without claiming a miss
     await session.prompt('Synthetic normalized-zero cache response.');
     const text = capture.render().map(stripVTControlCharacters).join('\n');
     assert.match(text, /last not reported/u);
-    // Whole words only: the footer also carries the (random) folder name, which may contain "R0".
     assert.doesNotMatch(text, /\bR0\b|\bW0\b|cache miss/u);
     assert.equal(server.requests(), 1);
     assert.deepEqual(capture.errors, []);

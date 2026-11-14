@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { quotaSourceFor, quotaSources } from '../src/quota-sources/registry.js';
 
-/** Hostile and malformed bodies: every parser must refuse them quietly, whatever the provider. */
 const hostile: unknown[] = [
   undefined,
   null,

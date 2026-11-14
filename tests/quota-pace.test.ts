@@ -5,7 +5,6 @@ import type { RateLimitWindow } from '../src/core/rate-limits.js';
 
 const HOUR = 3_600_000;
 const NOW = 1_800_000_000_000;
-/** A window of `label` whose clock is `elapsed` of the way through, with `used` percent used. */
 function at(label: string, elapsed: number, used: number, extra: Partial<RateLimitWindow> = {}) {
   const length = windowLength(label)?.ms ?? 0;
   return {
@@ -67,7 +66,6 @@ await test('the projection needs a tenth of the window and says when it would ru
   assert.equal(slow.runsOutBeforeResetMs, null);
   const fast = paceOf(at('5h', 0.5, 80), NOW);
   assert.equal(Math.round(fast.projectedAtReset ?? 0), 160);
-  // 80% used in 2.5h: the last 20% takes 0.625h, leaving 1.875h of the 2.5h to the reset.
   assert.ok(Math.abs((fast.runsOutBeforeResetMs ?? 0) - 1.875 * HOUR) < 1000);
   assert.equal(
     paceOf(at('5h', 0.5, 0), NOW).projectedAtReset,

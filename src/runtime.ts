@@ -4,7 +4,8 @@ import { NAMES } from './core/product.js';
 import { InteractionTrace } from './core/interaction-trace.js';
 import { ResponseTelemetry } from './adapters/response-telemetry.js';
 import { DeferredRefresh } from './adapters/deferred-refresh.js';
-import { diagnosticReport } from './adapters/diagnostics.js';
+import { DockCommands } from './dock-commands.js';
+import type { ExtensionBus } from './adapters/ext-bus.js';
 import type { QuotaController } from './quota-controller.js';
 import { Trackers } from './trackers.js';
 import { footerHost } from './footer-host.js';
@@ -14,17 +15,15 @@ import type { Snapshot } from './core/model.js';
 import { loadSettings, saveSettings } from './adapters/settings-file.js';
 import { FooterInteractions } from './footer-interactions.js';
 import { SettingsController } from './settings-controller.js';
-import { runSettingsCommand } from './settings-command.js';
 import type { SettingsStore } from './settings-controller.js';
 import { DockFooter } from './ui/footer.js';
-import { createPaint } from './ui/palette.js';
+import { FooterColours } from './footer-colours.js';
 import { say, sayAt } from './notify.js';
 
 export class DockRuntime {
   private ctx: ExtensionContext | undefined;
   private tui: TUI | undefined;
   private live: Snapshot | undefined;
-  /** What the trackers call when their data changed: draw again from the latest snapshot. */
   private readonly changed = (): void => {
     if (this.ctx) this.refresh(this.ctx);
   };
@@ -39,6 +38,8 @@ export class DockRuntime {
     this.pi.events.emit(NAMES.traceChannel, record);
   });
   readonly interactions: FooterInteractions;
+  readonly colours = new FooterColours();
+  readonly commands = new DockCommands(this);
   constructor(
     private readonly pi: ExtensionAPI,
     settingsStore: SettingsStore = { load: loadSettings, save: saveSettings },
@@ -78,6 +79,7 @@ export class DockRuntime {
     ctx.ui.setFooter((tui, theme, footerData) => {
       const revision = ++this.footerRevision;
       this.tui = tui;
+      const stopColours = this.colours.watch(tui);
       this.trackers.quotas.resume();
       this.trackers.git.branchHint = () => footerData.getGitBranch();
       if (this.live) this.live = { ...this.live, git: this.trackers.git.shown };
@@ -85,7 +87,7 @@ export class DockRuntime {
         this.refreshGit();
       });
       return new DockFooter({
-        paint: createPaint(theme),
+        paint: this.colours.paint(theme, this.settings, () => this.interactions.config),
         requestRender: tui.requestRender.bind(tui),
         statuses: () => footerData.getExtensionStatuses(),
         glyphs: this.settings.glyphs,
@@ -97,11 +99,12 @@ export class DockRuntime {
           if (this.ctx) {
             const ctx = this.ctx;
             this.interactions.activate(target, ctx).catch((error: unknown) => {
-              this.notifyError(ctx, error);
+              this.reportError(ctx, error);
             });
           }
         },
         dispose: () => {
+          stopColours();
           unsubscribe();
           this.detachFooter(revision);
         },
@@ -119,7 +122,6 @@ export class DockRuntime {
     });
   }
 
-  /** The quota controller while a session is bound; provider traffic is ignored otherwise. */
   quotaFeed(): QuotaController | undefined {
     return this.ctx ? this.trackers.quotas : undefined;
   }
@@ -164,7 +166,7 @@ export class DockRuntime {
       try {
         this.refresh(ctx);
       } catch (error) {
-        this.notifyError(ctx, error);
+        this.reportError(ctx, error);
       }
     });
   }
@@ -173,42 +175,17 @@ export class DockRuntime {
     if (this.ctx) this.trackers.git.refresh(this.ctx.cwd);
   }
 
-  diagnostics(ctx: ExtensionContext): string {
-    return diagnosticReport({
-      command: ctx,
-      bound: this.ctx,
-      cached: this.live,
-      source: import.meta.url,
-      ...this.trackers.diagnostics(),
-      footerSlots: this.interactions.config.rows.flatMap((row) => [...row.left, ...row.right]),
-    });
+  diagnosticInput() {
+    return { bound: this.ctx, cached: this.live, ...this.trackers.diagnostics() };
   }
-
-  contextAction(ctx: ExtensionContext): Promise<void> {
-    return this.interactions.invokeTarget('context', ctx).catch((error: unknown) => {
-      this.notifyError(ctx, error);
-    });
+  windowLabels(): string[] {
+    return (this.live?.rateLimits?.windows ?? []).map((window) => window.label);
   }
-
-  toggleGlyphs(ctx: ExtensionContext): void {
-    this.settings.toggleGlyphs();
-    this.start(ctx);
+  refreshLimits(ctx: ExtensionContext): void {
+    this.trackers.quotas.refresh(ctx);
   }
-
-  openSettings(ctx: ExtensionContext): Promise<void> {
-    return runSettingsCommand(ctx, {
-      settings: this.settings,
-      interactions: this.interactions,
-      extensions: this.trackers.extensions,
-      windows: () => (this.snapshot().rateLimits?.windows ?? []).map((window) => window.label),
-      limitsChanged: () => {
-        this.trackers.quotas.refresh(ctx);
-      },
-      iconsChanged: () => {
-        this.settings.followSavedGlyphs();
-        this.start(ctx);
-      },
-    });
+  get extensions(): ExtensionBus {
+    return this.trackers.extensions;
   }
 
   stop(): void {
@@ -229,7 +206,7 @@ export class DockRuntime {
     return this.live;
   }
 
-  private notifyError(ctx: ExtensionContext, error: unknown): void {
+  reportError(ctx: ExtensionContext, error: unknown): void {
     if (this.ctx !== ctx || !this.tui) return;
     say(ctx, error instanceof Error ? error.message : 'Footer Dock refresh failed', 'error');
   }

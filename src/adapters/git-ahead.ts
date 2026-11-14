@@ -7,13 +7,11 @@ type Git = (args: string[], allowNoMatch?: boolean) => Promise<string>;
 
 const LOG = ['log', '--no-show-signature', '--no-color', '--no-decorate', '--encoding=UTF-8'];
 
-/** Read-only `git log` for a revision range; every revision list ends with `--`. */
 async function commits(git: Git, range: string, max: number, stat: boolean): Promise<CommitInfo[]> {
   const args = [...LOG, `--max-count=${max}`, `--format=${COMMIT_FORMAT}`];
   return parseCommits(await git([...args, ...(stat ? ['--shortstat'] : []), range, '--']));
 }
 
-/** The configured upstream as a full ref and a short name; undefined when none is configured. */
 async function upstreamOf(
   git: Git,
   branch: string,
@@ -33,7 +31,6 @@ async function countsAgainst(git: Git, ref: string): Promise<Counts | undefined>
   return parseCounts(await git(['rev-list', '--left-right', '--count', `${ref}...HEAD`, '--']));
 }
 
-/** Reads where HEAD is and what is ahead of its upstream, from local refs only (no network). */
 export async function readAhead(cwd: string, signal: AbortSignal): Promise<AheadReport> {
   const git: Git = (args, allowNoMatch = false) => gitOutput(cwd, args, signal, { allowNoMatch });
   const name = gitLine(await git(['symbolic-ref', '--short', '-q', 'HEAD'], true));
@@ -69,7 +66,6 @@ export async function readAhead(cwd: string, signal: AbortSignal): Promise<Ahead
   };
 }
 
-/** One plain sentence for the screen when a query failed. */
 export function aheadFailure(error: unknown): string {
   const cause = error instanceof Error ? error.cause : undefined;
   const code = cause instanceof Error && 'code' in cause ? cause.code : undefined;

@@ -10,7 +10,6 @@ import { quotaBody, quotaContext, quotaToken } from './support/quota-fixtures.js
 const URL_ = 'https://chatgpt.com/backend-api/wham/usage';
 const settled = (states: QuotaState[]) => states.some((state) => state.limits !== null);
 
-/** The Codex login with one thing changed, to see that exactly that is refused. */
 function variant(change: (ctx: QuotaContext) => void): QuotaContext {
   const ctx = quotaContext();
   change(ctx);
@@ -19,7 +18,6 @@ function variant(change: (ctx: QuotaContext) => void): QuotaContext {
 const model = (ctx: QuotaContext) => ctx.model as unknown as Record<string, unknown>;
 const registry = (ctx: QuotaContext) => ctx.modelRegistry as unknown as Record<string, unknown>;
 
-/** Every file under a directory, so a test can prove a secret was never written anywhere. */
 function everything(root: string): string {
   const parts: string[] = [];
   for (const name of readdirSync(root, { recursive: true, encoding: 'utf8' })) {
@@ -173,7 +171,6 @@ await test('a reply that arrives after the account changed is never shown', asyn
     release.send = resolve;
   });
   const h = harness(t, (call) => (call === 1 ? new Error('placeholder') : reply(quotaBody)));
-  // The first account's reply is held back by wrapping the harness fetch through the gate directly.
   const a = h.service();
   a.refresh(quotaContext(quotaToken('account-a', 'user-a')));
   a.refresh(quotaContext(quotaToken('account-b', 'user-b')));

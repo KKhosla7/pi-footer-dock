@@ -3,7 +3,6 @@ import { gitOutput } from './git-command.js';
 
 export const unknownGit: GitState = { branch: null, changed: null, ahead: null };
 
-/** NUL-separated porcelain v2 keeps rename paths and embedded newlines unambiguous. */
 export function parseGitStatus(output: string): GitState {
   const records = output.split('\0');
   let branch: string | null = null;
@@ -29,7 +28,6 @@ export async function readGit(cwd: string, signal?: AbortSignal): Promise<GitSta
     );
     return parseGitStatus(output);
   } catch {
-    // Non-repository, unavailable git, abort, timeout and oversized output all mean unknown.
     return unknownGit;
   }
 }

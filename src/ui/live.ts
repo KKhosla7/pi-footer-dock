@@ -1,17 +1,10 @@
 const TICK_MS = 1000;
 
-/** Work a screen repeats while it is open: it says whether anything changed, and the screen repaints. */
 export interface Refresh {
-  /** The least time between two runs; a slow run stretches it to three times its own duration. */
   everyMs: number;
   work: () => Promise<boolean>;
 }
 
-/**
- * Keeps an open screen alive: repaints once a second (which is also how it tells the screen is
- * still drawn), and runs its refresh work now and then. Everything stops by itself when the screen is no longer drawn (nothing set `drawn`
- * since the last tick), and when the returned function is called. Nothing runs while no screen is open.
- */
 export function startLive(
   tui: { requestRender(): void },
   view: { drawn: boolean },

@@ -8,7 +8,6 @@ export interface SessionUsage {
   totals: TokenTotals;
   apiCostEstimate: ApiCostEstimate;
 }
-/** The part of a session entry that carries usage (a response, a usage entry, a summary), if any. */
 export function contribution(entry: Record<string, unknown>): Record<string, unknown> | null {
   if (entry.type === 'message') {
     const message = record(entry.message);
@@ -16,7 +15,7 @@ export function contribution(entry: Record<string, unknown>): Record<string, unk
     return message?.usage === undefined ? null : { usage: message.usage };
   }
   if (entry.type === 'usage') return entry;
-  if (entry.usage !== undefined) return { usage: entry.usage }; // No supported attribution on summaries/other entry types.
+  if (entry.usage !== undefined) return { usage: entry.usage };
   return null;
 }
 function fingerprint(value: Record<string, unknown>): string {
@@ -40,7 +39,6 @@ function addUsage(totals: TokenTotals, usage: Record<string, unknown> | null): T
     cost: add(totals.cost, dollars(record(usage?.cost)?.total)),
   };
 }
-/** Session-wide recorded charges, including inactive branches. No transcript is retained. */
 export class UsageLedger {
   private readonly costs: ApiCostAccumulator;
   private readonly seen = new Map<string, string>();

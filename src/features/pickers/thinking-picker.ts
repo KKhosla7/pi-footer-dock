@@ -3,7 +3,6 @@ import { asLevel, supportedLevels, thinkingChoices } from '../../core/picker/thi
 import { openPicker } from '../../ui/list-picker.js';
 import { say } from '../../notify.js';
 
-/** Click on the brain icon: the thinking levels this model supports; Enter switches to the one chosen. */
 export async function pickThinking(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> {
   const model = ctx.model;
   const levels = model ? supportedLevels(model) : [];

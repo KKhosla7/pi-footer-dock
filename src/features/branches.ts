@@ -15,7 +15,6 @@ interface Entry {
   remote: boolean;
 }
 
-/** Both lists as picker choices (local, then remote), and what each choice stands for. */
 function branchChoices(
   list: BranchList,
   locals: ReadonlySet<string>,
@@ -53,7 +52,6 @@ function branchChoices(
   return { choices, entries };
 }
 
-/** Puts the command in the editor for the user to run; never runs it, never overwrites a draft. */
 function offer(ctx: ExtensionContext, entry: Entry, locals: ReadonlySet<string>): void {
   const command = switchCommand(
     { name: entry.branch.name, remote: entry.remote, current: entry.branch.current },
@@ -68,7 +66,6 @@ function offer(ctx: ExtensionContext, entry: Entry, locals: ReadonlySet<string>)
   }
 }
 
-/** Click on the branch icon: local and remote branches (read once, when the screen opens). */
 export async function showBranches(ctx: ExtensionContext): Promise<void> {
   const result = await loadBranches(ctx.cwd, AbortSignal.timeout(QUERY_TIMEOUT_MS));
   const now = Math.floor(Date.now() / 1000);

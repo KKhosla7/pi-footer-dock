@@ -8,7 +8,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const execute = promisify(execFile);
 
-/** All Git writes/pushes target owned temporary repositories, never GitHub/user configuration. */
 export async function createGitRepository() {
   const root = await mkdtemp(join(tmpdir(), 'dock-git-integration-'));
   const cwd = join(root, 'repo');

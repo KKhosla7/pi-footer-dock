@@ -130,9 +130,9 @@ A **form** is:
 } // optional
 ```
 
-**Icons** (Footer Dock owns the glyphs for the Nerd-Font and the plain-ASCII sets, so the item looks right in both): `folder branch changed ahead chip input output cache robot reasoning hourglass reset speed dot check warn error info clock user star`.
+**Icons** (Footer Dock owns the glyphs for the Nerd Font set and the plain symbol set, which is ordinary Unicode, one cell wide and never an emoji, so the item looks right in both): `folder branch changed ahead chip input output cache robot reasoning hourglass reset speed dot check warn error info clock user star`.
 
-**Tones:** `text muted accent success warning error`. Colours come from the user's Pi theme.
+**Tones:** `text muted accent success warning error`. Do not hard-code colours: the user's Pi theme supplies them, and the user can change each tone in Footer Dock's colour settings (`accent` is also the colour of icons). Use `warning` and `error` only for real status; the footer keeps them distinct from emphasis so that a problem stands out.
 
 **Clicks.**
 

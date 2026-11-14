@@ -31,7 +31,6 @@ export function meterLines(block: Of<'meters'>, ctx: Ctx): string[] {
     0,
     Math.min(MAX_BAR, ctx.width - (INDENT.length + labelWidth + 4 + textWidth)),
   );
-  // A blank row between meters, so each reads on its own line.
   return rows.flatMap((row, index) => {
     const label = ctx.style.fg('muted', pad(fit(plain(row.label), labelWidth), labelWidth));
     const text = row.tone ? ctx.style.fg(row.tone, plain(row.text)) : plain(row.text);
@@ -41,7 +40,6 @@ export function meterLines(block: Of<'meters'>, ctx: Ctx): string[] {
   });
 }
 
-/** Cell counts that add up to `total`, in proportion to `amounts` (largest remainder). */
 export function shares(amounts: readonly number[], total: number): number[] {
   const sum = amounts.reduce((acc, amount) => acc + Math.max(0, amount), 0);
   if (sum <= 0 || total <= 0) return amounts.map(() => 0);
@@ -59,7 +57,6 @@ export function shares(amounts: readonly number[], total: number): number[] {
 }
 
 export function stackLines(block: Of<'stack'>, { style, cells, width: room }: Ctx): string[] {
-  // A part keeps its own pattern whatever the others are, so `read` always looks the same.
   const live = block.parts
     .map((part, position) => ({
       part,
@@ -81,7 +78,6 @@ export function stackLines(block: Of<'stack'>, { style, cells, width: room }: Ct
     const extra = part.text ? ` ${plain(part.text)}` : '';
     return `${style.fg(part.tone, glyph)} ${plain(part.label)}${extra} ${style.fg('dim', `${share}%`)}`;
   });
-  // A blank row between the bar and its legend; the legend breaks between entries, never inside one.
   return [
     INDENT + bar,
     '',
@@ -90,10 +86,6 @@ export function stackLines(block: Of<'stack'>, { style, cells, width: room }: Ct
 }
 
 const LEGEND_GAP = '   ';
-/**
- * Fills rows with whole legend entries. An entry that does not fit moves to the next row; one wider
- * than a row on its own (a very narrow terminal) is the only thing that is wrapped inside.
- */
 export function legendRows(entries: readonly string[], room: number): string[] {
   const rows: string[] = [];
   let current = '';
@@ -116,7 +108,6 @@ export function legendRows(entries: readonly string[], room: number): string[] {
 const LEVELS = '▁▂▃▄▅▆▇█';
 const HEIGHT = 3;
 
-/** One row of the chart, top row first: how many eighths of a cell each column fills in it. */
 function eighths(value: number, peak: number, row: number): number {
   const total = peak > 0 ? Math.round((Math.max(0, value) / peak) * HEIGHT * 8) : 0;
   return Math.max(0, Math.min(8, total - (HEIGHT - 1 - row) * 8));

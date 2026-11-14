@@ -57,7 +57,6 @@ await test('configured quota and cost gaps retain both right-anchored slots when
       ],
       slots: { quota: { gap }, cost: { gap } },
     });
-    // The right group in full: from the quota's first column to the cost's last.
     const full = layoutFooter(withCost, 300, { ...options, config }).hitRegions.filter(
       (region) => region.y === 1,
     );
@@ -66,8 +65,6 @@ await test('configured quota and cost gaps retain both right-anchored slots when
     for (let width = 76; width < 140; width += 1) {
       const result = layoutFooter(withCost, width, { ...options, config });
       assert.ok(result.hitRegions.some((region) => region.target === 'quota'));
-      // The cost goes before the quota loses detail (the shrink plan), so it is guaranteed
-      // only while the whole group fits; the row is right-aligned either way.
       if (width >= groupWidth)
         assert.ok(result.hitRegions.some((region) => region.target === 'cost'));
       assert.equal(visibleWidth(result.lines[1] ?? ''), width);

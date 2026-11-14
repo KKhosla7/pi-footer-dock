@@ -62,8 +62,6 @@ await test('scanning twice gives the same rows, and a second scan reads only wha
   const first = await run(scanner(fixture));
   const again = await run(scanner(fixture));
   assert.deepEqual(again.rows, first.rows);
-  // Overwrite the first reply's token count in place (same length). A scan that re-read the file
-  // would see the new number; an incremental one keeps what it had.
   const text = readFileSync(log.file(), 'utf8');
   writeFileSync(log.file(), text.replace('"input":10,', '"input":99,'));
   fixture.reply(log.manager, { input: 30, read: 70, output: 3, total: 0.3 });

@@ -99,7 +99,6 @@ await test('totals, groups and the weighted cache share come from the rows', () 
   assert.equal(byProject.get('a')?.read, 900);
   assert.equal(byProject.get('b')?.input, 9_000);
   assert.equal(groupBy([a], 'model').has('p/m'), true);
-  // 1,900 read of 11,000 prompt tokens: not the mean of 90% and 10%.
   assert.equal(Math.round(cacheShare(sum([a, b])) ?? -1), 17);
   assert.equal(cacheShare(sum([{ ...a, read: 0 }])), null, 'no reads reported is not 0%');
 });

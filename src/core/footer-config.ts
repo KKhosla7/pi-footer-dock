@@ -14,14 +14,11 @@ export interface FooterConfig {
   version: 1;
   rows: FooterRow[];
   slots: Record<string, SlotOptions>;
-  /** What gives way first when a row is too wide, as step names (docs/footer-configuration.md). */
   shrink?: string[];
 }
 
-/** The marker for configuration problems: first on the first row while any exist; not a setting. */
 export const PROBLEM_MARKER = 'problems';
 
-/** The quota's expand/collapse chevron. */
 export const QUOTA_TOGGLE = 'quota-more';
 
 export const slotHelp = new Map<string, string>([
@@ -111,7 +108,6 @@ function row(value: unknown): FooterRow {
   return { left: group(data.left), right: group(data.right) };
 }
 
-/** The keys a footer configuration accepts. */
 export const CONFIG_KEYS = ['version', 'rows', 'slots', 'shrink'] as const;
 
 export function parseFooterConfig(value: unknown): FooterConfig {

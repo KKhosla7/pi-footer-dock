@@ -1,0 +1,12 @@
+title = "Footer Dock"
+
+[extend]
+useDefault = true
+
+[allowlist]
+paths = ['''(^|/)node_modules/''', '''(^|/)\.git/''']
+
+[[rules]]
+id = "credential-file"
+description = "A file that holds credentials is never committed"
+path = '''(^|/)(auth\.json|\.env(\.[^/]*)?|[^/]*\.pem|id_(rsa|ed25519|ecdsa))$'''

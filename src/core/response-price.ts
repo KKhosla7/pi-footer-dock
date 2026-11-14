@@ -4,7 +4,6 @@ import { zeroPriced } from './price-source.js';
 import type { ModelRates, PriceSource, Rates } from './price-source.js';
 
 export type PriceBasis = 'reported' | 'registry';
-/** Dollars of one response by token category. The four add up to the response's amount. */
 export interface CostParts {
   input: number;
   output: number;
@@ -21,14 +20,9 @@ export type PriceFailure = 'missing-model-price' | 'zero-price' | 'invalid-usage
 export type ResponsePrice =
   { amount: number; basis: PriceBasis; parts: CostParts } | { failure: PriceFailure };
 
-/**
- * Pi computes `usage.cost` itself when it receives a response, from the model's catalog price
- * at that moment (pi-ai `calculateCost`). Trusted only if finite, non-negative and consistent.
- */
 export function reportedCost(usage: unknown): number | null {
   return reportedParts(usage)?.total ?? null;
 }
-/** Pi's recorded cost with its category split, under the same trust rule as `reportedCost`. */
 export function reportedParts(usage: unknown): (CostParts & { total: number }) | null {
   const cost = record(record(usage)?.cost);
   if (!cost) return null;
@@ -61,10 +55,6 @@ function tierFor(price: ModelRates, inputTokens: number): Rates {
   }
   return selected;
 }
-/**
- * Same arithmetic as pi-ai `calculateCost`: tier chosen by total input, and 1h cache writes
- * (Anthropic) billed as twice the base input rate. Null when the 1h split is impossible.
- */
 export function partsFromRates(
   price: ModelRates,
   usage: TokenUsage,
@@ -79,7 +69,6 @@ export function partsFromRates(
     cacheRead: rate.cacheRead * usage.cacheRead,
     cacheWrite: rate.cacheWrite * shortWrite + rate.input * 2 * longWrite,
   };
-  // The total keeps the arithmetic of pi-ai's calculateCost (sum, then scale); the parts are scaled alone.
   const amount =
     (rate.input * usage.input +
       rate.output * usage.output +
@@ -105,7 +94,6 @@ export function costFromRates(
 function tokenCount(usage: TokenUsage): number {
   return usage.input + usage.cacheRead + usage.cacheWrite + usage.output;
 }
-/** Pi's recorded cost when it is positive; otherwise repriced from the price source. */
 export function priceResponse(
   response: Record<string, unknown>,
   usage: TokenUsage,

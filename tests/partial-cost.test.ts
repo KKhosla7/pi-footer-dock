@@ -30,7 +30,7 @@ await test('five persisted unassigned compactions do not erase the explicitly la
   assert.equal(estimate.pricedResponses, 1);
   assert.equal(estimate.unavailable, 5);
   assert.equal(estimate.pricedAmount, estimateApiCost([assistant.message], solPrices).amount);
-  assert.equal(formatApiCost(estimate), '≈cost n/a'); // under a cent: nothing to draw
+  assert.equal(formatApiCost(estimate), '≈cost n/a');
 });
 await test('complete, empty and entirely unpriceable estimates retain distinct honest labels', () => {
   const complete = sessionUsage([assistant], solPrices).apiCostEstimate;

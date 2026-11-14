@@ -1,4 +1,3 @@
-/** A registration written the way an extension author's tool would, from the document alone. */
 export const registration = (extra: Record<string, unknown> = {}): Record<string, unknown> => ({
   v: 1,
   ext: 'acme',

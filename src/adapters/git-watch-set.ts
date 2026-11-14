@@ -20,7 +20,6 @@ interface Options {
   limit: number;
 }
 
-/** Explicit bounded subscriptions, directory-inode replacement fencing and idempotent cleanup. */
 export class GitWatchSet {
   private readonly entries = new Map<string, Entry>();
   private closed = false;

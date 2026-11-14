@@ -26,7 +26,6 @@ export interface ProviderQuotaOptions {
   intervalMs?: number;
 }
 const HINT_SPACING_MS = 2000;
-/** The parsers read at most 16 items; the report is bounded the same way. */
 const MAX_REPORT = 16;
 type Trouble = Problem | 'unavailable';
 const troubleStatus: Record<Trouble, string> = {
@@ -39,14 +38,6 @@ export function defaultProviderRoot(): string {
   return join(userInfo().homedir, '.cache', NAMES.cacheDir, 'providers-v1');
 }
 
-/**
- * Process-local subscriber for server-published provider windows. Every request is admitted by
- * the shared gate, so any number of Pi windows make at most one request per interval per account.
- *
- * It stores only what it learned (the latest gate state for the active account, the last trouble)
- * and answers `state()` for the model in use right now. It never keeps a presented copy, so a
- * model change can never leave a stale or empty display behind.
- */
 export class ProviderQuotaService {
   private readonly gate: SharedGate;
   private readonly policy: FetchPolicy;
@@ -54,7 +45,6 @@ export class ProviderQuotaService {
   private source: ProviderQuotaSource | undefined;
   private scope: string | undefined;
   private gateState: GateState | undefined;
-  /** What became of each window in the last reply this process read; the shared gate never holds it. */
   private report: { at: number; windows: WindowReport[] } | undefined;
   private trouble: Trouble | undefined;
   private epoch = 0;
@@ -63,7 +53,6 @@ export class ProviderQuotaService {
   private lastStartAt = -Infinity;
   private timer: ReturnType<typeof setTimeout> | undefined;
 
-  /** `changed` only says something happened; the user then asks `state()`. */
   constructor(
     private readonly changed: () => void,
     options: ProviderQuotaOptions = {},
@@ -79,7 +68,6 @@ export class ProviderQuotaService {
       new SharedGate({ root: defaultProviderRoot(), now, flightMs: PROVIDER_QUOTA_FLIGHT_MS });
   }
 
-  /** What to show for the model in use, or undefined when no quota source serves its provider. */
   state(): QuotaState | undefined {
     const model = this.ctx?.model;
     if (!this.source || !model) return undefined;
@@ -88,7 +76,6 @@ export class ProviderQuotaService {
     return view ? presentGate(view, model) : { limits: null, status: 'quota loading' };
   }
 
-  /** A hint that quota may have changed. Cheap: coalesced, spaced and gate-protected. */
   refresh(ctx: QuotaContext): void {
     this.ctx = ctx;
     const source = quotaSourceFor(ctx.model?.provider);
@@ -122,7 +109,6 @@ export class ProviderQuotaService {
     };
   }
 
-  /** The gate state seen as the shared view it is at this moment (age and staleness move with time). */
   private view(): SharedQuotaView | undefined {
     return this.gateState && gateView(this.gateState, this.policy.now());
   }
@@ -135,7 +121,6 @@ export class ProviderQuotaService {
     this.gateState = undefined;
     this.report = undefined;
     this.trouble = undefined;
-    // A new attachment is a new subscription: the spacing of hints belongs to the old one.
     this.lastStartAt = -Infinity;
   }
   private run(timed: boolean): void {
@@ -156,7 +141,6 @@ export class ProviderQuotaService {
       })
       .catch(() => undefined);
   }
-  /** One-shot wake at the next eligible time, only while the user has been active recently. */
   private schedule(): void {
     this.pause();
     const active = this.policy.now() - this.lastHintAt <= PROVIDER_QUOTA_ACTIVE_MS;
@@ -169,9 +153,7 @@ export class ProviderQuotaService {
       this.timer = undefined;
       try {
         this.run(true);
-      } catch {
-        /* A wake never throws into the event loop. */
-      }
+      } catch {}
     }, wait + 250);
     this.timer.unref();
   }
@@ -204,13 +186,11 @@ export class ProviderQuotaService {
         if (windows.length < MAX_REPORT) windows.push(window);
       },
     });
-    // Only a reply that was read counts: a failed request must not erase the last useful report.
     if (result.failure === 'none' || result.failure === 'invalid-response')
       this.report = { at: this.policy.now(), windows };
     await this.gate.finish(scope, reservation.revision, result);
     await this.show(scope, epoch);
   }
-  /** Reads the shared gate for the account and remembers it; only the current account counts. */
   private async show(scope: string, epoch: number): Promise<GateState | undefined> {
     const state = await this.gate.view(scope);
     if (epoch !== this.epoch || scope !== this.scope) return state;

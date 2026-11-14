@@ -5,13 +5,10 @@ import { readCachePolicy, readCacheUsage } from '../core/cache-usage.js';
 import type { CacheUsage } from '../core/cache-usage.js';
 import { record } from '../core/usage-values.js';
 
-/** Primary-turn telemetry only. No payload/delta retention, I/O, timers or background calls. */
 export class ResponseTelemetry {
   readonly speed = new ResponseSpeed();
   private cache: CacheUsage | null = null;
-  /** A turn has started and its response has not finished yet. */
   private open = false;
-  /** When the last successful response ended; the idle time is measured from it. */
   private lastEnd: number | null = null;
   private pendingIdle: number | null = null;
   private cacheIdle: number | null = null;
@@ -37,7 +34,6 @@ export class ResponseTelemetry {
       reasoning: usage?.reasoning,
       deferred: message.deferred,
     });
-    // The cache sample is a fact about a finished response, not about how fast it was.
     if (paired && isPrimaryCompletion(message.stopReason, message.deferred)) {
       this.cache = readCacheUsage(usage);
       this.cacheIdle = this.pendingIdle;

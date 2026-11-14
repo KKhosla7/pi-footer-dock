@@ -322,6 +322,544 @@ function boundedText(value, max) {
   return value;
 }
 
+// src/core/colors.ts
+var COLOR_TONES = [
+  "accent",
+  "text",
+  "muted",
+  "highlight",
+  "warning",
+  "error",
+  "success"
+];
+var HEX = /^#[0-9a-fA-F]{6}$/;
+var isHexColor = (value) => typeof value === "string" && HEX.test(value);
+var WORDS = {
+  accent: ["lavender", "theme"],
+  text: ["theme", "terminal"],
+  muted: ["theme", "terminal"],
+  highlight: ["theme", "warning"],
+  warning: ["theme"],
+  error: ["theme"],
+  success: ["theme"]
+};
+var isColorTone = (value) => COLOR_TONES.includes(value);
+var colorWords = (tone) => WORDS[tone];
+function colorValue(tone, value) {
+  if (typeof value === "string" && (HEX.test(value) || WORDS[tone].includes(value))) return value;
+  throw new Error(`${tone} colour must be ${WORDS[tone].join(", ")} or #rrggbb`);
+}
+function parseColors(value) {
+  const result = {};
+  for (const [key, item2] of Object.entries(record2(value))) {
+    if (!isColorTone(key)) throw new Error(`Unknown colour: ${key.slice(0, 32)}`);
+    result[key] = colorValue(key, item2);
+  }
+  return result;
+}
+function effectiveColors(settings, meterColor2) {
+  return meterColor2 === "theme" ? { accent: "theme", ...settings.colors } : settings.colors ?? {};
+}
+var withoutTone = (colors, tone) => Object.fromEntries(Object.entries(colors).filter(([key]) => key !== tone));
+function withColor(colors, tone, value) {
+  const rest = withoutTone(colors, tone);
+  const stored = value === "default" || value === WORDS[tone][0] ? void 0 : value;
+  if (stored === void 0) return rest;
+  return { ...rest, [tone]: colorValue(tone, stored) };
+}
+
+// src/core/looks.ts
+var LOOKS = ["xl", "lg", "md", "sm", "xs"];
+function isLook(value) {
+  return LOOKS.some((look) => look === value);
+}
+function lookIndex(look) {
+  return LOOKS.indexOf(look);
+}
+var stockForms = /* @__PURE__ */ new Map([
+  ["workspace", { xl: "full", md: "short", sm: "bare" }],
+  ["branch", { xl: "full" }],
+  ["changes", { xl: "full", lg: "short", sm: "hide" }],
+  ["ahead", { xl: "full", lg: "short", sm: "hide" }],
+  ["model", { xl: "full", md: "short" }],
+  ["thinking", { xl: "full" }],
+  ["context", { xl: "full" }],
+  ["context-usage", { xl: "full", sm: "short", xs: "bare" }],
+  ["compaction", { xl: "full", md: "hide" }],
+  ["input", { xl: "full", sm: "hide" }],
+  ["output", { xl: "full", sm: "hide" }],
+  ["cache", { xl: "full", lg: "short", md: "hide" }],
+  ["speed", { xl: "full", xs: "hide" }],
+  ["cost", { xl: "full", xs: "hide" }],
+  ["quota-more", { xl: "full" }]
+]);
+var layerNames = /* @__PURE__ */ new Map([
+  ["model", ["provider", "name"]],
+  ["quota", ["meter", "reset"]]
+]);
+var preferredGaps = /* @__PURE__ */ new Map([
+  ["branch", 3],
+  ["changes", 3],
+  ["ahead", 3],
+  ["thinking", 2],
+  ["compaction", 2],
+  ["input", 5],
+  ["output", 3],
+  ["cache", 3],
+  ["speed", 3],
+  ["cost", 3]
+]);
+var attachedTo = /* @__PURE__ */ new Map([
+  ["context-usage", "context"],
+  ["quota-more", "quota"]
+]);
+function variantAt(table2, look, hideAt) {
+  if (hideAt !== void 0 && lookIndex(look) >= lookIndex(hideAt)) return "hide";
+  for (let index = lookIndex(look); index >= 0; index -= 1) {
+    const look_ = LOOKS[index];
+    const variant = look_ === void 0 ? void 0 : table2?.[look_];
+    if (variant !== void 0) return variant;
+  }
+  return "full";
+}
+
+// src/core/problems.ts
+var MAX_TEXT = 200;
+var MAX_SHOWN_VALUE = 40;
+var MAX_PROBLEMS = 20;
+var plain = (text) => text.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim();
+var bounded = (text) => {
+  const clean4 = plain(text);
+  return clean4.length > MAX_TEXT ? `${clean4.slice(0, MAX_TEXT - 1)}\u2026` : clean4;
+};
+function shown(value) {
+  let text;
+  try {
+    text = value === void 0 ? "nothing" : JSON.stringify(value);
+  } catch {
+    text = "(a value that cannot be shown)";
+  }
+  const clean4 = plain(text);
+  return clean4.length > MAX_SHOWN_VALUE ? `${clean4.slice(0, MAX_SHOWN_VALUE - 1)}\u2026` : clean4;
+}
+function distance(a, b) {
+  let row4 = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j += 1)
+      next.push(
+        Math.min(
+          (row4[j] ?? 0) + 1,
+          (next[j - 1] ?? 0) + 1,
+          (row4[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1)
+        )
+      );
+    row4 = next;
+  }
+  return row4[b.length] ?? 0;
+}
+function closest(name, candidates) {
+  let best;
+  for (const candidate of candidates) {
+    const steps = distance(name.slice(0, 64), candidate);
+    if (steps <= Math.max(2, Math.floor(candidate.length / 4)) && (!best || steps < best.steps))
+      best = { name: candidate, steps };
+  }
+  return best?.name;
+}
+function problem(where, setting, reason, fix) {
+  return { where, setting, reason: bounded(reason), fix: bounded(fix) };
+}
+function invalidValue(where, setting, value, error) {
+  const message = error instanceof Error ? error.message : "The value is not accepted";
+  return problem(
+    where,
+    setting,
+    `The value ${shown(value)} is not accepted for ${setting}.`,
+    message.endsWith(".") ? message : `${message}.`
+  );
+}
+function unknownName(where, setting, name, known) {
+  const near = closest(name, known.names);
+  return problem(
+    where,
+    setting,
+    `${shown(name)} is not a ${known.kind}.`,
+    near ? `Did you mean "${near}"? Otherwise remove it.` : `Use one of: ${known.names.join(", ")}.`
+  );
+}
+function formatProblems(heading3, problems) {
+  const shownProblems = problems.slice(0, MAX_PROBLEMS);
+  const lines = shownProblems.map(
+    (item2, index) => `${index + 1}. ${item2.where}: ${item2.setting}
+   ${item2.reason}
+   Fix: ${item2.fix}`
+  );
+  const more = problems.length > MAX_PROBLEMS ? [`\u2026 and ${problems.length - MAX_PROBLEMS} more.`] : [];
+  const count5 = problems.length === 1 ? "1 problem" : `${problems.length} problems`;
+  return [`${heading3} (${count5}):`, ...lines, ...more].join("\n");
+}
+
+// src/core/layers.ts
+var layerOn = (options2, name) => options2.layers?.[name] !== false;
+function checkLayers(id, options2) {
+  const set = Object.keys(options2.layers ?? {});
+  if (set.length === 0) return;
+  const known = layerNames.get(id);
+  if (!known) throw new Error(`Layers are not available for ${id}`);
+  for (const name of set) {
+    if (known.includes(name)) continue;
+    const near = closest(name, known);
+    throw new Error(
+      `Unknown layer for ${id}: ${name.slice(0, 24)}. ${near ? `Did you mean ${near}?` : `Use ${known.join(" or ")}.`}`
+    );
+  }
+}
+
+// src/core/meter-styles.ts
+var METER_STYLES = ["slanted", "line", "blocks"];
+var METER_CELLS = {
+  slanted: { on: "\u25B0", off: "\u25B1" },
+  line: { on: "\u2501", off: "\u2500" },
+  blocks: { on: "\u2588", off: "\u2591" }
+};
+var isMeterStyle = (value) => typeof value === "string" && METER_STYLES.includes(value);
+var meterSample = (style) => METER_CELLS[style].on.repeat(3) + METER_CELLS[style].off.repeat(2);
+
+// src/core/slot-options.ts
+function validClick(value) {
+  if (value !== "help" && value !== "action" && value !== "none")
+    throw new Error("Invalid click mode");
+  return value;
+}
+function validGap(value) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 6)
+    throw new Error("Gap must be 0\u20136 columns");
+  return value;
+}
+function meterColor(value) {
+  if (value !== "lavender" && value !== "theme") throw new Error("Invalid meter color");
+  return value;
+}
+function validMeterStyle(value) {
+  if (!isMeterStyle(value)) throw new Error("Meter style must be slanted, line or blocks");
+  return value;
+}
+function animationEnabled(value) {
+  if (typeof value !== "boolean") throw new Error("Animation must be boolean");
+  return value;
+}
+function validWording(value) {
+  if (value !== "left" && value !== "used") throw new Error("Wording must be left or used");
+  return value;
+}
+function validUnit(value) {
+  if (value !== "tokens" && value !== "percent") throw new Error("Unit must be tokens or percent");
+  return value;
+}
+function validPeriod(value) {
+  if (value !== "day" && value !== "week" && value !== "month" && value !== "session")
+    throw new Error("Period must be day, week, month or session");
+  return value;
+}
+function validCollapse(value) {
+  if (value !== "always") throw new Error("collapse must be always");
+  return value;
+}
+function windowLabels(value) {
+  if (!Array.isArray(value) || value.length > 8) throw new Error("At most 8 window labels");
+  return value.map((label3) => boundedText(label3, 24));
+}
+function layerFlags(value) {
+  const entries = Object.entries(record2(value));
+  if (entries.length > 8) throw new Error("At most 8 layers");
+  return Object.fromEntries(
+    entries.map(([name, flag]) => {
+      if (typeof flag !== "boolean")
+        throw new Error(`Layer ${safeLabel(name)} must be true or false`);
+      return [name, flag];
+    })
+  );
+}
+function validLook(value) {
+  if (!isLook(value)) throw new Error("hideAt must be xl, lg, md, sm or xs");
+  return value;
+}
+var parsers = /* @__PURE__ */ new Map([
+  ["text", (item2) => ({ text: boundedText(item2, 1024) })],
+  ["help", (item2) => ({ help: boundedText(item2, 2048) })],
+  ["icon", (item2) => ({ icon: boundedText(item2, 16) })],
+  ["actionTarget", (item2) => ({ actionTarget: actionTarget(item2) })],
+  ["click", (item2) => ({ click: validClick(item2) })],
+  ["gap", (item2) => ({ gap: validGap(item2) })],
+  ["hideAt", (item2) => ({ hideAt: validLook(item2) })],
+  ["meterColor", (item2) => ({ meterColor: meterColor(item2) })],
+  ["meterStyle", (item2) => ({ meterStyle: validMeterStyle(item2) })],
+  ["animation", (item2) => ({ animation: animationEnabled(item2) })],
+  ["wording", (item2) => ({ wording: validWording(item2) })],
+  ["unit", (item2) => ({ unit: validUnit(item2) })],
+  ["period", (item2) => ({ period: validPeriod(item2) })],
+  ["collapse", (item2) => ({ collapse: validCollapse(item2) })],
+  ["hideWindows", (item2) => ({ hideWindows: windowLabels(item2) })],
+  ["layers", (item2) => ({ layers: layerFlags(item2) })],
+  ["collapsedShow", (item2) => ({ collapsedShow: windowLabels(item2) })]
+]);
+var SLOT_OPTION_KEYS = [...parsers.keys()];
+function actionTarget(value) {
+  if (!identifier(value)) throw new Error("Invalid action target");
+  return value;
+}
+function option(key, item2) {
+  const parse = parsers.get(key);
+  if (!parse) throw new Error(`Unknown slot option: ${safeLabel(key)}`);
+  return parse(item2);
+}
+function parseSlotOptions(value) {
+  const result = {};
+  for (const [key, item2] of Object.entries(record2(value))) Object.assign(result, option(key, item2));
+  return result;
+}
+
+// src/core/shrink.ts
+var repeat = (step, times) => Array.from({ length: times }, () => step);
+var LEAST_IMPORTANT = [
+  "drop:cost",
+  "drop:compaction",
+  "shorten:cache",
+  "drop:cache",
+  "shorten:input",
+  "shorten:output",
+  "drop:input",
+  "drop:output"
+];
+var QUOTA_WORDING = "shorten:quota";
+var REST = [
+  ...repeat("shorten:quota", 3),
+  "drop:speed",
+  ...repeat("shorten:context-usage", 2),
+  "shorten:changes",
+  "shorten:ahead",
+  ...repeat("shorten:workspace", 2),
+  "shorten:model",
+  "drop:ahead",
+  "drop:changes",
+  "drop:context-usage",
+  "drop:context",
+  "drop:quota-more",
+  "drop:quota",
+  "drop:thinking",
+  "drop:model",
+  "drop:branch"
+];
+var DEFAULT_PLAN = [QUOTA_WORDING, ...LEAST_IMPORTANT, ...REST];
+function planWithExtensions(ids, depth) {
+  const steps = [...ids].reverse().flatMap((id) => [...repeat(`shorten:${id}`, depth(id)), `drop:${id}`]);
+  return [QUOTA_WORDING, ...LEAST_IMPORTANT, ...steps, ...REST];
+}
+var STEP_NAMES = new Set(DEFAULT_PLAN);
+var REST_MARK = "...";
+var MAX_SHRINK = 64;
+function checkStep(item2, owed) {
+  if (typeof item2 !== "string") throw new Error("shrink steps must be text");
+  if (!STEP_NAMES.has(item2)) {
+    const near = closest(item2, STEP_NAMES);
+    throw new Error(
+      `Unknown shrink step: ${item2.slice(0, 40)}${near ? ` (did you mean ${near}?)` : ""}`
+    );
+  }
+  const left = (owed.get(item2) ?? 0) - 1;
+  if (left < 0) throw new Error(`Shrink step used more often than the plan has it: ${item2}`);
+  owed.set(item2, left);
+}
+function parseShrink(value) {
+  if (!Array.isArray(value) || value.length > MAX_SHRINK)
+    throw new Error(`shrink must be a list of at most ${MAX_SHRINK} steps`);
+  const owed = /* @__PURE__ */ new Map();
+  for (const step of DEFAULT_PLAN) owed.set(step, (owed.get(step) ?? 0) + 1);
+  const marks = value.filter((item2) => item2 === REST_MARK).length;
+  if (marks > 1) throw new Error(`shrink may hold "${REST_MARK}" once`);
+  for (const item2 of value) if (item2 !== REST_MARK) checkStep(item2, owed);
+  return value;
+}
+function orderPlan(base2, user) {
+  if (!user || user.length === 0) return base2;
+  const owed = /* @__PURE__ */ new Map();
+  for (const step of user) if (step !== REST_MARK) owed.set(step, (owed.get(step) ?? 0) + 1);
+  const rest = base2.filter((step) => {
+    const left = owed.get(step) ?? 0;
+    if (left > 0) owed.set(step, left - 1);
+    return left === 0;
+  });
+  const mark = user.indexOf(REST_MARK);
+  if (mark < 0) return [...user, ...rest];
+  return [...user.slice(0, mark), ...rest, ...user.slice(mark + 1)];
+}
+function take(step, model, state) {
+  const colon = step.indexOf(":");
+  const kind = step.slice(0, colon);
+  const id = step.slice(colon + 1);
+  if (!model.ids.includes(id) || state.dropped.has(id)) return false;
+  if (kind === "drop") {
+    state.dropped.add(id);
+    return true;
+  }
+  const level = state.level.get(id) ?? 0;
+  if (kind !== "shorten" || level >= model.depth(id)) return false;
+  state.level.set(id, level + 1);
+  return true;
+}
+function shrinkRow(model, plan2) {
+  const state = { level: /* @__PURE__ */ new Map(), dropped: /* @__PURE__ */ new Set() };
+  const steps = [];
+  let fitting = model.fits(state);
+  for (const step of plan2) {
+    if (fitting) break;
+    if (!take(step, model, state)) continue;
+    steps.push(step);
+    fitting = model.fits(state);
+  }
+  return { ...state, steps };
+}
+
+// src/core/footer-config.ts
+var PROBLEM_MARKER = "problems";
+var QUOTA_TOGGLE = "quota-more";
+var slotHelp = /* @__PURE__ */ new Map([
+  [
+    "workspace",
+    "Current working directory. Click its icon to open the folder in your file manager; /dock-open-with chooses another app."
+  ],
+  [
+    "branch",
+    "Current Git branch. Git unavailable means observation or watch coverage is unavailable, not a clean zero; /dock-debug reports event-monitor health. No polling fallback."
+  ],
+  [
+    "changes",
+    "Changed or untracked nonignored Git files, including nested untracked files. Staged and unstaged changes to one path count once; not changed lines. Filesystem notifications and Pi tool/lifecycle events trigger bounded Git reads automatically, including external edits; no periodic Git polling."
+  ],
+  [
+    "ahead",
+    "Local commits ahead of the locally recorded Git upstream, reconciled automatically. Uncommitted files do not count. No upstream means unknown, not zero. No network fetches or live GitHub queries."
+  ],
+  [
+    "model",
+    "Active provider and model. A provider name does not identify API-key versus OAuth authentication."
+  ],
+  ["thinking", "The active Pi thinking/reasoning level."],
+  [
+    "context",
+    "Invoke an advertised context action. Without an available action, show this explanation."
+  ],
+  [
+    "context-usage",
+    "Current context utilization and model capacity, not cumulative session tokens. After compaction Pi may report unknown usage until the next response."
+  ],
+  [
+    "compaction",
+    "Tokens remaining before the effective context limit minus the compaction reserve, or with the percent unit the point where Pi compacts as a share of the window (rounded down). Pi compacts when usage is above the window minus the reserve. This is not a time estimate."
+  ],
+  [
+    "input",
+    "Cumulative provider-reported input tokens across session entries, not the current context size."
+  ],
+  ["output", "Cumulative provider-reported output tokens across session entries."],
+  [
+    "cache",
+    "Last = latest completed primary response, including a completed step in a running task; not live cache activity. Shows reported reuse and read/written token counts, omitting zero writes. Pending/unknown is not a miss; no reuse reported is not a confirmed miss. Actual expiry is unknown. Help retains full counters and cumulative reads."
+  ],
+  [
+    "speed",
+    "Last completed primary response: reported output divided by SDK monotonic duration, including request/header wait. Not live token generation or pure decoding speed. Output may include reasoning. Cleared at turn start; absent for errors, invalid or sub-20ms timing."
+  ],
+  [
+    "quota",
+    "Remaining limits from a verified source. API tokens/requests are OpenAI HTTP rate buckets from actual response headers, not ChatGPT five-hour or weekly subscription quota. Codex uses a separate authenticated usage endpoint. The openai OAuth flow targets api.openai.com; Codex results cannot establish its account quotas. No percentages are invented."
+  ],
+  [
+    QUOTA_TOGGLE,
+    "Shows the other quota windows when the quota is collapsed to the one closest to running out (\u203A expands, \u2039 collapses). Keyboard: /dock-quota."
+  ],
+  [
+    "cost",
+    "Estimated equivalent API spend, not subscription charges or allowance consumed. Prices come from Pi's model registry: the cost Pi recorded for each response, or its model's registry rate applied to the response's token categories. A response with no registry price (or a price of zero) is left out and the total is labelled partial."
+  ]
+]);
+function defaultFooterConfig() {
+  return {
+    version: 1,
+    slots: {},
+    rows: [
+      { left: ["workspace", "branch", "changes", "ahead"], right: ["model", "thinking"] },
+      {
+        left: ["context", "context-usage", "compaction", "input", "output", "cache", "speed"],
+        right: ["quota", QUOTA_TOGGLE, "cost"]
+      }
+    ]
+  };
+}
+function row(value) {
+  const data = record2(value);
+  const group2 = (items) => {
+    if (!Array.isArray(items) || items.length > 32 || !items.every(identifier))
+      throw new Error("Rows require bounded slot-ID arrays");
+    return items;
+  };
+  if (Object.keys(data).some((key) => key !== "left" && key !== "right"))
+    throw new Error("Unknown row option");
+  return { left: group2(data.left), right: group2(data.right) };
+}
+var CONFIG_KEYS = ["version", "rows", "slots", "shrink"];
+function parseFooterConfig(value) {
+  const data = record2(value);
+  if (Object.keys(data).some((key) => !CONFIG_KEYS.includes(key)))
+    throw new Error("Unknown config option");
+  if (data.version !== void 0 && data.version !== 1)
+    throw new Error("Unsupported config version");
+  const config = defaultFooterConfig();
+  if (data.slots !== void 0) config.slots = readSlots(data.slots);
+  if (data.rows !== void 0) config.rows = readRows(data.rows);
+  if (data.shrink !== void 0) config.shrink = parseShrink(data.shrink);
+  checkSlots(config);
+  return config;
+}
+function readSlots(value) {
+  const entries = Object.entries(record2(value));
+  if (entries.length > 32 || entries.some(([id]) => !identifier(id)))
+    throw new Error("Invalid slot IDs/count");
+  return Object.fromEntries(
+    entries.map(([id, item2]) => {
+      const options2 = parseSlotOptions(item2);
+      checkLayers(id, options2);
+      return [id, options2];
+    })
+  );
+}
+function readRows(value) {
+  if (!Array.isArray(value) || value.length !== 2)
+    throw new Error("Footer requires exactly two rows");
+  return [row(value[0]), row(value[1])];
+}
+function checkSlots(config) {
+  const ids = config.rows.flatMap((item2) => [...item2.left, ...item2.right]);
+  if (ids.length > 32 || new Set(ids).size !== ids.length)
+    throw new Error("Slot IDs must be unique across the footer");
+  for (const id of ids) {
+    if (!slotHelp.has(id) && !config.slots[id]?.text)
+      throw new Error(`Custom slot ${id} needs text`);
+  }
+}
+function slotOptions(config, id) {
+  return config.slots[id] ?? {};
+}
+function clickMode(config, id) {
+  return slotOptions(config, id).click ?? (id === "context" ? "action" : "help");
+}
+function actionTargets(config) {
+  return new Set(
+    config.rows.flatMap((row4) => [...row4.left, ...row4.right]).map((id) => slotOptions(config, id).actionTarget ?? id)
+  );
+}
+
 // src/core/open-folder.ts
 var PLACEHOLDER = "{path}";
 var MAX_ARGS = 8;
@@ -346,6 +884,107 @@ function splitCommand(text) {
   return text.split(/\s+/u).filter((part) => part.length > 0);
 }
 
+// src/core/settings.ts
+var QUOTA_ONLY = [
+  "wording",
+  "collapse",
+  "collapsedShow",
+  "hideWindows",
+  "animation",
+  "meterColor",
+  "meterStyle"
+];
+var ownOption = (id, key) => {
+  if (key === "layers") return layerNames.has(id);
+  if (id === "quota") return QUOTA_ONLY.includes(key);
+  return id === "compaction" && key === "unit" || id === "cost" && key === "period";
+};
+var SETTING_KEYS = [
+  "version",
+  "glyphs",
+  "glyphHintShown",
+  "quotaExpanded",
+  "colors",
+  "iconBold",
+  "clicks",
+  "openWith",
+  "limits",
+  "shrink",
+  "slots"
+];
+var defaultSettings = () => ({ version: 1, slots: {} });
+var settingsItems = () => [...slotHelp.keys()].filter((id) => id !== QUOTA_TOGGLE);
+function slots(value) {
+  const result = {};
+  const known = new Set(settingsItems());
+  for (const [id, item2] of Object.entries(record2(value))) {
+    if (!known.has(id)) throw new Error(`Unknown item: ${id.slice(0, 32)}`);
+    const options2 = parseSlotOptions(item2);
+    const misplaced = Object.keys(options2).filter((key) => key !== "hideAt" && !ownOption(id, key));
+    if (misplaced.length > 0) throw new Error(`Option not available for ${id}: ${misplaced[0]}`);
+    checkLayers(id, options2);
+    result[id] = options2;
+  }
+  return result;
+}
+function parseSettings(value) {
+  const data = record2(value);
+  if (Object.keys(data).some((key) => !SETTING_KEYS.includes(key)))
+    throw new Error("Unknown setting");
+  if (data.version !== 1) throw new Error("Unsupported settings version");
+  const result = defaultSettings();
+  readChoices(data, result);
+  if (data.colors !== void 0) result.colors = parseColors(data.colors);
+  if (data.openWith !== void 0) result.openWith = parseOpenWith(data.openWith);
+  if (data.shrink !== void 0) result.shrink = parseShrink(data.shrink);
+  if (data.slots !== void 0) result.slots = slots(data.slots);
+  return result;
+}
+function readFlags(data, result) {
+  for (const key of ["glyphHintShown", "quotaExpanded", "iconBold"]) {
+    if (data[key] === void 0) continue;
+    if (typeof data[key] !== "boolean") throw new Error(`${key} must be true or false`);
+    result[key] = data[key];
+  }
+}
+function readChoices(data, result) {
+  if (data.glyphs !== void 0) {
+    if (data.glyphs !== "nerd" && data.glyphs !== "portable")
+      throw new Error("glyphs must be nerd or portable");
+    result.glyphs = data.glyphs;
+  }
+  readFlags(data, result);
+  if (data.limits !== void 0) {
+    if (data.limits !== "on" && data.limits !== "off") throw new Error("limits must be on or off");
+    result.limits = data.limits;
+  }
+  if (data.clicks !== void 0) {
+    if (data.clicks !== "actions" && data.clicks !== "explain")
+      throw new Error("clicks must be actions or explain");
+    result.clicks = data.clicks;
+  }
+}
+function applySettings(config, settings) {
+  const merged = { ...config.slots };
+  for (const [id, options2] of Object.entries(settings.slots))
+    merged[id] = { ...options2, ...config.slots[id] };
+  const shrink = config.shrink ?? settings.shrink;
+  return { ...config, slots: merged, ...shrink ? { shrink } : {} };
+}
+function withoutSetting(settings, key) {
+  return Object.fromEntries(
+    Object.entries(settings).filter(([name]) => name !== key)
+  );
+}
+function withSlot(settings, id, patch) {
+  const options2 = Object.entries({ ...settings.slots[id], ...patch }).filter(
+    ([, value]) => value !== void 0
+  );
+  const others = Object.entries(settings.slots).filter(([key]) => key !== id);
+  const changed2 = options2.length > 0 ? [[id, Object.fromEntries(options2)]] : [];
+  return { ...settings, slots: Object.fromEntries([...others, ...changed2]) };
+}
+
 // src/notify.ts
 import { stripTerminalSequences } from "@earendil-works/pi-tui";
 var MAX_CHARACTERS = 8e3;
@@ -367,6 +1006,253 @@ function say(ctx, text, level = "info") {
 var sayAt = (ctx, level = "info") => (text) => {
   say(ctx, text, level);
 };
+
+// src/ui/glyphs.ts
+var nerdGlyphs = {
+  folder: "\uF07C",
+  branch: "\uE725",
+  changed: "\uF040",
+  ahead: "\uF0EE",
+  chip: "\uF2DB",
+  input: "\u2191",
+  output: "\u2193",
+  cache: "\uF021",
+  robot: "\u{F06A9}",
+  reasoning: "\u{F09D1}",
+  hourglass: "\uF252",
+  reset: "\u{F0453}",
+  speed: "\uF0E4",
+  expand: "\u203A",
+  collapse: "\u2039",
+  dot: "\u25CF",
+  check: "\uF00C",
+  warn: "\uF071",
+  error: "\uF00D",
+  info: "\uF05A",
+  clock: "\uF017",
+  user: "\uF007",
+  star: "\uF005"
+};
+var portableGlyphs = {
+  folder: "\u2302",
+  branch: "Y",
+  changed: "\u270E",
+  ahead: "\u21E1",
+  chip: "\u25D4",
+  input: "\u2191",
+  output: "\u2193",
+  cache: "\u2261",
+  robot: "\u25A3",
+  reasoning: "\u2234",
+  hourglass: "\u2026",
+  reset: "\u21BB",
+  speed: "\xBB",
+  expand: "\u203A",
+  collapse: "\u2039",
+  dot: "\u2022",
+  check: "\u2713",
+  warn: "\u25B2",
+  error: "\u2717",
+  info: "i",
+  clock: "\u25CB",
+  user: "@",
+  star: "*"
+};
+
+// src/ui/palette.ts
+import { colorToOklch, colorToRgb, oklchColor, parseColor, rgbColor } from "@earendil-works/pi-tui";
+var token = {
+  muted: "dim",
+  text: "text",
+  highlight: "text",
+  warning: "warning",
+  error: "error",
+  success: "success",
+  accent: "accent"
+};
+var NOTHING = { colors: {}, iconBold: false };
+var LAVENDER = colorToOklch(parseColor("#b4a0e5"));
+var FIXED = { dark: parseColor("#b4a0e5"), light: parseColor("#7459b4") };
+var ICON_CONTRAST = 3;
+var FLOOR = {
+  text: 4.5,
+  highlight: 4.5,
+  muted: 3,
+  warning: 3,
+  error: 3,
+  success: 3,
+  accent: ICON_CONTRAST
+};
+var GUESS = { dark: 0, light: 1 };
+var MIDDLE = 0.179;
+var channel = (value) => {
+  const unit = value / 255;
+  return unit <= 0.03928 ? unit / 12.92 : ((unit + 0.055) / 1.055) ** 2.4;
+};
+var luminanceOf = ({ r, g, b }) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+function contrast(first, background) {
+  const a = luminanceOf(colorToRgb(first));
+  const [high, low] = a > background ? [a, background] : [background, a];
+  return (high + 0.05) / (low + 0.05);
+}
+function readable(color, background, floor) {
+  if (contrast(color, background) >= floor) return color;
+  const { l, c, h } = colorToOklch(color);
+  const step = background > MIDDLE ? -0.02 : 0.02;
+  let lightness = l;
+  let result = color;
+  for (let tries = 0; tries < 60 && contrast(result, background) < floor; tries += 1) {
+    lightness = Math.min(1, Math.max(0, lightness + step));
+    result = oklchColor(lightness, c, h);
+  }
+  if (contrast(result, background) >= floor) return result;
+  const black = rgbColor(0, 0, 0);
+  const white = rgbColor(255, 255, 255);
+  return contrast(black, background) >= contrast(white, background) ? black : white;
+}
+function adaptedAccent(accent, appearance, background = GUESS[appearance]) {
+  const start = accent === void 0 || accent.kind === "indexed" && accent.index < 16 ? FIXED[appearance] : oklchColor(colorToOklch(accent).l, LAVENDER.c, LAVENDER.h);
+  return readable(start, background, ICON_CONTRAST);
+}
+var hexColors = /* @__PURE__ */ new Map();
+function hexColor(value) {
+  let color = hexColors.get(value);
+  if (!color) {
+    color = parseColor(value);
+    hexColors.set(value, color);
+  }
+  return color;
+}
+function withColor2(theme, color, text) {
+  if (theme.style) return theme.style(text, { fg: color });
+  const { r, g, b } = colorToRgb(color);
+  return `\x1B[38;2;${r};${g};${b}m${text}\x1B[39m`;
+}
+var terminalColor = (role, text) => role === "muted" ? `\x1B[2m${text}\x1B[22m` : `\x1B[39m${text}\x1B[39m`;
+function createPaint(theme, settings = () => NOTHING, terminal = () => void 0) {
+  let table2;
+  let seen;
+  const memo = /* @__PURE__ */ new Map();
+  const backgroundLuminance = () => seen ? luminanceOf(seen) : GUESS[theme.appearance ?? "dark"];
+  const worked = (key, work) => {
+    const known = terminal();
+    if (table2 !== theme.colors || seen !== known) {
+      table2 = theme.colors;
+      seen = known;
+      memo.clear();
+    }
+    let value = memo.get(key);
+    if (value === void 0) {
+      value = work();
+      memo.set(key, value);
+    }
+    return value;
+  };
+  const moved = (name, role) => worked(`${name}:${role}`, () => {
+    const own = theme.colors?.[token[name]];
+    if (own === void 0 || own.kind === "indexed" && own.index < 16) return null;
+    const result = readable(own, backgroundLuminance(), FLOOR[role]);
+    return result === own ? null : result;
+  });
+  const lavender = () => worked(
+    "lavender",
+    () => adaptedAccent(theme.colors?.accent, theme.appearance ?? "dark", backgroundLuminance())
+  ) ?? FIXED.dark;
+  const draw = (text, role, choice) => {
+    if (choice !== void 0 && isHexColor(choice)) return withColor2(theme, hexColor(choice), text);
+    if (choice === "terminal") return terminalColor(role, text);
+    if (role === "accent" && choice !== "theme") return withColor2(theme, lavender(), text);
+    const name = choice === "warning" ? "warning" : role;
+    const shifted = moved(name, role);
+    return shifted ? withColor2(theme, shifted, text) : theme.fg(token[name], text);
+  };
+  return (text, tone = "text", emphasis) => {
+    const { colors, iconBold } = settings();
+    const role = tone === "icon" ? "accent" : tone;
+    const colored = draw(text, role, colors[role]);
+    const bold = emphasis === "bold" || tone === "icon" && iconBold;
+    if (bold) return theme.bold(colored);
+    if (emphasis === "underline") return theme.underline(colored);
+    return colored;
+  };
+}
+
+// src/color-command.ts
+var NERD_BOLD = "Bold does not show on Nerd Font icons (their symbols have one weight); it applies to the plain icons, /dock-glyphs.";
+var USAGE = `Usage: /dock-color <${COLOR_TONES.join("|")}> <#rrggbb|default|word>, /dock-color bold <on|off>, /dock-color reset`;
+function describe(settings, background) {
+  const colors = effectiveColors(settings.current, settings.current.slots.quota?.meterColor);
+  const lines = COLOR_TONES.map(
+    (tone) => `${tone}: ${colors[tone] ?? "default"}  (${colorWords(tone).join(", ")} or #rrggbb)`
+  );
+  const bold = `icons bold: ${settings.current.iconBold === false ? "off" : "on"}`;
+  return [...lines, bold, background, USAGE].join("\n");
+}
+function planBold(value, settings) {
+  if (value !== "on" && value !== "off") return { refused: USAGE };
+  const rest = withoutSetting(settings, "iconBold");
+  return {
+    next: value === "on" ? rest : { ...rest, iconBold: false },
+    message: `Bold icons: ${value}.`
+  };
+}
+function planTone(tone, value, settings) {
+  if (!isColorTone(tone)) return { refused: `unknown colour "${tone.slice(0, 32)}". ${USAGE}` };
+  try {
+    const colors = withColor(settings.colors ?? {}, tone, value);
+    const rest = withoutSetting(settings, "colors");
+    const next = Object.keys(colors).length > 0 ? { ...rest, colors } : rest;
+    return { next, message: `${tone} colour: ${colors[tone] ?? "default"}.` };
+  } catch (error) {
+    return { refused: error.message };
+  }
+}
+function plan(args, settings) {
+  const [first, second, ...extra] = args;
+  if (first === "reset")
+    return {
+      next: withoutSetting(settings, "colors"),
+      message: "Colours are back to their defaults."
+    };
+  if (first === void 0 || second === void 0 || extra.length > 0) return { refused: USAGE };
+  return first === "bold" ? planBold(second, settings) : planTone(first, second, settings);
+}
+function hardToRead(words, contrastOf) {
+  const [tone, value] = words;
+  if (tone === void 0 || value === void 0 || !isColorTone(tone) || !isHexColor(value)) return;
+  const ratio = contrastOf(value);
+  if (ratio === void 0 || ratio >= FLOOR[tone]) return;
+  return `That colour is hard to read on your terminal background (contrast ${ratio.toFixed(1)}:1; ${FLOOR[tone]}:1 or more reads well). It is saved; /dock-color ${tone} default undoes it.`;
+}
+function runColor(args, ctx, settings, footer) {
+  const words = args.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    say(ctx, describe(settings, footer.describeBackground()), "info");
+    return;
+  }
+  const outcome2 = plan(words, settings.current);
+  if ("refused" in outcome2) {
+    say(ctx, `Not changed: ${outcome2.refused}`, "warning");
+    return;
+  }
+  const failure3 = settings.update(outcome2.next);
+  footer.redraw();
+  say(ctx, outcome2.message, "info");
+  if (words[0] === "bold" && words[1] === "on" && settings.glyphs === nerdGlyphs)
+    say(ctx, NERD_BOLD, "info");
+  if (failure3) say(ctx, failure3, "warning");
+  const hard = hardToRead(words, footer.contrastOf);
+  if (hard) say(ctx, hard, "warning");
+}
+function registerColorCommand(pi, runtime) {
+  pi.registerCommand("dock-color", {
+    description: "Footer colours: /dock-color accent #b4a0e5, /dock-color bold on, /dock-color reset (no arguments lists them)",
+    handler: (args, ctx) => {
+      runColor(args, ctx, runtime.settings, runtime.colours);
+      return Promise.resolve();
+    }
+  });
+}
 
 // src/open-with-command.ts
 function runOpenWith(args, ctx, settings) {
@@ -400,7 +1286,6 @@ var NAMES = {
   legacyConfigEntries: ["pi-telltale-config-v1", "pi-glance-config-v1"],
   limitsEntry: "pi-footer-dock-rate-limits-v1",
   legacyLimitsEntries: ["pi-telltale-rate-limits-v1", "pi-glance-rate-limits-v1"],
-  /** Folder under the user's cache folder; everything in it can be rebuilt. */
   cacheDir: "pi-footer-dock",
   traceChannel: "pi-footer-dock:interaction-trace:v1",
   pointerDebugEnv: "PI_FOOTER_DOCK_POINTER_DEBUG"
@@ -466,7 +1351,6 @@ var ResponseSpeed = class {
   firstText = null;
   value = null;
   sample = null;
-  /** After a successful response without a figure: the reason; otherwise null. */
   unmeasured = null;
   start() {
     this.reset();
@@ -482,7 +1366,6 @@ var ResponseSpeed = class {
     this.firstContent ??= elapsed;
     if (type === "text_delta") this.firstText = elapsed;
   }
-  /** True only for a paired successful primary completion, even when timing is unavailable. */
   end(result) {
     if (this.started === void 0) return false;
     this.started = void 0;
@@ -526,7 +1409,6 @@ function readCacheUsage(value) {
     read: read2,
     write,
     prompt,
-    // Zero is deliberately unknown: Pi may normalize an omitted counter to zero.
     reusePercent: prompt !== null && prompt > 0 && read2 !== null && read2 > 0 ? read2 / prompt * 100 : null
   };
 }
@@ -547,9 +1429,7 @@ var ResponseTelemetry = class {
   now;
   speed = new ResponseSpeed();
   cache = null;
-  /** A turn has started and its response has not finished yet. */
   open = false;
-  /** When the last successful response ended; the idle time is measured from it. */
   lastEnd = null;
   pendingIdle = null;
   cacheIdle = null;
@@ -1140,7 +2020,7 @@ function withoutPersonalPaths(text) {
   const home = homedir2();
   return home.length > 3 ? text.split(home).join("~") : text;
 }
-function describe(ctx) {
+function describe2(ctx) {
   if (!ctx) return { bound: false };
   const entries = ctx.sessionManager.getEntries();
   const assistants = entries.filter(
@@ -1161,7 +2041,7 @@ function describe(ctx) {
     totals: readTotals(entries)
   };
 }
-function diagnosticReport(options) {
+function diagnosticReport(options2) {
   return withoutPersonalPaths(
     JSON.stringify(
       {
@@ -1173,24 +2053,24 @@ function diagnosticReport(options) {
             "openai-response-headers"
           ]
         },
-        runsFrom: runsFrom(options.source),
-        quotaEvents: options.quotaEvents,
-        quotaProvider: options.quotaProvider,
-        headerEvents: options.headerEvents,
-        footerSlots: options.footerSlots,
-        gitMonitor: options.gitMonitor,
-        commandContext: describe(options.command),
-        footerContext: describe(options.bound),
-        cachedFooter: options.cached && {
-          git: options.cached.git,
-          tokens: options.cached.tokens,
-          capacity: options.cached.capacity,
-          percent: options.cached.percent,
-          totals: options.cached.totals,
-          apiCostEstimate: options.cached.apiCostEstimate,
-          rateLimits: options.cached.rateLimits,
-          quotaStatus: options.cached.quotaStatus,
-          outputTokensPerSecond: options.cached.outputTokensPerSecond
+        runsFrom: runsFrom(options2.source),
+        quotaEvents: options2.quotaEvents,
+        quotaProvider: options2.quotaProvider,
+        headerEvents: options2.headerEvents,
+        footerSlots: options2.footerSlots,
+        gitMonitor: options2.gitMonitor,
+        commandContext: describe2(options2.command),
+        footerContext: describe2(options2.bound),
+        cachedFooter: options2.cached && {
+          git: options2.cached.git,
+          tokens: options2.cached.tokens,
+          capacity: options2.cached.capacity,
+          percent: options2.cached.percent,
+          totals: options2.cached.totals,
+          apiCostEstimate: options2.cached.apiCostEstimate,
+          rateLimits: options2.cached.rateLimits,
+          quotaStatus: options2.cached.quotaStatus,
+          outputTokensPerSecond: options2.cached.outputTokensPerSecond
         }
       },
       null,
@@ -1198,6 +2078,1023 @@ function diagnosticReport(options) {
     )
   );
 }
+
+// src/core/menu-row.ts
+var HIDDEN = "hidden";
+var SHOWN = "shown";
+var row2 = (id, label3, current, values) => ({
+  id,
+  label: label3,
+  description: "",
+  values,
+  current
+});
+var withNote = (base2, description) => ({ ...base2, description });
+var savable = (label3) => label3.length <= 24 && safeLabel(label3) === label3;
+
+// src/core/settings-labels.ts
+var groupText = {
+  workspace: { label: "Project and Git", note: "Folder, branch, changed files, commits ahead." },
+  model: { label: "Model", note: "The model and its thinking level." },
+  context: { label: "Context and tokens", note: "Context, compaction notice, input and output." },
+  usage: { label: "Cache, speed and cost", note: "Cache, speed and estimated cost." },
+  quota: { label: "Limit usage", note: "Visibility, windows, collapse, left or used." },
+  collapse: { label: "Collapse windows", note: "When to collapse, and which windows stay." },
+  appearance: { label: "Appearance", note: "Icons, bold icons and every colour of the footer." },
+  colors: { label: "Colours", note: "Every colour of the footer. Enter to choose one." }
+};
+var itemText = /* @__PURE__ */ new Map([
+  ["workspace", { label: "Project folder", note: "The project folder, shortened when tight." }],
+  ["branch", { label: "Git branch", note: "The current Git branch." }],
+  ["changes", { label: "Changed files", note: "Files with uncommitted changes." }],
+  ["ahead", { label: "Commits ahead", note: "Commits not pushed yet." }],
+  ["model", { label: "Model", note: "The model, with its provider when there is room." }],
+  ["thinking", { label: "Thinking level", note: "The model's thinking level." }],
+  ["context", { label: "Context icon", note: "Icon before context usage; click for its action." }],
+  ["context-usage", { label: "Context usage", note: "How much of the context window is used." }],
+  ["compaction", { label: "Compaction notice", note: "Notice before the context is compacted." }],
+  ["input", { label: "Input tokens", note: "Input tokens used in this session." }],
+  ["output", { label: "Output tokens", note: "Output tokens used in this session." }],
+  ["cache", { label: "Cache", note: "Share of the prompt served from the cache." }],
+  ["speed", { label: "Tokens per second", note: "Output speed of the last response." }],
+  ["quota", { label: "Limit usage", note: "What is left of each provider limit." }],
+  ["cost", { label: "Cost", note: "Estimated spend at API prices." }]
+]);
+var layerText = /* @__PURE__ */ new Map([
+  ["model:provider", { label: "Provider", note: "The provider before the model name." }],
+  [
+    "model:name",
+    { label: "Model name", note: "The model name. With both off the item is hidden." }
+  ],
+  ["quota:meter", { label: "Meter", note: "The bar before the percent." }],
+  ["quota:reset", { label: "Reset time", note: "The reload icon and the time until the reset." }]
+]);
+var rowText = {
+  unit: { label: "Compaction unit", note: "Show the notice in tokens or in percent." },
+  period: { label: "Cost period", note: "Spend over a day, a week, a month, or this session." },
+  limits: {
+    label: "Ask providers for limits",
+    note: "Ask your provider for its limits. Off sends nothing."
+  },
+  wording: { label: "Percent shown", note: "Show the percent left, or the percent used." },
+  collapse: { label: "When to collapse", note: "When to hide the last window behind \u203A." },
+  expanded: { label: "Start expanded", note: "Start with every limit window shown." },
+  animation: { label: "Animate changes", note: "Flash the meter briefly when a limit changes." },
+  clicks: {
+    label: "Clicking an item",
+    note: "Act: icons do things (open the folder, pick a model, switch branch). Explain: a click only explains the item."
+  },
+  glyphs: {
+    label: "Icons",
+    note: "Automatic: Nerd Font icons, or plain symbols on a terminal that cannot show them. Plain symbols are ordinary characters every font has, and can be bold."
+  },
+  meterStyle: {
+    label: "Meter look",
+    note: "Line and solid blocks are drawn by the terminal itself, so they look the same in any font."
+  },
+  iconBold: { label: "Bold icons", note: "Draw the plain icons in bold." },
+  "color:accent": { label: "Accent", note: "Icons, the model name and the limit meter." },
+  "color:text": { label: "Text", note: "Names, numbers, the branch and token counts." },
+  "color:muted": { label: "Labels", note: "Labels, separators and empty meter cells." },
+  "color:highlight": {
+    label: "Highlight",
+    note: "The context bar, changed files and the compaction notice."
+  },
+  "color:warning": {
+    label: "Warning",
+    note: "A limit at 25% or less. A status, so keep it distinct."
+  },
+  "color:error": { label: "Error", note: "A blocked limit and the problems marker." },
+  "color:success": {
+    label: "Success",
+    note: "Used by other extensions; the footer itself shows none."
+  }
+};
+var windowWords = (label3) => ({
+  label: `Window: ${label3}`,
+  note: `Show or hide the ${label3} window.`
+});
+var keepWords = (label3) => ({
+  label: `Keep ${label3}`,
+  note: `Keep ${label3} visible when collapsed.`
+});
+var SHOWN_HIDDEN = { shown: "shown", hidden: "hidden" };
+var VISIBILITY = {
+  shown: "shown",
+  lg: "hidden when the row is a bit tight",
+  md: "hidden when the row is tight",
+  sm: "hidden when the row is quite tight",
+  xs: "hidden when the row is very tight",
+  hidden: "hidden"
+};
+var STYLE_NAMES = { slanted: "slanted", line: "line", blocks: "solid blocks" };
+var OPTIONS = {
+  unit: { tokens: "tokens", percent: "percent" },
+  period: { day: "day", week: "week", month: "month", session: "session" },
+  limits: { off: "off", on: "on" },
+  wording: { left: "left", used: "used" },
+  collapse: { tight: "when tight", always: "always" },
+  expanded: { no: "no", yes: "yes" },
+  animation: { on: "on", off: "off" },
+  clicks: { actions: "act", explain: "explain" },
+  glyphs: { auto: "automatic", nerd: "Nerd Font", portable: "plain symbols" },
+  iconBold: { on: "on", off: "off" },
+  meterStyle: Object.fromEntries(
+    METER_STYLES.map((style) => [style, `${STYLE_NAMES[style]} ${meterSample(style)}`])
+  )
+};
+var COLOURS = {
+  accent: { default: "lavender, adapted to your theme", theme: "theme accent" },
+  text: { default: "theme", terminal: "terminal default" },
+  muted: { default: "theme", terminal: "terminal default (faint)" },
+  highlight: { default: "theme (calm)", warning: "warning colour (the old look)" },
+  warning: { default: "theme" },
+  error: { default: "theme" },
+  success: { default: "theme" }
+};
+var colourNotes = {
+  "accent:default": "Keeps our lavender hue and takes its lightness from your theme and terminal.",
+  "accent:theme": "The theme's own accent colour.",
+  "text:terminal": "Your terminal's own default colour: always readable.",
+  "muted:terminal": "Your terminal's own default colour, faint: always readable.",
+  "highlight:warning": "The warning colour, as the context bar was drawn before."
+};
+var KEEP = { shown: "yes", hidden: "no" };
+function choiceWords(id) {
+  if (id.startsWith("item:")) return VISIBILITY;
+  if (id.startsWith("window:") || id.startsWith("layer:")) return SHOWN_HIDDEN;
+  if (id.startsWith("collapsed:")) return KEEP;
+  if (id.startsWith("color:")) return COLOURS[id.slice("color:".length)];
+  return OPTIONS[id];
+}
+function wordFor(id, key, icons) {
+  if (id === "glyphs" && key === "auto" && icons)
+    return `${OPTIONS.glyphs?.auto ?? key} (${OPTIONS.glyphs?.[icons] ?? icons})`;
+  return choiceWords(id)?.[key] ?? key;
+}
+function keyFor(id, word) {
+  if (id === "glyphs" && word.startsWith(OPTIONS.glyphs?.auto ?? "")) return "auto";
+  const words = choiceWords(id);
+  return Object.entries(words ?? {}).find(([, shown2]) => shown2 === word)?.[0] ?? word;
+}
+function textRow(id, current, values) {
+  const words = rowText[id];
+  if (!words) throw new Error(`No words for the settings row ${id}`);
+  return withNote(row2(id, words.label, current, [...values]), words.note);
+}
+var rowLabel = (id) => rowText[id]?.label ?? id;
+
+// src/core/settings-collapse.ts
+var MAX_LABELS = 8;
+var PREFIX = "collapsed:";
+var visible = (settings, published) => published.filter((label3) => !(settings.slots.quota?.hideWindows ?? []).includes(label3));
+var kept = (settings, published) => settings.slots.quota?.collapsedShow ?? visible(settings, published).slice(0, -1);
+function collapsedRows(settings, published) {
+  const stays = kept(settings, published);
+  const all = visible(settings, published);
+  return all.filter(savable).map((label3) => ({
+    ...withNote(
+      row2(`${PREFIX}${label3}`, keepWords(label3).label, stays.includes(label3) ? SHOWN : HIDDEN, [
+        SHOWN,
+        HIDDEN
+      ]),
+      keepWords(label3).note
+    ),
+    default: label3 === all.at(-1) ? HIDDEN : SHOWN
+  }));
+}
+var isCollapsedRow = (id) => id.startsWith(PREFIX);
+var collapsedLabel = (id) => id.slice(PREFIX.length);
+function collapsedChoice(settings, label3, value, published) {
+  const others = kept(settings, published).filter((item2) => item2 !== label3);
+  const next = value === SHOWN ? [...others, label3] : others;
+  return next.length > MAX_LABELS ? settings : withSlot(settings, "quota", { collapsedShow: next });
+}
+function windowRows(settings, published) {
+  const hidden = settings.slots.quota?.hideWindows ?? [];
+  return [.../* @__PURE__ */ new Set([...published, ...hidden])].filter(savable).map(
+    (label3) => withNote(
+      row2(`window:${label3}`, windowWords(label3).label, hidden.includes(label3) ? HIDDEN : SHOWN, [
+        SHOWN,
+        HIDDEN
+      ]),
+      windowWords(label3).note
+    )
+  );
+}
+function windowChoice(settings, label3, value) {
+  const others = (settings.slots.quota?.hideWindows ?? []).filter((item2) => item2 !== label3);
+  const next = value === HIDDEN ? [...others, label3] : others;
+  return next.length > MAX_LABELS ? settings : withSlot(settings, "quota", { hideWindows: next.length ? next : void 0 });
+}
+
+// src/core/settings-colors.ts
+var PREFIX2 = "color:";
+var BOLD_ROW = "iconBold";
+function offered(tone, current) {
+  const [, ...others] = colorWords(tone);
+  return ["default", ...others, ...current.startsWith("#") ? [current] : []];
+}
+var colorTone = (id) => {
+  const tone = id.slice(PREFIX2.length);
+  return id.startsWith(PREFIX2) && isColorTone(tone) ? tone : void 0;
+};
+function colorRows(settings, icons) {
+  const colors = effectiveColors(settings, settings.slots.quota?.meterColor);
+  return [
+    ...COLOR_TONES.map((tone) => {
+      const current = colors[tone] ?? "default";
+      return textRow(`${PREFIX2}${tone}`, current, offered(tone, current));
+    }),
+    ...icons === "portable" ? [textRow(BOLD_ROW, settings.iconBold === false ? "off" : "on", ["on", "off"])] : []
+  ];
+}
+var isColorRow = (id) => id === BOLD_ROW || colorTone(id) !== void 0;
+function boldChoice(settings, value) {
+  const rest = withoutSetting(settings, "iconBold");
+  return value === "off" ? { ...rest, iconBold: false } : value === "on" ? rest : settings;
+}
+function colorChoice(settings, id, value) {
+  if (id === BOLD_ROW) return boldChoice(settings, value);
+  const tone = colorTone(id);
+  if (!tone) return settings;
+  const legacy = settings.slots.quota?.meterColor;
+  const current = effectiveColors(settings, legacy)[tone] ?? "default";
+  if (!isHexColor(value) && !offered(tone, current).includes(value)) return settings;
+  const rest = withoutSetting(settings, "colors");
+  const colors = withColor({ ...effectiveColors(settings, legacy) }, tone, value);
+  const withAccent = tone === "accent" && legacy === "theme" && value === "default" ? { ...colors, accent: "lavender" } : colors;
+  return Object.keys(withAccent).length > 0 ? { ...rest, colors: withAccent } : rest;
+}
+
+// src/core/settings-layers.ts
+var PREFIX3 = "layer:";
+var split = (id) => {
+  const [prefix, item2, part, ...more] = id.split(":");
+  return `${prefix}:` === PREFIX3 && item2 && part && more.length === 0 ? { item: item2, part } : void 0;
+};
+var layerItem = (id) => split(id)?.item;
+var isLayerRow = (id) => split(id) !== void 0;
+var layerValues = () => [SHOWN, HIDDEN];
+var isKnownLayerRow = (id) => {
+  const found = split(id);
+  return found !== void 0 && settingsItems().includes(found.item) && (layerNames.get(found.item) ?? []).includes(found.part);
+};
+function layerRows(settings) {
+  return settingsItems().flatMap(
+    (item2) => (layerNames.get(item2) ?? []).map((part) => {
+      const text = layerText.get(`${item2}:${part}`);
+      return withNote(
+        row2(
+          `${PREFIX3}${item2}:${part}`,
+          text?.label ?? `${item2}: ${part}`,
+          settings.slots[item2]?.layers?.[part] === false ? HIDDEN : SHOWN,
+          layerValues()
+        ),
+        text?.note ?? ""
+      );
+    })
+  );
+}
+function layerChoice(settings, id, value) {
+  const found = split(id);
+  if (!found || !isKnownLayerRow(id)) return settings;
+  const next = { ...settings.slots[found.item]?.layers, [found.part]: value === SHOWN };
+  const off = Object.entries(next).filter(([, on]) => !on);
+  return withSlot(settings, found.item, {
+    layers: off.length > 0 ? Object.fromEntries(off) : void 0
+  });
+}
+
+// src/core/history/period.ts
+var two = (value) => String(value).padStart(2, "0");
+var dayString = (date) => `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
+var fromDay = (day) => new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)));
+function periodStart(period, date) {
+  if (period === "day") return dayString(date);
+  if (period === "month") return `${date.getFullYear()}-${two(date.getMonth() + 1)}-01`;
+  const back = (date.getDay() + 6) % 7;
+  return dayString(new Date(date.getFullYear(), date.getMonth(), date.getDate() - back));
+}
+function periodStartBack(period, date, back) {
+  if (period === "day")
+    return dayString(new Date(date.getFullYear(), date.getMonth(), date.getDate() - back));
+  if (period === "week") {
+    const monday = fromDay(periodStart("week", date));
+    return dayString(
+      new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 7 * back)
+    );
+  }
+  return dayString(new Date(date.getFullYear(), date.getMonth() - back, 1));
+}
+function series(rows, period, date, count5) {
+  const starts = Array.from(
+    { length: count5 },
+    (_, index) => periodStartBack(period, date, count5 - 1 - index)
+  );
+  const bins = starts.map((start) => ({ start, cost: 0, unpriced: 0, responses: 0 }));
+  for (const row4 of rows) {
+    let at = -1;
+    for (let index = bins.length - 1; index >= 0; index -= 1) {
+      if (row4.day >= (bins[index]?.start ?? "9999")) {
+        at = index;
+        break;
+      }
+    }
+    const bin = at < 0 ? void 0 : bins[at];
+    if (bin && row4.day <= dayString(date)) {
+      bin.cost += row4.cost;
+      bin.unpriced += row4.unpriced;
+      bin.responses += row4.responses;
+    }
+  }
+  return bins;
+}
+
+// src/core/history/queries.ts
+var noTotals = () => ({
+  responses: 0,
+  input: 0,
+  output: 0,
+  read: 0,
+  write: 0,
+  cost: 0,
+  unpriced: 0
+});
+function sum2(rows) {
+  const total = noTotals();
+  for (const row4 of rows) {
+    total.responses += row4.responses;
+    total.input += row4.input;
+    total.output += row4.output;
+    total.read += row4.read;
+    total.write += row4.write;
+    total.cost += row4.cost;
+    total.unpriced += row4.unpriced;
+  }
+  return total;
+}
+function inPeriod(rows, period, date) {
+  const from = periodStart(period, date);
+  const to = dayString(date);
+  return [...rows].filter((row4) => row4.day >= from && row4.day <= to);
+}
+function cacheShare(total) {
+  const prompt = total.input + total.read + total.write;
+  return total.read > 0 && prompt > 0 ? total.read / prompt * 100 : null;
+}
+
+// src/core/history/costs.ts
+var COST_PERIODS = ["day", "week", "month", "session"];
+var DEFAULT_COST_PERIOD = "month";
+var SUFFIX = { day: "day", week: "wk", month: "mo" };
+var none = () => ({ cost: 0, unpriced: 0, responses: 0 });
+function periodCostsOf(rows, now, memory = none()) {
+  const total = (period) => {
+    const part = sum2(inPeriod(rows, period, now));
+    return {
+      cost: part.cost + memory.cost,
+      unpriced: part.unpriced + memory.unpriced,
+      responses: part.responses + memory.responses
+    };
+  };
+  return { day: total("day"), week: total("week"), month: total("month") };
+}
+function periodCostLabel(period, cost2) {
+  if (cost2.responses === 0) return "";
+  if (cost2.unpriced > 0 && cost2.cost < 0.01) return "";
+  return `${costAmount(cost2.cost)}${cost2.unpriced > 0 ? "+" : ""} ${SUFFIX[period]}`;
+}
+function costDisplay(snapshot, period = DEFAULT_COST_PERIOD) {
+  const history = snapshot.historyCosts;
+  if (period !== "session" && history) return periodCostLabel(period, history[period]);
+  return hasCost(snapshot.apiCostEstimate) ? formatApiCost(snapshot.apiCostEstimate) : "";
+}
+
+// src/core/settings-menu.ts
+var OPTIONS2 = {
+  unit: ["tokens", "percent"],
+  period: [...COST_PERIODS],
+  limits: ["off", "on"],
+  wording: ["left", "used"],
+  collapse: ["tight", "always"],
+  expanded: ["no", "yes"],
+  animation: ["on", "off"],
+  clicks: ["actions", "explain"],
+  glyphs: ["auto", "nerd", "portable"],
+  meterStyle: [...METER_STYLES]
+};
+var isPeriod = (value) => COST_PERIODS.includes(value);
+var visibility = [SHOWN, ...LOOKS.slice(1), HIDDEN];
+function visibilityOf(hideAt) {
+  if (hideAt === void 0) return SHOWN;
+  return hideAt === LOOKS[0] ? HIDDEN : hideAt;
+}
+var options = (id) => OPTIONS2[id] ?? [];
+function itemRows(settings) {
+  return settingsItems().map(
+    (id) => withNote(
+      row2(
+        `item:${id}`,
+        itemText.get(id)?.label ?? id,
+        visibilityOf(settings.slots[id]?.hideAt),
+        visibility
+      ),
+      itemText.get(id)?.note ?? ""
+    )
+  );
+}
+var valued = (id, current) => textRow(id, current ?? options(id)[0] ?? "", options(id));
+var defaultPeriod = () => ({
+  ...valued("period", void 0),
+  default: DEFAULT_COST_PERIOD
+});
+function quotaRows(settings) {
+  const quota2 = settings.slots.quota ?? {};
+  return [
+    valued("wording", quota2.wording),
+    valued("collapse", quota2.collapse === "always" ? "always" : "tight"),
+    valued("expanded", settings.quotaExpanded ? "yes" : "no"),
+    valued("animation", quota2.animation === false ? "off" : "on"),
+    valued("meterStyle", quota2.meterStyle)
+  ];
+}
+function menuRows(settings, published, icons = settings.glyphs ?? "nerd") {
+  return [
+    ...itemRows(settings),
+    valued("unit", settings.slots.compaction?.unit),
+    { ...defaultPeriod(), current: settings.slots.cost?.period ?? DEFAULT_COST_PERIOD },
+    ...windowRows(settings, published),
+    valued("limits", settings.limits === "on" ? "on" : "off"),
+    ...quotaRows(settings),
+    ...layerRows(settings),
+    ...collapsedRows(settings, published),
+    valued("clicks", settings.clicks === "explain" ? "explain" : "actions"),
+    ...colorRows(settings, icons),
+    valued("glyphs", settings.glyphs ?? "auto")
+  ];
+}
+function visibilityChoice(settings, id, value) {
+  const look = value === HIDDEN ? LOOKS[0] : value;
+  return withSlot(settings, id, { hideAt: value !== SHOWN && isLook(look) ? look : void 0 });
+}
+function allowed(id) {
+  if (id.startsWith("item:"))
+    return settingsItems().includes(id.slice("item:".length)) ? visibility : void 0;
+  if (id.startsWith("window:"))
+    return savable(id.slice("window:".length)) ? [SHOWN, HIDDEN] : void 0;
+  if (isCollapsedRow(id)) return savable(collapsedLabel(id)) ? [SHOWN, HIDDEN] : void 0;
+  if (isLayerRow(id)) return isKnownLayerRow(id) ? layerValues() : void 0;
+  return OPTIONS2[id];
+}
+function globalChoice(settings, id, value) {
+  switch (id) {
+    case "clicks":
+      return { ...settings, clicks: value === "explain" ? "explain" : "actions" };
+    case "period":
+      return withSlot(settings, "cost", {
+        period: value !== DEFAULT_COST_PERIOD && isPeriod(value) ? value : void 0
+      });
+    case "unit":
+      return withSlot(settings, "compaction", {
+        unit: value === "percent" ? "percent" : void 0
+      });
+    case "expanded":
+      return { ...settings, quotaExpanded: value === "yes" };
+    case "glyphs":
+      return value === "auto" ? withoutSetting(settings, "glyphs") : { ...settings, glyphs: value === "portable" ? "portable" : "nerd" };
+    default:
+      return quotaChoice(settings, id, value);
+  }
+}
+function withLimits(settings, value) {
+  const next = { ...settings };
+  if (value === "on") next.limits = "on";
+  else delete next.limits;
+  return next;
+}
+function quotaChoice(settings, id, value) {
+  switch (id) {
+    case "limits":
+      return withLimits(settings, value);
+    case "wording":
+      return withSlot(settings, "quota", { wording: value === "used" ? "used" : void 0 });
+    case "collapse":
+      return withSlot(settings, "quota", { collapse: value === "always" ? "always" : void 0 });
+    case "animation":
+      return withSlot(settings, "quota", { animation: value === "off" ? false : void 0 });
+    case "meterStyle":
+      return withSlot(settings, "quota", {
+        meterStyle: isMeterStyle(value) && value !== "slanted" ? value : void 0
+      });
+    default:
+      return settings;
+  }
+}
+function choose(settings, id, value, published = []) {
+  if (isColorRow(id)) return colorChoice(settings, id, value);
+  if (!allowed(id)?.includes(value)) return settings;
+  if (id.startsWith("item:")) return visibilityChoice(settings, id.slice("item:".length), value);
+  if (id.startsWith("window:")) return windowChoice(settings, id.slice("window:".length), value);
+  if (isCollapsedRow(id)) return collapsedChoice(settings, collapsedLabel(id), value, published);
+  if (isLayerRow(id)) return layerChoice(settings, id, value);
+  return globalChoice(settings, id, value);
+}
+
+// src/core/settings-groups.ts
+function findEntry(entries, id) {
+  for (const entry of entries) {
+    const found = entry.id === id ? entry : findEntry(entry.children ?? [], id);
+    if (found) return found;
+  }
+  return void 0;
+}
+var groups = [
+  { id: "workspace", items: ["workspace", "branch", "changes", "ahead"] },
+  { id: "model", items: ["model", "thinking"] },
+  {
+    id: "context",
+    items: ["context", "context-usage", "compaction", "input", "output"],
+    rows: ["unit"]
+  },
+  { id: "usage", items: ["cache", "speed", "cost"], rows: ["period"] }
+];
+var changed = (rows) => rows.reduce(
+  (total, entry) => total + (entry.children ? changed(entry.children) : Number(entry.current !== (entry.default ?? entry.values[0]))),
+  0
+);
+var summary = (rows) => {
+  const count5 = changed(rows);
+  return count5 === 0 ? "all default" : `${count5} changed`;
+};
+function group(id, children2) {
+  return {
+    id: `group:${id}`,
+    label: groupText[id]?.label ?? id,
+    description: groupText[id]?.note ?? "",
+    values: [],
+    current: summary(children2),
+    children: children2
+  };
+}
+function collapseGroup(rows) {
+  const children2 = rows.filter((row4) => row4.id === "collapse" || isCollapsedRow(row4.id));
+  const mode = children2.find((row4) => row4.id === "collapse")?.current ?? "";
+  return { ...group("collapse", children2), current: wordFor("collapse", mode) };
+}
+function menuEntries(settings, published, icons) {
+  const rows = menuRows(settings, published, icons);
+  const take3 = (match) => rows.filter(match);
+  const only = (id) => take3((row4) => row4.id === id);
+  const entries = groups.map(
+    (spec) => group(
+      spec.id,
+      take3(
+        (row4) => spec.items.some((item2) => row4.id === `item:${item2}` || layerItem(row4.id) === item2) || (spec.rows ?? []).includes(row4.id)
+      )
+    )
+  );
+  const limits = [
+    ...only("item:quota"),
+    ...take3((row4) => row4.id.startsWith("window:")),
+    ...only("wording"),
+    ...only("layer:quota:meter"),
+    ...only("layer:quota:reset"),
+    collapseGroup(rows),
+    ...only("expanded"),
+    ...only("animation"),
+    ...only("limits")
+  ];
+  const appearance = [
+    ...only("glyphs"),
+    ...only("meterStyle"),
+    ...only(BOLD_ROW),
+    group(
+      "colors",
+      take3((row4) => isColorRow(row4.id) && row4.id !== BOLD_ROW)
+    )
+  ];
+  return [group("appearance", appearance), ...entries, group("quota", limits), ...only("clicks")];
+}
+
+// src/core/ext/menu.ts
+var PREFIX4 = "ext:";
+var isExtensionRow = (id) => id.startsWith(PREFIX4);
+function parseRowId(id) {
+  const [, ext, row4] = id.split(":");
+  return ext && row4 ? { ext, row: row4 } : void 0;
+}
+function extensionEntries(registry) {
+  return registry.all().flatMap((registration2) => {
+    if (!registration2.settings) return [];
+    const children2 = registration2.settings.rows.map((row4) => ({
+      id: `${PREFIX4}${registration2.ext}:${row4.id}`,
+      label: row4.label,
+      description: row4.description,
+      values: row4.values,
+      current: row4.current,
+      ...row4.default ? { default: row4.default } : {}
+    }));
+    return [
+      {
+        id: `${PREFIX4}${registration2.ext}`,
+        label: registration2.label,
+        description: registration2.settings.note || `Settings of ${registration2.label}.`,
+        values: [],
+        current: summary(children2),
+        children: children2
+      }
+    ];
+  });
+}
+
+// src/ui/settings-screen.ts
+import { getSettingsListTheme } from "@earendil-works/pi-coding-agent";
+import { SettingsList as SettingsList2 } from "@earendil-works/pi-tui";
+
+// src/ui/colour-picker.ts
+import { Input, getKeybindings, parseColor as parseColor2 } from "@earendil-works/pi-tui";
+var TYPE = "type";
+var HELP = "Use # and six hex digits, like #b4a0e5.";
+function typedColour(text) {
+  const value = text.trim();
+  const full = /^[0-9a-fA-F]{6}$/u.test(value) ? `#${value}` : value;
+  return isHexColor(full) ? full : void 0;
+}
+var ColourPicker = class {
+  constructor(deps) {
+    this.deps = deps;
+    this.input = new Input({
+      prompt: "  Colour as #rrggbb:  ",
+      placeholder: "#b4a0e5",
+      placeholderStyle: (text) => deps.theme.hint(text)
+    });
+    this.index = Math.max(0, deps.choices.indexOf(deps.current));
+    this.input.onSubmit = (text) => {
+      this.submit(text);
+    };
+    this.input.onEscape = () => {
+      this.typing = false;
+    };
+  }
+  deps;
+  index = 0;
+  typing = false;
+  input;
+  rows() {
+    return [...this.deps.choices, TYPE];
+  }
+  submit(text) {
+    const colour = typedColour(text);
+    if (!colour) return;
+    this.deps.choose(colour);
+    this.deps.leave(colour);
+  }
+  reads(colour) {
+    const background = this.deps.background();
+    const preview = `${this.deps.swatch(colour)} preview   `;
+    if (!background)
+      return `${preview}contrast unknown: your terminal did not report its background`;
+    const ratio = contrast(parseColor2(colour), luminanceOf(background));
+    const floor = FLOOR[this.deps.tone];
+    const text = `contrast ${ratio.toFixed(1)}:1 on your terminal background`;
+    return ratio >= floor ? `${preview}${text}` : `${preview}${text}: hard to read (${floor}:1 or more reads well). It is saved anyway.`;
+  }
+  render(width2) {
+    const { theme } = this.deps;
+    if (this.typing) {
+      this.input.focused = true;
+      const colour = typedColour(this.input.getValue());
+      return [
+        ...this.deps.header(width2),
+        ...this.input.render(width2),
+        `  ${colour ? this.reads(colour) : theme.hint(HELP)}`,
+        "",
+        theme.hint("  Enter to save \xB7 Esc to cancel"),
+        ...this.deps.footer(width2)
+      ];
+    }
+    const rows = this.rows().map((key2, at) => {
+      const selected = at === this.index;
+      const typeRow = key2 === TYPE;
+      const word = typeRow ? "   Type a colour\u2026" : `${this.deps.swatch(key2)} ${wordFor(this.deps.id, key2)}`;
+      const tag = key2 === "default" ? "default" : key2 === this.deps.current && key2.startsWith("#") ? "yours" : "";
+      return `${selected ? theme.cursor : "  "}${theme.label(word, selected)}  ${theme.value(tag, selected)}`;
+    });
+    const key = this.rows()[this.index] ?? "";
+    const note3 = colourNotes[`${this.deps.tone}:${key}`];
+    return [
+      ...this.deps.header(width2),
+      ...rows,
+      ...note3 ? ["", theme.description(`  ${note3}`)] : [""],
+      theme.hint("  Enter to choose \xB7 Esc to go back"),
+      ...this.deps.footer(width2)
+    ];
+  }
+  handleInput(data) {
+    if (this.typing) {
+      this.input.handleInput(data);
+      return;
+    }
+    const keys = getKeybindings();
+    const count5 = this.rows().length;
+    if (keys.matches(data, "tui.select.up")) this.index = (this.index + count5 - 1) % count5;
+    else if (keys.matches(data, "tui.select.down")) this.index = (this.index + 1) % count5;
+    else if (keys.matches(data, "tui.select.cancel")) this.deps.leave();
+    else if (keys.matches(data, "tui.select.confirm") || data === " ") this.pick();
+  }
+  pick() {
+    const key = this.rows()[this.index];
+    if (key === void 0) return;
+    if (key === TYPE) {
+      this.typing = true;
+      this.input.setValue("");
+      return;
+    }
+    this.deps.choose(key);
+    this.deps.leave(key);
+  }
+  invalidate() {
+    this.input.invalidate();
+  }
+};
+
+// src/ui/stable-list.ts
+import { SettingsList } from "@earendil-works/pi-tui";
+var FOOTER_LINES = 2;
+var noop = () => void 0;
+function withEscape(theme, wording) {
+  return {
+    ...theme,
+    hint: (text) => theme.hint(text.replace("Esc to cancel", `Esc to ${wording}`))
+  };
+}
+function tallest(lists, width2, options2) {
+  let height = 0;
+  for (const items of lists) {
+    const probe = new SettingsList(items, options2.visible, options2.theme, noop, noop);
+    for (const item2 of items) {
+      probe.selectItem(item2.id);
+      height = Math.max(height, probe.render(width2).length);
+    }
+  }
+  return height;
+}
+var StableList = class {
+  constructor(list2, height, header2 = () => [], footer = () => []) {
+    this.list = list2;
+    this.height = height;
+    this.header = header2;
+    this.footer = footer;
+  }
+  list;
+  height;
+  header;
+  footer;
+  render(width2) {
+    return [...this.header(width2), ...this.body(width2), ...this.footer(width2)];
+  }
+  body(width2) {
+    const lines = this.list.render(width2);
+    const missing = this.height(width2) - lines.length;
+    if (missing <= 0) return lines;
+    return [
+      ...lines.slice(0, -FOOTER_LINES),
+      ...Array(missing).fill(""),
+      ...lines.slice(-FOOTER_LINES)
+    ];
+  }
+  handleInput(data) {
+    this.list.handleInput(data);
+  }
+  handleMouse(event) {
+    return this.list.handleMouse({ ...event, y: event.y - this.header(event.width).length });
+  }
+  invalidate() {
+    this.list.invalidate();
+  }
+};
+
+// src/ui/settings-screen.ts
+var VISIBLE_ROWS = 14;
+var TITLE = `${PRODUCT} settings`;
+function apply(model, id, value) {
+  if (isExtensionRow(id)) {
+    model.extensions?.pick(id, value);
+    return;
+  }
+  const next = choose(model.current(), id, keyFor(id, value), model.windows());
+  if (next !== model.current()) model.change(next);
+}
+var item = (row4, icons, extra = {}) => ({
+  id: row4.id,
+  label: row4.label,
+  description: row4.description,
+  currentValue: wordFor(row4.id, row4.current, icons),
+  ...row4.values.length > 0 ? { values: row4.values.map((key) => wordFor(row4.id, key, icons)) } : {},
+  ...extra
+});
+var Menu = class {
+  constructor(model, pi) {
+    this.model = model;
+    this.pi = pi;
+  }
+  model;
+  pi;
+  theme = getSettingsListTheme();
+  open = [];
+  entries() {
+    return [
+      ...menuEntries(this.model.current(), this.model.windows(), this.model.icons?.()),
+      ...this.model.extensions?.entries() ?? []
+    ];
+  }
+  rule = (width2) => this.pi.fg("border", "\u2500".repeat(Math.max(1, width2)));
+  frame(page) {
+    const covered = () => this.open.length > page.crumbs.length;
+    const title = [TITLE, ...page.crumbs].join(" \u203A ");
+    return {
+      header: (width2) => covered() ? [] : [this.rule(width2), this.pi.bold(this.pi.fg("accent", ` ${title}`))],
+      footer: (width2) => covered() ? [] : [this.rule(width2)]
+    };
+  }
+  list(items, page, rebuild) {
+    const list2 = new SettingsList2(
+      items,
+      VISIBLE_ROWS,
+      withEscape(this.theme, page.escape),
+      (id, value) => {
+        apply(this.model, id, value);
+        items.splice(0, items.length, ...rebuild());
+        list2.selectItem(id);
+      },
+      page.onCancel
+    );
+    const options2 = { theme: this.theme, visible: VISIBLE_ROWS };
+    const height = (width2) => this.open.length > page.crumbs.length ? 0 : tallest([items], width2, options2);
+    const { header: header2, footer } = this.frame(page);
+    return new StableList(list2, height, header2, footer);
+  }
+  swatch(tone, key) {
+    const colors = key === "default" ? {} : { [tone]: key };
+    const background = this.model.colours?.background ?? (() => void 0);
+    return createPaint(this.pi, () => ({ colors, iconBold: false }), background)("\u2588\u2588", tone);
+  }
+  colourItem(entry, tone, crumbs) {
+    const shown2 = (key) => `${this.swatch(tone, key)} ${wordFor(entry.id, key)}`;
+    return {
+      ...item(entry, this.model.icons?.()),
+      currentValue: shown2(entry.current),
+      submenu: (_current, done) => this.picker({ entry, tone, inside: [...crumbs, entry.label], shown: shown2 }, done)
+    };
+  }
+  picker({ entry, tone, inside, shown: shown2 }, done) {
+    this.open.push(entry.id);
+    const leave = (key) => {
+      this.open.pop();
+      done(key === void 0 ? void 0 : shown2(key));
+    };
+    const { header: header2, footer } = this.frame({ escape: "go back", crumbs: inside, onCancel: leave });
+    const current = findEntry(this.entries(), entry.id)?.current ?? entry.current;
+    return new ColourPicker({
+      id: entry.id,
+      tone,
+      choices: offered(tone, current),
+      current,
+      theme: this.theme,
+      swatch: (key) => this.swatch(tone, key),
+      background: this.model.colours?.background ?? (() => void 0),
+      header: header2,
+      footer,
+      choose: (key) => {
+        apply(this.model, entry.id, key);
+      },
+      leave
+    });
+  }
+  entryItem(entry, crumbs) {
+    const tone = colorTone(entry.id);
+    if (tone && this.model.colours) return this.colourItem(entry, tone, crumbs);
+    return item(
+      entry,
+      this.model.icons?.(),
+      entry.children ? { submenu: (_c, done) => this.group(entry, crumbs, done) } : {}
+    );
+  }
+  group(entry, crumbs, done) {
+    this.open.push(entry.id);
+    const inside = [...crumbs, entry.label];
+    const rows = () => findEntry(this.entries(), entry.id)?.children ?? [];
+    const build = () => rows().map((row4) => this.entryItem(row4, inside));
+    return this.list(
+      build(),
+      {
+        escape: "go back",
+        crumbs: inside,
+        onCancel: () => {
+          this.open.pop();
+          done(findEntry(this.entries(), entry.id)?.current);
+        }
+      },
+      build
+    );
+  }
+  top(close) {
+    const items = this.entries().map((entry) => this.entryItem(entry, []));
+    return this.list(
+      items,
+      { escape: "close", crumbs: [], onCancel: close },
+      () => this.entries().map((entry) => this.entryItem(entry, []))
+    );
+  }
+};
+async function openSettingsScreen(ctx, model) {
+  await ctx.ui.custom(
+    (_tui, theme, _keys, done) => new Menu(model, theme).top(() => {
+      done(true);
+    })
+  );
+}
+
+// src/settings-command.ts
+async function runSettingsCommand(ctx, command) {
+  const { settings, interactions } = command;
+  if (ctx.mode !== "tui") {
+    say(ctx, JSON.stringify(settings.current, null, 2), "info");
+    return;
+  }
+  settings.load((message) => {
+    say(ctx, message, "warning");
+  });
+  interactions.problems.load();
+  if (interactions.problems.state.count > 0) return interactions.problems.open(ctx);
+  const iconsBefore = settings.current.glyphs;
+  await openSettingsScreen(ctx, {
+    current: () => settings.current,
+    windows: command.windows,
+    colours: { background: command.background },
+    icons: () => settings.iconKind,
+    extensions: {
+      entries: () => extensionEntries(command.extensions.registry),
+      pick: (id, value) => {
+        const row4 = parseRowId(id);
+        if (row4) command.extensions.setting(row4.ext, row4.row, value);
+      }
+    },
+    change: (next) => {
+      const previous = settings.current;
+      const failure3 = settings.update(next);
+      if (next.glyphs !== previous.glyphs) settings.followSavedGlyphs();
+      interactions.settingsChanged(previous);
+      if (next.limits !== previous.limits) command.limitsChanged();
+      if (failure3) say(ctx, failure3, "warning");
+    }
+  });
+  if (settings.current.glyphs !== iconsBefore) command.iconsChanged();
+}
+
+// src/dock-commands.ts
+var DockCommands = class {
+  constructor(host) {
+    this.host = host;
+  }
+  host;
+  diagnostics(ctx) {
+    const { config } = this.host.interactions;
+    return diagnosticReport({
+      command: ctx,
+      source: import.meta.url,
+      ...this.host.diagnosticInput(),
+      footerSlots: config.rows.flatMap((row4) => [...row4.left, ...row4.right])
+    });
+  }
+  contextAction(ctx) {
+    return this.host.interactions.invokeTarget("context", ctx).catch((error) => {
+      this.host.reportError(ctx, error);
+    });
+  }
+  toggleGlyphs(ctx) {
+    this.host.settings.toggleGlyphs();
+    this.host.start(ctx);
+  }
+  openSettings(ctx) {
+    const { settings, interactions, extensions, colours } = this.host;
+    return runSettingsCommand(ctx, {
+      settings,
+      interactions,
+      extensions,
+      windows: () => this.host.windowLabels(),
+      limitsChanged: () => {
+        this.host.refreshLimits(ctx);
+      },
+      background: () => colours.background.value,
+      iconsChanged: () => {
+        settings.followSavedGlyphs();
+        this.host.start(ctx);
+      }
+    });
+  }
+};
 
 // src/core/ext/protocol.ts
 var CHANNELS = {
@@ -1270,7 +3167,7 @@ var UNICODE = { full: "\u2588", empty: "\u2591", mark: "\u2503", parts: ["\u2588
 var ASCII = { full: "#", empty: "-", mark: "|", parts: ["#", "=", "+", "-"] };
 var INDENT = " ";
 var MAX_LABEL = 14;
-function plain(text) {
+function plain2(text) {
   return stripTerminalSequences2(text).replace(/[\p{Cc}\p{Cf}]/gu, " ");
 }
 var width = (text) => visibleWidth(text);
@@ -1301,16 +3198,16 @@ function meterLines(block, ctx) {
   const { rows } = block;
   const labelWidth = Math.min(
     MAX_LABEL,
-    Math.max(0, ...rows.map((row4) => width(plain(row4.label))))
+    Math.max(0, ...rows.map((row4) => width(plain2(row4.label))))
   );
-  const textWidth = Math.max(0, ...rows.map((row4) => width(plain(row4.text))));
+  const textWidth = Math.max(0, ...rows.map((row4) => width(plain2(row4.text))));
   const size = Math.max(
     0,
     Math.min(MAX_BAR, ctx.width - (INDENT.length + labelWidth + 4 + textWidth))
   );
   return rows.flatMap((row4, index) => {
-    const label3 = ctx.style.fg("muted", pad(fit(plain(row4.label), labelWidth), labelWidth));
-    const text = row4.tone ? ctx.style.fg(row4.tone, plain(row4.text)) : plain(row4.text);
+    const label3 = ctx.style.fg("muted", pad(fit(plain2(row4.label), labelWidth), labelWidth));
+    const text = row4.tone ? ctx.style.fg(row4.tone, plain2(row4.text)) : plain2(row4.text);
     const bar = size >= MIN_BAR ? `${meterBar(row4, size, ctx)}  ` : "";
     const line = fit(`${INDENT}${label3}  ${bar}${text}`, ctx.width);
     return index === 0 ? [line] : ["", line];
@@ -1344,8 +3241,8 @@ function stackLines(block, { style, cells, width: room }) {
   const total = live.reduce((acc, { part }) => acc + part.amount, 0);
   const entries = live.map(({ part, glyph: glyph2 }) => {
     const share3 = Math.round(part.amount / total * 100);
-    const extra = part.text ? ` ${plain(part.text)}` : "";
-    return `${style.fg(part.tone, glyph2)} ${plain(part.label)}${extra} ${style.fg("dim", `${share3}%`)}`;
+    const extra = part.text ? ` ${plain2(part.text)}` : "";
+    return `${style.fg(part.tone, glyph2)} ${plain2(part.label)}${extra} ${style.fg("dim", `${share3}%`)}`;
   });
   return [
     INDENT + bar,
@@ -1402,9 +3299,9 @@ function barLines(block, { style, cells, width: room }) {
   const rule = `${axis[0]}${" ".repeat(gap2)}${axis[1]}`;
   return [
     ...lines.map(
-      (line, row4) => INDENT + line + (row4 === 0 ? `  ${style.fg("dim", `peak ${plain(peak)}`)}` : "")
+      (line, row4) => INDENT + line + (row4 === 0 ? `  ${style.fg("dim", `peak ${plain2(peak)}`)}` : "")
     ),
-    INDENT + style.fg("dim", plain(rule))
+    INDENT + style.fg("dim", plain2(rule))
   ];
 }
 
@@ -1424,7 +3321,7 @@ function columnWidths(rows, columns2, room) {
   return widths;
 }
 function tableLines(block, ctx) {
-  const rows = [block.head, ...block.rows].map((row4) => row4.map(plain));
+  const rows = [block.head, ...block.rows].map((row4) => row4.map(plain2));
   const widths = columnWidths(rows, block.head.length, ctx.width - INDENT.length);
   const draw = (row4, header2) => {
     const cells = widths.map((size, column) => {
@@ -1439,13 +3336,13 @@ function tableLines(block, ctx) {
 
 // src/core/explain/render-text.ts
 function headingLines(block, { style, width: room }) {
-  return [INDENT + style.bold(style.fg("accent", fit(plain(block.text), room - 2)))];
+  return [INDENT + style.bold(style.fg("accent", fit(plain2(block.text), room - 2)))];
 }
 function factLine(row4, labelWidth, { style, width: room }) {
-  const label3 = pad(fit(plain(row4.label), labelWidth), labelWidth);
+  const label3 = pad(fit(plain2(row4.label), labelWidth), labelWidth);
   const lead = `${INDENT}${style.fg("muted", label3)}  `;
-  const value = plain(row4.value);
-  const aside = row4.note ? plain(row4.note) : "";
+  const value = plain2(row4.value);
+  const aside = row4.note ? plain2(row4.note) : "";
   const left = room - width(lead);
   if (width(value) + (aside ? width(aside) + 2 : 0) <= left) {
     const shown2 = row4.tone ? style.fg(row4.tone, value) : value;
@@ -1457,15 +3354,15 @@ function factLine(row4, labelWidth, { style, width: room }) {
 function factLines(block, ctx) {
   const labelWidth = Math.min(
     MAX_LABEL,
-    Math.max(0, ...block.rows.map((row4) => width(plain(row4.label))))
+    Math.max(0, ...block.rows.map((row4) => width(plain2(row4.label))))
   );
   return block.rows.flatMap((row4) => factLine(row4, labelWidth, ctx));
 }
 function bulletLines(block, { style, width: room }) {
   return block.items.flatMap((item2) => {
     const lead = `${INDENT}${style.fg(item2.tone ?? "muted", "\u2022")} `;
-    const term = item2.term ? `${style.bold(`${plain(item2.term)}:`)} ` : "";
-    const text = plain(item2.text);
+    const term = item2.term ? `${style.bold(`${plain2(item2.term)}:`)} ` : "";
+    const text = plain2(item2.text);
     return wrapStyled(
       term + (item2.tone ? style.fg(item2.tone, text) : text),
       room - width(lead),
@@ -1476,7 +3373,7 @@ function bulletLines(block, { style, width: room }) {
 }
 function noteLines(block, { style, width: room }) {
   const tone = block.tone;
-  const text = block.text.split("\n").map(plain).join("\n");
+  const text = block.text.split("\n").map(plain2).join("\n");
   return wrapStyled(tone ? style.fg(tone, text) : text, room - 2 * INDENT.length, INDENT, INDENT);
 }
 
@@ -1509,12 +3406,12 @@ function renderBlocks(blocks, style, width2, ascii = false) {
 var ID = /^[a-z][a-z0-9-]{0,23}$/u;
 function cleanText(value, max) {
   if (typeof value !== "string") return void 0;
-  const text = plain(value).replace(/\s+/gu, " ").trim();
+  const text = plain2(value).replace(/\s+/gu, " ").trim();
   return text === "" ? void 0 : Array.from(text).slice(0, max).join("");
 }
 function paragraph(value) {
   if (typeof value !== "string") return void 0;
-  const text = value.split("\n").map((line) => plain(line).trim()).join("\n").trim();
+  const text = value.split("\n").map((line) => plain2(line).trim()).join("\n").trim();
   return text === "" ? void 0 : Array.from(text).slice(0, LIMITS.paragraph).join("");
 }
 var validId = (value) => typeof value === "string" && ID.test(value);
@@ -1526,61 +3423,6 @@ var fraction = (value) => {
   return n === void 0 ? void 0 : Math.max(0, Math.min(1, n));
 };
 var fields = (value) => value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
-
-// src/core/looks.ts
-var LOOKS = ["xl", "lg", "md", "sm", "xs"];
-function isLook(value) {
-  return LOOKS.some((look) => look === value);
-}
-function lookIndex(look) {
-  return LOOKS.indexOf(look);
-}
-var stockForms = /* @__PURE__ */ new Map([
-  ["workspace", { xl: "full", md: "short", sm: "bare" }],
-  ["branch", { xl: "full" }],
-  ["changes", { xl: "full", lg: "short", sm: "hide" }],
-  ["ahead", { xl: "full", lg: "short", sm: "hide" }],
-  ["model", { xl: "full", md: "short" }],
-  ["thinking", { xl: "full" }],
-  ["context", { xl: "full" }],
-  ["context-usage", { xl: "full", sm: "short", xs: "bare" }],
-  ["compaction", { xl: "full", md: "hide" }],
-  ["input", { xl: "full", sm: "hide" }],
-  ["output", { xl: "full", sm: "hide" }],
-  ["cache", { xl: "full", lg: "short", md: "hide" }],
-  ["speed", { xl: "full", xs: "hide" }],
-  ["cost", { xl: "full", xs: "hide" }],
-  ["quota-more", { xl: "full" }]
-]);
-var layerNames = /* @__PURE__ */ new Map([
-  ["model", ["provider", "name"]],
-  ["quota", ["meter", "reset"]]
-]);
-var preferredGaps = /* @__PURE__ */ new Map([
-  ["branch", 3],
-  ["changes", 3],
-  ["ahead", 3],
-  ["thinking", 2],
-  ["compaction", 2],
-  ["input", 5],
-  ["output", 3],
-  ["cache", 3],
-  ["speed", 3],
-  ["cost", 3]
-]);
-var attachedTo = /* @__PURE__ */ new Map([
-  ["context-usage", "context"],
-  ["quota-more", "quota"]
-]);
-function variantAt(table2, look, hideAt) {
-  if (hideAt !== void 0 && lookIndex(look) >= lookIndex(hideAt)) return "hide";
-  for (let index = lookIndex(look); index >= 0; index -= 1) {
-    const look_ = LOOKS[index];
-    const variant = look_ === void 0 ? void 0 : table2?.[look_];
-    if (variant !== void 0) return variant;
-  }
-  return "full";
-}
 
 // src/core/ext/blocks.ts
 var BLOCK_TONES = ["accent", "success", "warning", "error", "muted", "dim"];
@@ -1840,9 +3682,7 @@ function parseRegistration(value) {
 // src/core/ext/registry.ts
 var ExtensionRegistry = class _ExtensionRegistry {
   registrations = /* @__PURE__ */ new Map();
-  /** Counts every change, so a view can tell when it has to be drawn again. */
   version = 0;
-  /** Replaces the extension's registration (the same message twice is the same as once). */
   register(raw) {
     const { registration: registration2, problems } = parseRegistration(raw);
     if (!registration2) return problems;
@@ -1852,7 +3692,6 @@ var ExtensionRegistry = class _ExtensionRegistry {
     this.version += 1;
     return problems;
   }
-  /** Changes item forms, item explanations and setting values of a registered extension. */
   update(raw) {
     const message = fields(raw);
     const registration2 = validId(message.ext) ? this.registrations.get(message.ext) : void 0;
@@ -1894,7 +3733,6 @@ var ExtensionRegistry = class _ExtensionRegistry {
     this.registrations.clear();
     this.version += 1;
   }
-  /** The user picked a value in the extension's menu: show it until the extension confirms or changes it. */
   setCurrent(ext, row4, value) {
     const target2 = this.registrations.get(ext)?.settings?.rows.find((candidate) => candidate.id === row4);
     if (!target2?.values.includes(value)) return false;
@@ -1908,7 +3746,6 @@ var ExtensionRegistry = class _ExtensionRegistry {
   all() {
     return [...this.registrations.values()];
   }
-  /** The footer id of an item: `<extension>:<item>`. */
   static idOf(ext, item2) {
     return `${ext}:${item2}`;
   }
@@ -1921,13 +3758,11 @@ var ExtensionRegistry = class _ExtensionRegistry {
   has(id) {
     return this.find(id) !== void 0;
   }
-  /** Footer ids placed in a region, in registration order. */
   ids(region) {
     return this.all().flatMap(
       (registration2) => registration2.items.filter((item2) => item2.region === region).map((item2) => _ExtensionRegistry.idOf(registration2.ext, item2.id))
     );
   }
-  /** Regions that have items, so rows appear only when something is in them. */
   usedRegions() {
     return REGIONS.filter((region) => this.ids(region).length > 0);
   }
@@ -1946,12 +3781,11 @@ var ExtensionBus = class {
   registry = new ExtensionRegistry();
   unsubscribe = [];
   timer;
-  /** Starts listening and tells every extension that Footer Dock is here (they register on hearing it). */
   start() {
     this.stop();
-    const on = (channel, handle) => {
+    const on = (channel2, handle) => {
       this.unsubscribe.push(
-        this.pi.events.on(channel, (data) => {
+        this.pi.events.on(channel2, (data) => {
           try {
             const problems = handle(data);
             if (problems && problems.length > 0) this.reject(data, problems);
@@ -1983,11 +3817,9 @@ var ExtensionBus = class {
   ready() {
     this.pi.events.emit(CHANNELS.ready, { v: 1 });
   }
-  /** The user clicked a token of an extension's item that asks for an event. */
   click(ext, item2, token2) {
     this.pi.events.emit(CHANNELS.click, { v: 1, ext, item: item2, token: token2 });
   }
-  /** The user picked a value in an extension's settings; the extension stores it. */
   setting(ext, row4, value) {
     this.registry.setCurrent(ext, row4, value);
     this.pi.events.emit(CHANNELS.setting, { v: 1, ext, row: row4, value });
@@ -2053,7 +3885,6 @@ function listConfig(cwd, signal) {
       "git",
       ["--no-optional-locks", "config", "--list", "--show-scope", "-z"],
       { cwd, signal, timeout: 3e3, maxBuffer: 1024 * 1024, env: { ...process.env } },
-      // A failed read is no reason to skip the protection that does not depend on it.
       (error, stdout) => {
         accept(error ? "" : stdout);
       }
@@ -2071,7 +3902,7 @@ async function inertArguments(cwd, signal) {
 }
 
 // src/adapters/git-command.ts
-async function gitOutput(cwd, args, signal, options = {}) {
+async function gitOutput(cwd, args, signal, options2 = {}) {
   const inert = await inertArguments(cwd, signal);
   return new Promise((accept, reject) => {
     let inputError;
@@ -2086,7 +3917,7 @@ async function gitOutput(cwd, args, signal, options = {}) {
         env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", GIT_TERMINAL_PROMPT: "0" }
       },
       (error, stdout) => {
-        if (error && !(options.allowNoMatch && error.code === 1))
+        if (error && !(options2.allowNoMatch && error.code === 1))
           reject(new Error("Git metadata query failed", { cause: error }));
         else if (inputError) reject(inputError);
         else accept(stdout);
@@ -2095,7 +3926,7 @@ async function gitOutput(cwd, args, signal, options = {}) {
     child.stdin?.on("error", (error) => {
       inputError = error;
     });
-    child.stdin?.end(options.input);
+    child.stdin?.end(options2.input);
   });
 }
 function gitLine(raw) {
@@ -2135,14 +3966,17 @@ async function readGit(cwd, signal) {
   }
 }
 
+// src/core/noop.ts
+var noop2 = () => void 0;
+
 // src/adapters/git-watch-set.ts
 import { watch } from "node:fs";
 var GitWatchSet = class {
-  constructor(wake, failed, options) {
+  constructor(wake, failed, options2) {
     this.wake = wake;
     this.failed = failed;
-    this.options = options;
-    this.open = options.open ?? ((path, listener) => watch(path, { persistent: false, encoding: "utf8" }, listener));
+    this.options = options2;
+    this.open = options2.open ?? ((path, listener) => watch(path, { persistent: false, encoding: "utf8" }, listener));
   }
   wake;
   failed;
@@ -2223,7 +4057,6 @@ var Throttle = class {
   ask;
   last = Number.NEGATIVE_INFINITY;
   timer;
-  /** True to run now (counted as a start); false when too soon, after arming the one timer that asks again. */
   allow() {
     const wait = this.last + this.interval - Date.now();
     if (wait <= 0) {
@@ -2237,7 +4070,6 @@ var Throttle = class {
     this.timer.unref();
     return false;
   }
-  /** Counts a start that was not asked of `allow` (the first rescan, at start). */
   mark() {
     this.last = Date.now();
   }
@@ -2461,10 +4293,10 @@ var GitInventory = class {
   }
 };
 async function gitInventory(scope, ensure, signal, limits) {
-  const plan = new GitInventory(scope, ensure, signal, limits);
-  await plan.worktree();
-  await plan.metadata();
-  return plan.desired;
+  const plan2 = new GitInventory(scope, ensure, signal, limits);
+  await plan2.worktree();
+  await plan2.metadata();
+  return plan2.desired;
 }
 
 // src/adapters/git-bootstrap.ts
@@ -2495,19 +4327,19 @@ async function bootstrapWatches(cwd, watches, limits, signal) {
 
 // src/adapters/git-monitor.ts
 var GitMonitor = class {
-  constructor(cwd, publish, options = {}) {
+  constructor(cwd, publish, options2 = {}) {
     this.cwd = cwd;
     this.publish = publish;
-    this.read = options.read ?? readGit;
-    this.rescans = new Throttle(options.topologyIntervalMs ?? TOPOLOGY_INTERVAL_MS, () => {
+    this.read = options2.read ?? readGit;
+    this.rescans = new Throttle(options2.topologyIntervalMs ?? TOPOLOGY_INTERVAL_MS, () => {
       this.request(true);
     });
-    this.reads = new Throttle(options.readIntervalMs ?? READ_INTERVAL_MS, () => {
+    this.reads = new Throttle(options2.readIntervalMs ?? READ_INTERVAL_MS, () => {
       this.request();
     });
     this.limits = {
-      maxWatches: options.maxWatches ?? 2048,
-      maxEntries: options.maxEntries ?? 1e5
+      maxWatches: options2.maxWatches ?? 2048,
+      maxEntries: options2.maxEntries ?? 1e5
     };
     for (const limit of Object.values(this.limits))
       if (!Number.isSafeInteger(limit) || limit < 1)
@@ -2519,7 +4351,7 @@ var GitMonitor = class {
       () => {
         this.watchFailed();
       },
-      { limit: this.limits.maxWatches, ...options.watch ? { open: options.watch } : {} }
+      { limit: this.limits.maxWatches, ...options2.watch ? { open: options2.watch } : {} }
     );
     this.request(true);
   }
@@ -2533,7 +4365,6 @@ var GitMonitor = class {
   value;
   health = "initializing";
   failure;
-  /** Watching could not cover this repository: refresh on request only. */
   eventsOnly = false;
   rescans;
   reads;
@@ -2581,15 +4412,12 @@ var GitMonitor = class {
     }).finally(() => {
       if (this.active === controller) this.active = void 0;
       if (!this.disposed && this.pending) this.request(Boolean(this.pending & 2));
-    }).catch(() => {
-    });
+    }).catch(noop2);
   }
-  /** The topology bit is dropped while the last rescan is too recent; one timer asks again. */
   rescanFlags(flags) {
     if (!(flags & 2) || !this.ready || this.eventsOnly) return flags;
     return this.rescans.allow() ? flags : flags & ~2;
   }
-  /** Gives up watching (but not reading): every watcher closed, values still read on request. */
   degrade(error) {
     this.eventsOnly = true;
     this.ready = true;
@@ -2680,22 +4508,18 @@ var GitTracker = class {
   }
   changed;
   state = unknownGit;
-  /** The branch Pi's own footer data knows: shown from the first draw, before Git has been read. */
   branchHint = () => null;
   monitor;
   start(cwd) {
     this.state = unknownGit;
     this.monitor = new GitMonitor(cwd, this.accept);
   }
-  /** What the footer shows: the state read from Git, or just the branch until it has been read. */
   get shown() {
     return withBranchHint(this.state, this.branchHint());
   }
-  /** True when the working directory is not the one being watched. */
   moved(cwd) {
     return this.monitor?.cwd !== cwd;
   }
-  /** Asks for fresh data, first following a change of working directory. */
   refresh(cwd) {
     if (!this.monitor) return;
     if (this.monitor.cwd !== cwd) {
@@ -2721,111 +4545,6 @@ var GitTracker = class {
 import { homedir as homedir5 } from "node:os";
 import { join as join7 } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-
-// src/core/history/period.ts
-var two = (value) => String(value).padStart(2, "0");
-var dayString = (date) => `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`;
-var fromDay = (day) => new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)));
-function periodStart(period, date) {
-  if (period === "day") return dayString(date);
-  if (period === "month") return `${date.getFullYear()}-${two(date.getMonth() + 1)}-01`;
-  const back = (date.getDay() + 6) % 7;
-  return dayString(new Date(date.getFullYear(), date.getMonth(), date.getDate() - back));
-}
-function periodStartBack(period, date, back) {
-  if (period === "day")
-    return dayString(new Date(date.getFullYear(), date.getMonth(), date.getDate() - back));
-  if (period === "week") {
-    const monday = fromDay(periodStart("week", date));
-    return dayString(
-      new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 7 * back)
-    );
-  }
-  return dayString(new Date(date.getFullYear(), date.getMonth() - back, 1));
-}
-function series(rows, period, date, count5) {
-  const starts = Array.from(
-    { length: count5 },
-    (_, index) => periodStartBack(period, date, count5 - 1 - index)
-  );
-  const bins = starts.map((start) => ({ start, cost: 0, unpriced: 0, responses: 0 }));
-  for (const row4 of rows) {
-    let at = -1;
-    for (let index = bins.length - 1; index >= 0; index -= 1) {
-      if (row4.day >= (bins[index]?.start ?? "9999")) {
-        at = index;
-        break;
-      }
-    }
-    const bin = at < 0 ? void 0 : bins[at];
-    if (bin && row4.day <= dayString(date)) {
-      bin.cost += row4.cost;
-      bin.unpriced += row4.unpriced;
-      bin.responses += row4.responses;
-    }
-  }
-  return bins;
-}
-
-// src/core/history/queries.ts
-var noTotals = () => ({
-  responses: 0,
-  input: 0,
-  output: 0,
-  read: 0,
-  write: 0,
-  cost: 0,
-  unpriced: 0
-});
-function sum2(rows) {
-  const total = noTotals();
-  for (const row4 of rows) {
-    total.responses += row4.responses;
-    total.input += row4.input;
-    total.output += row4.output;
-    total.read += row4.read;
-    total.write += row4.write;
-    total.cost += row4.cost;
-    total.unpriced += row4.unpriced;
-  }
-  return total;
-}
-function inPeriod(rows, period, date) {
-  const from = periodStart(period, date);
-  const to = dayString(date);
-  return [...rows].filter((row4) => row4.day >= from && row4.day <= to);
-}
-function cacheShare(total) {
-  const prompt = total.input + total.read + total.write;
-  return total.read > 0 && prompt > 0 ? total.read / prompt * 100 : null;
-}
-
-// src/core/history/costs.ts
-var COST_PERIODS = ["day", "week", "month", "session"];
-var DEFAULT_COST_PERIOD = "month";
-var SUFFIX = { day: "day", week: "wk", month: "mo" };
-var none = () => ({ cost: 0, unpriced: 0, responses: 0 });
-function periodCostsOf(rows, now, memory = none()) {
-  const total = (period) => {
-    const part = sum2(inPeriod(rows, period, now));
-    return {
-      cost: part.cost + memory.cost,
-      unpriced: part.unpriced + memory.unpriced,
-      responses: part.responses + memory.responses
-    };
-  };
-  return { day: total("day"), week: total("week"), month: total("month") };
-}
-function periodCostLabel(period, cost2) {
-  if (cost2.responses === 0) return "";
-  if (cost2.unpriced > 0 && cost2.cost < 0.01) return "";
-  return `${costAmount(cost2.cost)}${cost2.unpriced > 0 ? "+" : ""} ${SUFFIX[period]}`;
-}
-function costDisplay(snapshot, period = DEFAULT_COST_PERIOD) {
-  const history = snapshot.historyCosts;
-  if (period !== "session" && history) return periodCostLabel(period, history[period]);
-  return hasCost(snapshot.apiCostEstimate) ? formatApiCost(snapshot.apiCostEstimate) : "";
-}
 
 // src/adapters/registry-prices.ts
 function registryPrices(registry) {
@@ -3128,7 +4847,6 @@ var MAX_LINE_BYTES = 4 * 1024 * 1024;
 var LineSplitter = class {
   pending = Buffer.alloc(0);
   discarding = false;
-  /** Bytes that belong to lines already handed out or dropped. */
   consumed;
   tooLong = 0;
   constructor(start) {
@@ -3154,23 +4872,23 @@ var LineSplitter = class {
 
 // src/adapters/history/read-lines.ts
 var CHUNK = 64 * 1024;
-async function readLines(options) {
-  const handle = await open2(options.path, constants2.O_RDONLY | constants2.O_NOFOLLOW);
+async function readLines(options2) {
+  const handle = await open2(options2.path, constants2.O_RDONLY | constants2.O_NOFOLLOW);
   try {
     const buffer = Buffer.alloc(CHUNK);
-    const lines = new LineSplitter(options.from);
-    let position2 = options.from;
-    while (position2 < options.to && !options.signal.aborted) {
+    const lines = new LineSplitter(options2.from);
+    let position2 = options2.from;
+    while (position2 < options2.to && !options2.signal.aborted) {
       const { bytesRead } = await handle.read(
         buffer,
         0,
-        Math.min(CHUNK, options.to - position2),
+        Math.min(CHUNK, options2.to - position2),
         position2
       );
       if (bytesRead === 0) break;
       position2 += bytesRead;
-      lines.push(buffer.subarray(0, bytesRead), options.onLine);
-      await options.pause();
+      lines.push(buffer.subarray(0, bytesRead), options2.onLine);
+      await options2.pause();
     }
     return { offset: lines.consumed, tooLong: lines.tooLong };
   } finally {
@@ -3201,8 +4919,8 @@ function cloneState(state) {
   return { ...state, rows: new Map([...state.rows].map(([key, row4]) => [key, { ...row4 }])) };
 }
 var UsageScanner = class {
-  constructor(options) {
-    this.options = options;
+  constructor(options2) {
+    this.options = options2;
   }
   options;
   resolver = new ProjectResolver();
@@ -3225,7 +4943,6 @@ var UsageScanner = class {
       (await loadCache(this.options.cachePath)).map((entry) => [entry.path, entry])
     );
   }
-  /** Every log: new and grown files are read from where they were left; unchanged ones cost nothing. */
   async scan(signal) {
     await this.load();
     const pause = this.pauser();
@@ -3239,7 +4956,6 @@ var UsageScanner = class {
     await this.save();
     return this.merge();
   }
-  /** One log, after it grew (the session in use): only the appended lines are read. */
   async refresh(path, signal) {
     await this.load();
     const log = await statLog(path);
@@ -3335,7 +5051,6 @@ var HistoryTracker = class {
       this.run((scanner) => scanner.scan(this.abort.signal));
     });
   }
-  /** The session in use wrote more to its log: read just that. */
   sessionGrew(ctx) {
     const file = ctx.sessionManager.getSessionFile();
     if (this.stopped || !file || !this.history || this.timer) return;
@@ -3343,7 +5058,6 @@ var HistoryTracker = class {
       this.run((scanner) => scanner.refresh(file, this.abort.signal));
     });
   }
-  /** What the snapshot gets from the history: the footer totals and the rows behind the screens. */
   fields(ctx, snapshot, now = /* @__PURE__ */ new Date()) {
     if (this.stopped || this.failed || !this.history || this.history.files === 0) return {};
     const memory = ctx.sessionManager.getSessionFile() ? void 0 : unsaved(snapshot);
@@ -3523,12 +5237,12 @@ async function readBody(response) {
     throw new EndpointError("invalid-json");
   }
 }
-async function authorizedGet(endpoint, credential, options) {
+async function authorizedGet(endpoint, credential, options2) {
   const url = target(endpoint);
   if (!validCredential(credential)) throw new EndpointError("bad-credential");
   let response;
   try {
-    response = await (options.fetch ?? fetch)(url, {
+    response = await (options2.fetch ?? fetch)(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${credential.token}`,
@@ -3536,24 +5250,24 @@ async function authorizedGet(endpoint, credential, options) {
         ...credential.accountId === void 0 ? {} : { "ChatGPT-Account-Id": credential.accountId }
       },
       redirect: "error",
-      signal: options.signal
+      signal: options2.signal
     });
   } catch {
-    throw new EndpointError(options.signal.aborted ? "timeout" : "network");
+    throw new EndpointError(options2.signal.aborted ? "timeout" : "network");
   }
   if (!response.ok) {
     await response.body?.cancel().catch(() => void 0);
     return {
       status: response.status,
       body: null,
-      retryAfterMs: retryAfterMs(response.headers, (options.now ?? Date.now)())
+      retryAfterMs: retryAfterMs(response.headers, (options2.now ?? Date.now)())
     };
   }
   try {
     return { status: response.status, body: await readBody(response), retryAfterMs: null };
   } catch (error) {
     if (error instanceof EndpointError) throw error;
-    throw new EndpointError(options.signal.aborted ? "timeout" : "network");
+    throw new EndpointError(options2.signal.aborted ? "timeout" : "network");
   }
 }
 
@@ -3834,12 +5548,12 @@ function admits(state, now, flightMs) {
   const flight = Math.min(state.inFlightUntil, written + flightMs);
   return now >= next && now >= flight;
 }
-function reservedState(state, now, plan) {
+function reservedState(state, now, plan2) {
   const prior = state ?? {
     revision: "",
     nextEligibleAt: 0,
     inFlightUntil: 0,
-    delayMs: plan.minIntervalMs,
+    delayMs: plan2.minIntervalMs,
     attempts: 0,
     lastAttemptAt: null,
     lastSuccessAt: null,
@@ -3849,9 +5563,9 @@ function reservedState(state, now, plan) {
   };
   return {
     ...prior,
-    revision: plan.revision,
-    nextEligibleAt: now + plan.minIntervalMs,
-    inFlightUntil: now + plan.flightMs,
+    revision: plan2.revision,
+    nextEligibleAt: now + plan2.minIntervalMs,
+    inFlightUntil: now + plan2.flightMs,
     attempts: prior.attempts + 1,
     lastAttemptAt: now,
     failure: prior.observation ? prior.failure : "loading"
@@ -3885,11 +5599,11 @@ function alive(pid) {
   }
 }
 var SharedGate = class {
-  constructor(options) {
-    this.options = options;
-    this.now = options.now ?? Date.now;
-    this.flightMs = options.flightMs ?? 45e3;
-    this.lockStaleMs = options.lockStaleMs ?? 1e4;
+  constructor(options2) {
+    this.options = options2;
+    this.now = options2.now ?? Date.now;
+    this.flightMs = options2.flightMs ?? 45e3;
+    this.lockStaleMs = options2.lockStaleMs ?? 1e4;
   }
   options;
   now;
@@ -3901,7 +5615,6 @@ var SharedGate = class {
     await this.ready();
     return this.load(scope);
   }
-  /** Admits at most one caller per interval; everyone else only reads the shared state. */
   async reserve(scope, minIntervalMs) {
     await this.ready();
     return this.withLock(scope, async () => {
@@ -3916,7 +5629,6 @@ var SharedGate = class {
       return { revision };
     });
   }
-  /** Records the outcome; ignored if another caller took over after this flight expired. */
   async finish(scope, revision, result) {
     await this.ready();
     const done = await this.withLock(scope, async () => {
@@ -3989,7 +5701,6 @@ var SharedGate = class {
       return false;
     }
   }
-  /** A lock is stale if its holder is gone, or if it is past its lifetime. */
   async clearStale(lock) {
     try {
       const info = await stat4(lock);
@@ -4014,16 +5725,15 @@ function defaultProviderRoot() {
   return join9(userInfo().homedir, ".cache", NAMES.cacheDir, "providers-v1");
 }
 var ProviderQuotaService = class {
-  /** `changed` only says something happened; the user then asks `state()`. */
-  constructor(changed2, options = {}) {
+  constructor(changed2, options2 = {}) {
     this.changed = changed2;
-    const now = options.now ?? Date.now;
+    const now = options2.now ?? Date.now;
     this.policy = {
       now,
-      intervalMs: Math.max(PROVIDER_QUOTA_INTERVAL_MS, options.intervalMs ?? 0),
-      ...options.fetch ? { fetch: options.fetch } : {}
+      intervalMs: Math.max(PROVIDER_QUOTA_INTERVAL_MS, options2.intervalMs ?? 0),
+      ...options2.fetch ? { fetch: options2.fetch } : {}
     };
-    this.gate = options.gate ?? new SharedGate({ root: defaultProviderRoot(), now, flightMs: PROVIDER_QUOTA_FLIGHT_MS });
+    this.gate = options2.gate ?? new SharedGate({ root: defaultProviderRoot(), now, flightMs: PROVIDER_QUOTA_FLIGHT_MS });
   }
   changed;
   gate;
@@ -4032,7 +5742,6 @@ var ProviderQuotaService = class {
   source;
   scope;
   gateState;
-  /** What became of each window in the last reply this process read; the shared gate never holds it. */
   report;
   trouble;
   epoch = 0;
@@ -4040,7 +5749,6 @@ var ProviderQuotaService = class {
   lastHintAt = -Infinity;
   lastStartAt = -Infinity;
   timer;
-  /** What to show for the model in use, or undefined when no quota source serves its provider. */
   state() {
     const model = this.ctx?.model;
     if (!this.source || !model) return void 0;
@@ -4048,7 +5756,6 @@ var ProviderQuotaService = class {
     const view = this.view();
     return view ? presentGate(view, model) : { limits: null, status: "quota loading" };
   }
-  /** A hint that quota may have changed. Cheap: coalesced, spaced and gate-protected. */
   refresh(ctx) {
     this.ctx = ctx;
     const source = quotaSourceFor(ctx.model?.provider);
@@ -4081,7 +5788,6 @@ var ProviderQuotaService = class {
       windowReport: this.report ?? null
     };
   }
-  /** The gate state seen as the shared view it is at this moment (age and staleness move with time). */
   view() {
     return this.gateState && gateView(this.gateState, this.policy.now());
   }
@@ -4111,7 +5817,6 @@ var ProviderQuotaService = class {
       this.schedule();
     }).catch(() => void 0);
   }
-  /** One-shot wake at the next eligible time, only while the user has been active recently. */
   schedule() {
     this.pause();
     const active = this.policy.now() - this.lastHintAt <= PROVIDER_QUOTA_ACTIVE_MS;
@@ -4159,7 +5864,6 @@ var ProviderQuotaService = class {
     await this.gate.finish(scope, reservation.revision, result);
     await this.show(scope, epoch);
   }
-  /** Reads the shared gate for the account and remembers it; only the current account counts. */
   async show(scope, epoch) {
     const state = await this.gate.view(scope);
     if (epoch !== this.epoch || scope !== this.scope) return state;
@@ -4196,7 +5900,6 @@ var QuotaController = class {
   provider;
   headers;
   events = { received: 0, parsed: 0, accepted: 0 };
-  /** What to show right now for the model in use. */
   snapshot() {
     if (!this.enabled() && quotaSourceFor(this.ctx?.model?.provider ?? "")) return OFF;
     return this.provider.state() ?? this.pushed ?? this.restored;
@@ -4206,11 +5909,9 @@ var QuotaController = class {
     this.updateContext(ctx);
     this.resume();
   }
-  /** The footer is on screen again: ask once; the service then schedules itself while you are active. */
   resume() {
     if (this.ctx && this.enabled()) this.provider.refresh(this.ctx);
   }
-  /** The session or its model may have changed: what was pushed for another model is dropped. */
   updateContext(ctx) {
     this.ctx = ctx;
     const key = `${ctx.model?.provider ?? ""}/${ctx.model?.id ?? ""}`;
@@ -4287,11 +5988,9 @@ var Trackers = class {
     this.extensions.start();
     this.quotas.start(ctx);
   }
-  /** The provider limits as last read, for the first snapshot of a session. */
   limits() {
     return this.quotas.snapshot().limits;
   }
-  /** What `/dock-debug` reports about the sources. */
   diagnostics() {
     return { ...this.quotas.diagnostics(), gitMonitor: this.git.stats() };
   }
@@ -4313,7 +6012,6 @@ var ProblemState = class {
   get count() {
     return this.list.length;
   }
-  /** Problems exist and the user has not opened the screen that lists them. */
   get alerting() {
     return this.list.length > 0 && !this.seen;
   }
@@ -4434,7 +6132,6 @@ var InfoView = class {
   close;
   offset = 0;
   lastWidth = 80;
-  /** Set by every render; the live timer clears it, and stops itself if nothing sets it again. */
   drawn = false;
   pinned(width2) {
     return {
@@ -4442,14 +6139,12 @@ var InfoView = class {
       bottom: this.screen.footer?.(this.theme, width2) ?? []
     };
   }
-  /** The scrolling window: fixed, and smaller on a short terminal by what is pinned around it. */
   visibleRows(pinned = 0) {
     return Math.max(MIN_ROWS, Math.min(MAX_ROWS, this.rows() - RESERVED_ROWS - pinned));
   }
   body(width2) {
     return this.screen.lines(this.theme, width2);
   }
-  /** Rows of the scrolling window at the width last drawn. */
   windowRows() {
     const { top, bottom } = this.pinned(this.lastWidth);
     return this.visibleRows(top.length + bottom.length);
@@ -4457,7 +6152,6 @@ var InfoView = class {
   scroll(by, total, rows = this.windowRows()) {
     this.offset = Math.max(0, Math.min(Math.max(0, total - rows), this.offset + by));
   }
-  /** The last column of each body row: a track with a thumb, only when the body scrolls. */
   bar(rows, shown2, total) {
     if (total <= rows) return Array.from({ length: shown2 }, () => "");
     const thumb = Math.max(1, Math.round(rows * rows / total));
@@ -4526,8 +6220,7 @@ var InfoView = class {
     this.scroll(event.wheelDelta < 0 ? -WHEEL_STEP : WHEEL_STEP, this.body(event.width).length);
     return { handled: true };
   }
-  invalidate() {
-  }
+  invalidate = noop2;
 };
 function claimScreen(close) {
   closeOpen = close;
@@ -4576,58 +6269,6 @@ async function openProblemsScreen(ctx, deps) {
   });
 }
 
-// src/ui/glyphs.ts
-var nerdGlyphs = {
-  folder: "\uF07C",
-  branch: "\uE725",
-  changed: "\uF040",
-  ahead: "\uF0EE",
-  chip: "\uF2DB",
-  input: "\u2191",
-  output: "\u2193",
-  cache: "\uF021",
-  robot: "\u{F06A9}",
-  reasoning: "\u{F09D1}",
-  hourglass: "\uF252",
-  reset: "\u{F0453}",
-  speed: "\uF0E4",
-  expand: "\u203A",
-  collapse: "\u2039",
-  dot: "\u25CF",
-  check: "\uF00C",
-  warn: "\uF071",
-  error: "\uF00D",
-  info: "\uF05A",
-  clock: "\uF017",
-  user: "\uF007",
-  star: "\uF005"
-};
-var portableGlyphs = {
-  folder: "\u25B0",
-  branch: "\u2442",
-  changed: "\u270E",
-  ahead: "\u21E1",
-  chip: "\u25A3",
-  input: "\u2191",
-  output: "\u2193",
-  cache: "\u21BB",
-  robot: "\u25A3",
-  reasoning: "\u25CE",
-  hourglass: "\u29D6",
-  reset: "\u25CC",
-  speed: "\u26A1",
-  expand: "\u203A",
-  collapse: "\u2039",
-  dot: "\u2022",
-  check: "\u2713",
-  warn: "\u25B2",
-  error: "\u2717",
-  info: "\u24D8",
-  clock: "\u25F7",
-  user: "\u263A",
-  star: "\u2605"
-};
-
 // src/problems-controller.ts
 var ProblemsController = class {
   constructor(deps) {
@@ -4636,7 +6277,6 @@ var ProblemsController = class {
   deps;
   current = new ProblemState();
   seen;
-  /** Always the problems of the settings as last loaded, whoever loaded them. */
   get state() {
     this.load();
     return this.current;
@@ -4658,7 +6298,6 @@ var ProblemsController = class {
       redraw: () => tui()?.requestRender()
     });
   }
-  /** Reads the settings file again; if it is valid now it is applied and the marker goes away. */
   reread(ctx) {
     const { settings, interactions } = this.deps;
     const before = settings.current;
@@ -4737,7 +6376,6 @@ var SessionSnapshotReader = class {
     this.dirty = true;
     this.ledger = new UsageLedger();
   }
-  /** `prices` is used when the ledger is rebuilt; appends keep the source it was built with. */
   read(manager, prices = NO_PRICES) {
     const session = manager.getSessionId();
     const leaf = manager.getLeafId();
@@ -4789,520 +6427,6 @@ import { join as join10 } from "node:path";
 import { getAgentDir as getAgentDir2 } from "@earendil-works/pi-coding-agent";
 import { homedir as homedir6 } from "node:os";
 
-// src/core/problems.ts
-var MAX_TEXT = 200;
-var MAX_SHOWN_VALUE = 40;
-var MAX_PROBLEMS = 20;
-var plain2 = (text) => text.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim();
-var bounded = (text) => {
-  const clean4 = plain2(text);
-  return clean4.length > MAX_TEXT ? `${clean4.slice(0, MAX_TEXT - 1)}\u2026` : clean4;
-};
-function shown(value) {
-  let text;
-  try {
-    text = value === void 0 ? "nothing" : JSON.stringify(value);
-  } catch {
-    text = "(a value that cannot be shown)";
-  }
-  const clean4 = plain2(text);
-  return clean4.length > MAX_SHOWN_VALUE ? `${clean4.slice(0, MAX_SHOWN_VALUE - 1)}\u2026` : clean4;
-}
-function distance(a, b) {
-  let row4 = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i += 1) {
-    const next = [i];
-    for (let j = 1; j <= b.length; j += 1)
-      next.push(
-        Math.min(
-          (row4[j] ?? 0) + 1,
-          (next[j - 1] ?? 0) + 1,
-          (row4[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1)
-        )
-      );
-    row4 = next;
-  }
-  return row4[b.length] ?? 0;
-}
-function closest(name, candidates) {
-  let best;
-  for (const candidate of candidates) {
-    const steps = distance(name.slice(0, 64), candidate);
-    if (steps <= Math.max(2, Math.floor(candidate.length / 4)) && (!best || steps < best.steps))
-      best = { name: candidate, steps };
-  }
-  return best?.name;
-}
-function problem(where, setting, reason, fix) {
-  return { where, setting, reason: bounded(reason), fix: bounded(fix) };
-}
-function invalidValue(where, setting, value, error) {
-  const message = error instanceof Error ? error.message : "The value is not accepted";
-  return problem(
-    where,
-    setting,
-    `The value ${shown(value)} is not accepted for ${setting}.`,
-    message.endsWith(".") ? message : `${message}.`
-  );
-}
-function unknownName(where, setting, name, known) {
-  const near = closest(name, known.names);
-  return problem(
-    where,
-    setting,
-    `${shown(name)} is not a ${known.kind}.`,
-    near ? `Did you mean "${near}"? Otherwise remove it.` : `Use one of: ${known.names.join(", ")}.`
-  );
-}
-function formatProblems(heading3, problems) {
-  const shownProblems = problems.slice(0, MAX_PROBLEMS);
-  const lines = shownProblems.map(
-    (item2, index) => `${index + 1}. ${item2.where}: ${item2.setting}
-   ${item2.reason}
-   Fix: ${item2.fix}`
-  );
-  const more = problems.length > MAX_PROBLEMS ? [`\u2026 and ${problems.length - MAX_PROBLEMS} more.`] : [];
-  const count5 = problems.length === 1 ? "1 problem" : `${problems.length} problems`;
-  return [`${heading3} (${count5}):`, ...lines, ...more].join("\n");
-}
-
-// src/core/layers.ts
-var layerOn = (options, name) => options.layers?.[name] !== false;
-function checkLayers(id, options) {
-  const set = Object.keys(options.layers ?? {});
-  if (set.length === 0) return;
-  const known = layerNames.get(id);
-  if (!known) throw new Error(`Layers are not available for ${id}`);
-  for (const name of set) {
-    if (known.includes(name)) continue;
-    const near = closest(name, known);
-    throw new Error(
-      `Unknown layer for ${id}: ${name.slice(0, 24)}. ${near ? `Did you mean ${near}?` : `Use ${known.join(" or ")}.`}`
-    );
-  }
-}
-
-// src/core/slot-options.ts
-function validClick(value) {
-  if (value !== "help" && value !== "action" && value !== "none")
-    throw new Error("Invalid click mode");
-  return value;
-}
-function validGap(value) {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 6)
-    throw new Error("Gap must be 0\u20136 columns");
-  return value;
-}
-function meterColor(value) {
-  if (value !== "lavender" && value !== "theme") throw new Error("Invalid meter color");
-  return value;
-}
-function animationEnabled(value) {
-  if (typeof value !== "boolean") throw new Error("Animation must be boolean");
-  return value;
-}
-function validWording(value) {
-  if (value !== "left" && value !== "used") throw new Error("Wording must be left or used");
-  return value;
-}
-function validUnit(value) {
-  if (value !== "tokens" && value !== "percent") throw new Error("Unit must be tokens or percent");
-  return value;
-}
-function validPeriod(value) {
-  if (value !== "day" && value !== "week" && value !== "month" && value !== "session")
-    throw new Error("Period must be day, week, month or session");
-  return value;
-}
-function validCollapse(value) {
-  if (value !== "always") throw new Error("collapse must be always");
-  return value;
-}
-function windowLabels(value) {
-  if (!Array.isArray(value) || value.length > 8) throw new Error("At most 8 window labels");
-  return value.map((label3) => boundedText(label3, 24));
-}
-function layerFlags(value) {
-  const entries = Object.entries(record2(value));
-  if (entries.length > 8) throw new Error("At most 8 layers");
-  return Object.fromEntries(
-    entries.map(([name, flag]) => {
-      if (typeof flag !== "boolean")
-        throw new Error(`Layer ${safeLabel(name)} must be true or false`);
-      return [name, flag];
-    })
-  );
-}
-function validLook(value) {
-  if (!isLook(value)) throw new Error("hideAt must be xl, lg, md, sm or xs");
-  return value;
-}
-var parsers = /* @__PURE__ */ new Map([
-  ["text", (item2) => ({ text: boundedText(item2, 1024) })],
-  ["help", (item2) => ({ help: boundedText(item2, 2048) })],
-  ["icon", (item2) => ({ icon: boundedText(item2, 16) })],
-  ["actionTarget", (item2) => ({ actionTarget: actionTarget(item2) })],
-  ["click", (item2) => ({ click: validClick(item2) })],
-  ["gap", (item2) => ({ gap: validGap(item2) })],
-  ["hideAt", (item2) => ({ hideAt: validLook(item2) })],
-  ["meterColor", (item2) => ({ meterColor: meterColor(item2) })],
-  ["animation", (item2) => ({ animation: animationEnabled(item2) })],
-  ["wording", (item2) => ({ wording: validWording(item2) })],
-  ["unit", (item2) => ({ unit: validUnit(item2) })],
-  ["period", (item2) => ({ period: validPeriod(item2) })],
-  ["collapse", (item2) => ({ collapse: validCollapse(item2) })],
-  ["hideWindows", (item2) => ({ hideWindows: windowLabels(item2) })],
-  ["layers", (item2) => ({ layers: layerFlags(item2) })],
-  ["collapsedShow", (item2) => ({ collapsedShow: windowLabels(item2) })]
-]);
-var SLOT_OPTION_KEYS = [...parsers.keys()];
-function actionTarget(value) {
-  if (!identifier(value)) throw new Error("Invalid action target");
-  return value;
-}
-function option(key, item2) {
-  const parse = parsers.get(key);
-  if (!parse) throw new Error(`Unknown slot option: ${safeLabel(key)}`);
-  return parse(item2);
-}
-function parseSlotOptions(value) {
-  const result = {};
-  for (const [key, item2] of Object.entries(record2(value))) Object.assign(result, option(key, item2));
-  return result;
-}
-
-// src/core/shrink.ts
-var repeat = (step, times) => Array.from({ length: times }, () => step);
-var LEAST_IMPORTANT = [
-  "drop:cost",
-  "drop:compaction",
-  "shorten:cache",
-  "drop:cache",
-  "shorten:input",
-  "shorten:output",
-  "drop:input",
-  "drop:output"
-];
-var QUOTA_WORDING = "shorten:quota";
-var REST = [
-  ...repeat("shorten:quota", 3),
-  "drop:speed",
-  ...repeat("shorten:context-usage", 2),
-  "shorten:changes",
-  "shorten:ahead",
-  ...repeat("shorten:workspace", 2),
-  "shorten:model",
-  "drop:ahead",
-  "drop:changes",
-  "drop:context-usage",
-  "drop:context",
-  "drop:quota-more",
-  "drop:quota",
-  "drop:thinking",
-  "drop:model",
-  "drop:branch"
-];
-var DEFAULT_PLAN = [QUOTA_WORDING, ...LEAST_IMPORTANT, ...REST];
-function planWithExtensions(ids, depth) {
-  const steps = [...ids].reverse().flatMap((id) => [...repeat(`shorten:${id}`, depth(id)), `drop:${id}`]);
-  return [QUOTA_WORDING, ...LEAST_IMPORTANT, ...steps, ...REST];
-}
-var STEP_NAMES = new Set(DEFAULT_PLAN);
-var REST_MARK = "...";
-var MAX_SHRINK = 64;
-function checkStep(item2, owed) {
-  if (typeof item2 !== "string") throw new Error("shrink steps must be text");
-  if (!STEP_NAMES.has(item2)) {
-    const near = closest(item2, STEP_NAMES);
-    throw new Error(
-      `Unknown shrink step: ${item2.slice(0, 40)}${near ? ` (did you mean ${near}?)` : ""}`
-    );
-  }
-  const left = (owed.get(item2) ?? 0) - 1;
-  if (left < 0) throw new Error(`Shrink step used more often than the plan has it: ${item2}`);
-  owed.set(item2, left);
-}
-function parseShrink(value) {
-  if (!Array.isArray(value) || value.length > MAX_SHRINK)
-    throw new Error(`shrink must be a list of at most ${MAX_SHRINK} steps`);
-  const owed = /* @__PURE__ */ new Map();
-  for (const step of DEFAULT_PLAN) owed.set(step, (owed.get(step) ?? 0) + 1);
-  const marks = value.filter((item2) => item2 === REST_MARK).length;
-  if (marks > 1) throw new Error(`shrink may hold "${REST_MARK}" once`);
-  for (const item2 of value) if (item2 !== REST_MARK) checkStep(item2, owed);
-  return value;
-}
-function orderPlan(base2, user) {
-  if (!user || user.length === 0) return base2;
-  const owed = /* @__PURE__ */ new Map();
-  for (const step of user) if (step !== REST_MARK) owed.set(step, (owed.get(step) ?? 0) + 1);
-  const rest = base2.filter((step) => {
-    const left = owed.get(step) ?? 0;
-    if (left > 0) owed.set(step, left - 1);
-    return left === 0;
-  });
-  const mark = user.indexOf(REST_MARK);
-  if (mark < 0) return [...user, ...rest];
-  return [...user.slice(0, mark), ...rest, ...user.slice(mark + 1)];
-}
-function take(step, model, state) {
-  const colon = step.indexOf(":");
-  const kind = step.slice(0, colon);
-  const id = step.slice(colon + 1);
-  if (!model.ids.includes(id) || state.dropped.has(id)) return false;
-  if (kind === "drop") {
-    state.dropped.add(id);
-    return true;
-  }
-  const level = state.level.get(id) ?? 0;
-  if (kind !== "shorten" || level >= model.depth(id)) return false;
-  state.level.set(id, level + 1);
-  return true;
-}
-function shrinkRow(model, plan) {
-  const state = { level: /* @__PURE__ */ new Map(), dropped: /* @__PURE__ */ new Set() };
-  const steps = [];
-  let fitting = model.fits(state);
-  for (const step of plan) {
-    if (fitting) break;
-    if (!take(step, model, state)) continue;
-    steps.push(step);
-    fitting = model.fits(state);
-  }
-  return { ...state, steps };
-}
-
-// src/core/footer-config.ts
-var PROBLEM_MARKER = "problems";
-var QUOTA_TOGGLE = "quota-more";
-var slotHelp = /* @__PURE__ */ new Map([
-  [
-    "workspace",
-    "Current working directory. Click its icon to open the folder in your file manager; /dock-open-with chooses another app."
-  ],
-  [
-    "branch",
-    "Current Git branch. Git unavailable means observation or watch coverage is unavailable, not a clean zero; /dock-debug reports event-monitor health. No polling fallback."
-  ],
-  [
-    "changes",
-    "Changed or untracked nonignored Git files, including nested untracked files. Staged and unstaged changes to one path count once; not changed lines. Filesystem notifications and Pi tool/lifecycle events trigger bounded Git reads automatically, including external edits; no periodic Git polling."
-  ],
-  [
-    "ahead",
-    "Local commits ahead of the locally recorded Git upstream, reconciled automatically. Uncommitted files do not count. No upstream means unknown, not zero. No network fetches or live GitHub queries."
-  ],
-  [
-    "model",
-    "Active provider and model. A provider name does not identify API-key versus OAuth authentication."
-  ],
-  ["thinking", "The active Pi thinking/reasoning level."],
-  [
-    "context",
-    "Invoke an advertised context action. Without an available action, show this explanation."
-  ],
-  [
-    "context-usage",
-    "Current context utilization and model capacity, not cumulative session tokens. After compaction Pi may report unknown usage until the next response."
-  ],
-  [
-    "compaction",
-    "Tokens remaining before the effective context limit minus the compaction reserve, or with the percent unit the point where Pi compacts as a share of the window (rounded down). Pi compacts when usage is above the window minus the reserve. This is not a time estimate."
-  ],
-  [
-    "input",
-    "Cumulative provider-reported input tokens across session entries, not the current context size."
-  ],
-  ["output", "Cumulative provider-reported output tokens across session entries."],
-  [
-    "cache",
-    "Last = latest completed primary response, including a completed step in a running task; not live cache activity. Shows reported reuse and read/written token counts, omitting zero writes. Pending/unknown is not a miss; no reuse reported is not a confirmed miss. Actual expiry is unknown. Help retains full counters and cumulative reads."
-  ],
-  [
-    "speed",
-    "Last completed primary response: reported output divided by SDK monotonic duration, including request/header wait. Not live token generation or pure decoding speed. Output may include reasoning. Cleared at turn start; absent for errors, invalid or sub-20ms timing."
-  ],
-  [
-    "quota",
-    "Remaining limits from a verified source. API tokens/requests are OpenAI HTTP rate buckets from actual response headers, not ChatGPT five-hour or weekly subscription quota. Codex uses a separate authenticated usage endpoint. The openai OAuth flow targets api.openai.com; Codex results cannot establish its account quotas. No percentages are invented."
-  ],
-  [
-    QUOTA_TOGGLE,
-    "Shows the other quota windows when the quota is collapsed to the one closest to running out (\u203A expands, \u2039 collapses). Keyboard: /dock-quota."
-  ],
-  [
-    "cost",
-    "Estimated equivalent API spend, not subscription charges or allowance consumed. Prices come from Pi's model registry: the cost Pi recorded for each response, or its model's registry rate applied to the response's token categories. A response with no registry price (or a price of zero) is left out and the total is labelled partial."
-  ]
-]);
-function defaultFooterConfig() {
-  return {
-    version: 1,
-    slots: {},
-    rows: [
-      { left: ["workspace", "branch", "changes", "ahead"], right: ["model", "thinking"] },
-      {
-        left: ["context", "context-usage", "compaction", "input", "output", "cache", "speed"],
-        right: ["quota", QUOTA_TOGGLE, "cost"]
-      }
-    ]
-  };
-}
-function row(value) {
-  const data = record2(value);
-  const group2 = (items) => {
-    if (!Array.isArray(items) || items.length > 32 || !items.every(identifier))
-      throw new Error("Rows require bounded slot-ID arrays");
-    return items;
-  };
-  if (Object.keys(data).some((key) => key !== "left" && key !== "right"))
-    throw new Error("Unknown row option");
-  return { left: group2(data.left), right: group2(data.right) };
-}
-var CONFIG_KEYS = ["version", "rows", "slots", "shrink"];
-function parseFooterConfig(value) {
-  const data = record2(value);
-  if (Object.keys(data).some((key) => !CONFIG_KEYS.includes(key)))
-    throw new Error("Unknown config option");
-  if (data.version !== void 0 && data.version !== 1)
-    throw new Error("Unsupported config version");
-  const config = defaultFooterConfig();
-  if (data.slots !== void 0) config.slots = readSlots(data.slots);
-  if (data.rows !== void 0) config.rows = readRows(data.rows);
-  if (data.shrink !== void 0) config.shrink = parseShrink(data.shrink);
-  checkSlots(config);
-  return config;
-}
-function readSlots(value) {
-  const entries = Object.entries(record2(value));
-  if (entries.length > 32 || entries.some(([id]) => !identifier(id)))
-    throw new Error("Invalid slot IDs/count");
-  return Object.fromEntries(
-    entries.map(([id, item2]) => {
-      const options = parseSlotOptions(item2);
-      checkLayers(id, options);
-      return [id, options];
-    })
-  );
-}
-function readRows(value) {
-  if (!Array.isArray(value) || value.length !== 2)
-    throw new Error("Footer requires exactly two rows");
-  return [row(value[0]), row(value[1])];
-}
-function checkSlots(config) {
-  const ids = config.rows.flatMap((item2) => [...item2.left, ...item2.right]);
-  if (ids.length > 32 || new Set(ids).size !== ids.length)
-    throw new Error("Slot IDs must be unique across the footer");
-  for (const id of ids) {
-    if (!slotHelp.has(id) && !config.slots[id]?.text)
-      throw new Error(`Custom slot ${id} needs text`);
-  }
-}
-function slotOptions(config, id) {
-  return config.slots[id] ?? {};
-}
-function clickMode(config, id) {
-  return slotOptions(config, id).click ?? (id === "context" ? "action" : "help");
-}
-function actionTargets(config) {
-  return new Set(
-    config.rows.flatMap((row4) => [...row4.left, ...row4.right]).map((id) => slotOptions(config, id).actionTarget ?? id)
-  );
-}
-
-// src/core/settings.ts
-var QUOTA_ONLY = [
-  "wording",
-  "collapse",
-  "collapsedShow",
-  "hideWindows",
-  "animation",
-  "meterColor"
-];
-var ownOption = (id, key) => {
-  if (key === "layers") return layerNames.has(id);
-  if (id === "quota") return QUOTA_ONLY.includes(key);
-  return id === "compaction" && key === "unit" || id === "cost" && key === "period";
-};
-var SETTING_KEYS = [
-  "version",
-  "glyphs",
-  "glyphHintShown",
-  "quotaExpanded",
-  "clicks",
-  "openWith",
-  "limits",
-  "shrink",
-  "slots"
-];
-var defaultSettings = () => ({ version: 1, slots: {} });
-var settingsItems = () => [...slotHelp.keys()].filter((id) => id !== QUOTA_TOGGLE);
-function slots(value) {
-  const result = {};
-  const known = new Set(settingsItems());
-  for (const [id, item2] of Object.entries(record2(value))) {
-    if (!known.has(id)) throw new Error(`Unknown item: ${id.slice(0, 32)}`);
-    const options = parseSlotOptions(item2);
-    const misplaced = Object.keys(options).filter((key) => key !== "hideAt" && !ownOption(id, key));
-    if (misplaced.length > 0) throw new Error(`Option not available for ${id}: ${misplaced[0]}`);
-    checkLayers(id, options);
-    result[id] = options;
-  }
-  return result;
-}
-function parseSettings(value) {
-  const data = record2(value);
-  if (Object.keys(data).some((key) => !SETTING_KEYS.includes(key)))
-    throw new Error("Unknown setting");
-  if (data.version !== 1) throw new Error("Unsupported settings version");
-  const result = defaultSettings();
-  readChoices(data, result);
-  if (data.openWith !== void 0) result.openWith = parseOpenWith(data.openWith);
-  if (data.shrink !== void 0) result.shrink = parseShrink(data.shrink);
-  if (data.slots !== void 0) result.slots = slots(data.slots);
-  return result;
-}
-function readFlags(data, result) {
-  for (const key of ["glyphHintShown", "quotaExpanded"]) {
-    if (data[key] === void 0) continue;
-    if (typeof data[key] !== "boolean") throw new Error(`${key} must be true or false`);
-    result[key] = data[key];
-  }
-}
-function readChoices(data, result) {
-  if (data.glyphs !== void 0) {
-    if (data.glyphs !== "nerd" && data.glyphs !== "portable")
-      throw new Error("glyphs must be nerd or portable");
-    result.glyphs = data.glyphs;
-  }
-  readFlags(data, result);
-  if (data.limits !== void 0) {
-    if (data.limits !== "on" && data.limits !== "off") throw new Error("limits must be on or off");
-    result.limits = data.limits;
-  }
-  if (data.clicks !== void 0) {
-    if (data.clicks !== "actions" && data.clicks !== "explain")
-      throw new Error("clicks must be actions or explain");
-    result.clicks = data.clicks;
-  }
-}
-function applySettings(config, settings) {
-  const merged = { ...config.slots };
-  for (const [id, options] of Object.entries(settings.slots))
-    merged[id] = { ...options, ...config.slots[id] };
-  const shrink = config.shrink ?? settings.shrink;
-  return { ...config, slots: merged, ...shrink ? { shrink } : {} };
-}
-function withSlot(settings, id, patch) {
-  const options = Object.entries({ ...settings.slots[id], ...patch }).filter(
-    ([, value]) => value !== void 0
-  );
-  const others = Object.entries(settings.slots).filter(([key]) => key !== id);
-  const changed2 = options.length > 0 ? [[id, Object.fromEntries(options)]] : [];
-  return { ...settings, slots: Object.fromEntries([...others, ...changed2]) };
-}
-
 // src/core/settings-problems.ts
 var isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var kindOf = (value) => value === null ? "null" : Array.isArray(value) ? "a list" : typeof value;
@@ -5323,10 +6447,10 @@ var notAnObject = (where, setting, what, value) => problem(
 var versionProblems = (where, value) => value === 1 ? [] : [invalidValue(where, "version", value, new Error("The version must be 1"))];
 function slotProblems(where, value, probe) {
   if (!isObject(value)) return [notAnObject(where, "slots", "slots", value)];
-  return Object.entries(value).flatMap(([id, options]) => {
-    if (!isObject(options))
-      return [notAnObject(where, `slots.${id}`, `The options of ${id}`, options)];
-    return Object.entries(options).flatMap(
+  return Object.entries(value).flatMap(([id, options2]) => {
+    if (!isObject(options2))
+      return [notAnObject(where, `slots.${id}`, `The options of ${id}`, options2)];
+    return Object.entries(options2).flatMap(
       ([option2, item2]) => SLOT_OPTION_KEYS.includes(option2) ? attempt(where, `slots.${id}.${option2}`, item2, () => probe(id, option2, item2)) : [
         unknownName(where, `slots.${id}.${option2}`, option2, {
           kind: "slot option",
@@ -5500,8 +6624,7 @@ function registration(value, targets) {
   return label3 ? { id: data.id, target: data.target, label: label3 } : void 0;
 }
 var UIActionRegistry = class {
-  constructor(bus, targets, trace = () => {
-  }) {
+  constructor(bus, targets, trace = noop2) {
     this.bus = bus;
     this.targets = targets;
     this.trace = trace;
@@ -5600,36 +6723,6 @@ var UIActionRegistry = class {
     }
   }
 };
-
-// src/core/config-command.ts
-function explainConfig(args) {
-  const where = "/dock-config";
-  if (args.length > 16384)
-    return formatProblems("Nothing changed: the footer configuration was not applied", [
-      problem(
-        where,
-        "(command)",
-        "The command is longer than 16 KiB.",
-        "Keep only what you want to change, or use the settings file."
-      )
-    ]);
-  let value;
-  try {
-    value = JSON.parse(args);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "It is not valid JSON.";
-    return formatProblems("Nothing changed: the footer configuration was not applied", [
-      problem(
-        where,
-        "(command)",
-        `The text after /dock-config is not valid JSON: ${reason}`,
-        'Write one JSON object on one line, for example {"shrink":["drop:cost"]}; or use /dock-config show or /dock-config reset.'
-      )
-    ]);
-  }
-  const problems = checkConfig(value, where);
-  return problems.length > 0 ? formatProblems("Nothing changed: the footer configuration was not applied", problems) : "Nothing changed: the footer configuration was not applied: it is not valid (two rows, unique slots).";
-}
 
 // src/features/ahead.ts
 import { truncateToWidth as truncateToWidth5 } from "@earendil-works/pi-tui";
@@ -6035,7 +7128,7 @@ function upstreamText2(branch, theme) {
   const behind = theme.fg(upstream.behind > 0 ? "warning" : "dim", `\u2193${upstream.behind}`);
   return `${theme.fg("muted", upstream.name)}  ${ahead} ${behind}`;
 }
-function row2(branch, age, cols, theme) {
+function row3(branch, age, cols, theme) {
   const name = fit3(branch.name, cols.name);
   const styled = branch.current ? theme.bold(theme.fg("accent", name)) : theme.fg("text", name);
   const marker = branch.current ? theme.fg("accent", "*") : " ";
@@ -6055,7 +7148,7 @@ function section({ title, note: note3, all, empty: empty2 }, ctx) {
   const shown2 = all.slice(0, SECTION_LIMIT);
   const ages = shown2.map((b) => relativeAge(b.time, now));
   const cols = columns(shown2, ages, width2);
-  lines.push(...shown2.map((branch, index) => row2(branch, ages[index] ?? "", cols, theme)));
+  lines.push(...shown2.map((branch, index) => row3(branch, ages[index] ?? "", cols, theme)));
   if (all.length > shown2.length)
     lines.push(theme.fg("dim", `  \u2026 ${all.length - shown2.length} more`));
   return lines;
@@ -6087,7 +7180,7 @@ function branchLines(result, theme, width2, now) {
 function branchRows(branches, theme, width2, now) {
   const ages = branches.map((branch) => relativeAge(branch.time, now));
   const cols = columns([...branches], ages, width2);
-  return branches.map((branch, index) => row2(branch, ages[index] ?? "", cols, theme));
+  return branches.map((branch, index) => row3(branch, ages[index] ?? "", cols, theme));
 }
 
 // src/core/branch-switch.ts
@@ -6120,7 +7213,6 @@ var PickerState = class {
   query = "";
   selected = 0;
   filtered;
-  /** New choices (the files changed while the picker was open): the query and the row under the cursor stay. */
   replace(all) {
     const keep = this.current?.id;
     this.all = all;
@@ -6137,7 +7229,6 @@ var PickerState = class {
   get current() {
     return this.filtered[this.selected];
   }
-  /** Replaces the query; the cursor goes to the best match, or stays on the same row when cleared. */
   search(query) {
     const keep = this.current?.id;
     this.query = query;
@@ -6151,13 +7242,11 @@ var PickerState = class {
   backspace() {
     this.search(Array.from(this.query).slice(0, -1).join(""));
   }
-  /** Moves the cursor, wrapping at both ends like Pi's own `/model`. */
   move(by) {
     const size = this.filtered.length;
     if (size === 0) return;
     this.selected = ((this.selected + by) % size + size) % size;
   }
-  /** Moves without wrapping (pages, the wheel, Home and End). */
   jump(by) {
     this.selected = Math.max(0, Math.min(this.filtered.length - 1, this.selected + by));
   }
@@ -6189,15 +7278,13 @@ var PickerView = class {
   finish;
   state;
   offset = 0;
-  /** Set by every draw; the live loop clears it and stops when nothing draws the view any more. */
   drawn = false;
   shown;
   choicesNow() {
-    const { choices: choices2 } = this.spec;
-    this.shown = typeof choices2 === "function" ? choices2() : choices2;
+    const { choices } = this.spec;
+    this.shown = typeof choices === "function" ? choices() : choices;
     return this.shown;
   }
-  /** Takes up new choices when the feature handed over a different list. */
   syncChoices() {
     if (typeof this.spec.choices !== "function") return;
     const previous = this.shown;
@@ -6282,7 +7369,6 @@ var PickerView = class {
     else if (matchesKey2(data, Key2.end)) this.state.end();
     else this.text(data);
   }
-  /** Printable input edits the search; with no search box a few letters work like in a pager. */
   text(data) {
     if (!this.spec.searchable) {
       if (data === "q") this.finish(void 0);
@@ -6298,8 +7384,7 @@ var PickerView = class {
     this.state.jump(event.wheelDelta < 0 ? -WHEEL_STEP2 : WHEEL_STEP2);
     return { handled: true };
   }
-  invalidate() {
-  }
+  invalidate = noop2;
 };
 async function openPicker(ctx, spec) {
   return ctx.ui.custom((tui, theme, _keys, done) => {
@@ -6332,7 +7417,7 @@ function branchChoices(list2, locals, now) {
       all: list2.remotes.slice(0, SECTION_LIMIT)
     }
   ];
-  const choices2 = sections2.flatMap(({ title, note: note3, remote, all }) => {
+  const choices = sections2.flatMap(({ title, note: note3, remote, all }) => {
     const rows = /* @__PURE__ */ new Map();
     return all.map((branch, index) => {
       const id = `${remote ? "remote" : "local"}:${branch.name}`;
@@ -6351,7 +7436,7 @@ function branchChoices(list2, locals, now) {
       };
     });
   });
-  return { choices: choices2, entries };
+  return { choices, entries };
 }
 function offer(ctx, entry, locals) {
   const command = switchCommand(
@@ -6378,14 +7463,14 @@ async function showBranches(ctx) {
   }
   const { list: list2 } = result;
   const locals = new Set(list2.locals.map((branch) => branch.name));
-  const { choices: choices2, entries } = branchChoices(list2, locals, now);
+  const { choices, entries } = branchChoices(list2, locals, now);
   const current = list2.locals.find((branch) => branch.current);
   const picked = await openPicker(ctx, {
     title: "Branches",
     searchable: true,
     action: "Enter prepares the switch",
     ...current ? { start: `local:${current.name}` } : {},
-    choices: choices2,
+    choices,
     header: (theme) => list2.detached ? [theme.fg("warning", " HEAD is detached: no local branch is checked out."), ""] : []
   });
   const entry = picked === void 0 ? void 0 : entries.get(picked);
@@ -6616,7 +7701,7 @@ var BADGE_COLOUR = {
   "?": "muted",
   U: "error"
 };
-var SHOWN = { M: "M", A: "A", D: "D", R: "R", "?": "A", U: "U" };
+var SHOWN2 = { M: "M", A: "A", D: "D", R: "R", "?": "A", U: "U" };
 var MEANING = {
   M: "modified",
   A: "new",
@@ -6694,14 +7779,14 @@ function fileRows(files, theme, width2) {
   return files.map((file, index) => {
     const path = fitPath(clean2(file.path), pathWidth);
     const gap2 = " ".repeat(Math.max(0, pathWidth - visibleWidth3(path)));
-    const badge = theme.fg(BADGE_COLOUR[file.status], SHOWN[file.status]);
+    const badge = theme.fg(BADGE_COLOUR[file.status], SHOWN2[file.status]);
     const size = sizeWidth ? GAP2 + theme.fg("muted", pad2(sizes[index] ?? "", sizeWidth)) : "";
     const change = changes[index] ?? { text: "", width: 0 };
     return ` ${badge} ${path}${gap2}${size}${GAP2}${" ".repeat(changeWidth - change.width)}${change.text}`;
   });
 }
 function legend(files, theme, width2) {
-  const letters = [...new Set(files.map((file) => SHOWN[file.status]))];
+  const letters = [...new Set(files.map((file) => SHOWN2[file.status]))];
   const words = letters.map((letter2) => `${letter2} ${MEANING[letter2] ?? ""}`);
   return theme.fg("dim", truncateToWidth8(` ${words.join("  \xB7  ")}`, width2));
 }
@@ -6726,7 +7811,7 @@ function changedFilesParts(state, theme, width2) {
   };
 }
 function fileSummary(file, theme, width2) {
-  const badge = theme.fg(BADGE_COLOUR[file.status], SHOWN[file.status]);
+  const badge = theme.fg(BADGE_COLOUR[file.status], SHOWN2[file.status]);
   const change = changeCell(file, theme);
   const room = Math.max(8, width2 - 4 - change.width);
   return ` ${badge} ${fitPath(clean2(file.path), room)}  ${change.text}`.trimEnd();
@@ -6737,7 +7822,7 @@ import { realpath as realpath5 } from "node:fs/promises";
 var DEADLINE_MS = 5e3;
 var MAX_DIFF_LINES = 5e3;
 var NO_COLOUR = ["--no-ext-diff", "--no-textconv", "--no-color", "-U3"];
-function split(text) {
+function split2(text) {
   const all = text.split("\n");
   if (all.at(-1) === "") all.pop();
   return { lines: all.slice(0, MAX_DIFF_LINES), omitted: Math.max(0, all.length - MAX_DIFF_LINES) };
@@ -6749,7 +7834,7 @@ async function readFileDiff(cwd, file, signal = AbortSignal.timeout(DEADLINE_MS)
     );
     const args = file.status === "?" ? ["diff", "--no-index", ...NO_COLOUR, "--", "/dev/null", file.path] : ["diff", ...NO_COLOUR, await baseline(root, signal), "--", file.path];
     const text = await gitOutput(root, args, signal, { allowNoMatch: true });
-    return { ok: true, ...split(text) };
+    return { ok: true, ...split2(text) };
   } catch (error) {
     const big = error instanceof Error && error.cause instanceof Error && error.cause.message.includes("maxBuffer");
     return {
@@ -6853,13 +7938,11 @@ var DiffView = class {
     this.result = result;
     this.numbered = result.ok ? numberLines(result.lines) : [];
   }
-  /** True when a new read differs from what is on screen. */
   replace(next) {
     const same = JSON.stringify(next) === JSON.stringify(this.result);
     if (!same) this.adopt(next);
     return !same;
   }
-  /** Where the changes are in the file as it is now, for finding them in an editor. */
   header(file, style) {
     const ranges = this.numbered.length > 0 ? changeRanges(this.numbered) : [];
     const first = ranges[0];
@@ -6925,7 +8008,6 @@ var ChangedList = class {
       row: (theme, width2) => this.rowAt(index, theme, width2)
     }));
   }
-  /** The rows for each width, computed once per width: they are aligned over the whole list. */
   rowAt(index, theme, width2) {
     let rows = this.rows.get(width2);
     if (!rows) {
@@ -6934,7 +8016,6 @@ var ChangedList = class {
     }
     return (rows[index] ?? "").slice(1);
   }
-  /** Reads again; true when the list is different now. */
   async refresh(cwd) {
     const next = await readChangedFiles(cwd);
     if (signature(next) === signature(this.state)) return false;
@@ -6981,7 +8062,7 @@ async function showChangedFiles(ctx) {
 // src/core/picker/model-choices.ts
 var modelKey2 = (model) => `${model.provider}/${model.id}`;
 function modelChoices(models, current, defaults2 = {}) {
-  const choices2 = models.map((model) => {
+  const choices = models.map((model) => {
     const isCurrent = current !== void 0 && modelKey2(current) === modelKey2(model);
     const isDefault = defaults2.provider === model.provider && defaults2.model === model.id;
     return {
@@ -6995,7 +8076,7 @@ function modelChoices(models, current, defaults2 = {}) {
     };
   });
   const rank = (choice) => choice.current ? 0 : choice.isDefault ? 1 : 2;
-  return choices2.sort(
+  return choices.sort(
     (a, b) => rank(a) - rank(b) || (rank(a) === 2 ? a.provider.localeCompare(b.provider) : 0)
   );
 }
@@ -7008,7 +8089,7 @@ async function pickModel(pi, ctx) {
     return;
   }
   const settings = pi.getSettings();
-  const choices2 = modelChoices(available, ctx.model, {
+  const choices = modelChoices(available, ctx.model, {
     provider: settings.defaultProvider,
     model: settings.defaultModel
   });
@@ -7017,7 +8098,7 @@ async function pickModel(pi, ctx) {
     searchable: true,
     action: "Enter select",
     ...ctx.model ? { start: modelKey2(ctx.model) } : {},
-    choices: choices2.map((choice) => ({
+    choices: choices.map((choice) => ({
       id: choice.id,
       search: choice.search,
       detail: `Model name: ${safeLabel(choice.name)}`,
@@ -7074,13 +8155,13 @@ async function pickThinking(pi, ctx) {
     return;
   }
   const current = pi.getThinkingLevel();
-  const choices2 = thinkingChoices(levels, current, pi.getSettings().defaultThinkingLevel);
+  const choices = thinkingChoices(levels, current, pi.getSettings().defaultThinkingLevel);
   const picked = await openPicker(ctx, {
     title: "Thinking level",
     searchable: true,
     action: "Enter select",
     start: current,
-    choices: choices2.map((choice) => ({
+    choices: choices.map((choice) => ({
       id: choice.id,
       search: choice.search,
       row: (theme) => `${choice.current ? theme.fg("accent", "\u2713 ") : "  "}${choice.level.padEnd(8)} ` + theme.fg("muted", choice.description + (choice.isDefault ? " \xB7 default" : ""))
@@ -7135,7 +8216,6 @@ function compose(explainer, context) {
     title: explainer.title,
     ...explainer.periods ? { periods: true } : {},
     value: context.value,
-    // Air above and below the status line, so the value, the status and the detail read apart.
     headline: [...headline, gap, now, gap],
     body: [
       ...body,
@@ -8026,12 +9106,12 @@ var cost = {
 // src/core/quota-pace.ts
 var HOUR = 36e5;
 var DAY = 24 * HOUR;
-var FIXED = { "5h": 5 * HOUR, week: 7 * DAY, month: 30 * DAY };
+var FIXED2 = { "5h": 5 * HOUR, week: 7 * DAY, month: 30 * DAY };
 var PACE_BAND = 5;
 var TOO_EARLY = 0.02;
 var PROJECT_FROM = 0.1;
 function windowLength(label3) {
-  const fixed = FIXED[label3];
+  const fixed = FIXED2[label3];
   if (fixed !== void 0) return { ms: fixed, approximate: label3 === "month" };
   const match = /^(\d{1,4})([mhd])$/u.exec(label3);
   if (!match) return void 0;
@@ -8120,7 +9200,7 @@ function inTheFooter(shows, layers) {
     ),
     bullets({
       term: `Show ${other} instead`,
-      text: `/dock-settings, Limit usage, "Limit shows": ${other}.`
+      text: `/dock-settings, ${groupText.quota?.label ?? ""}, "${rowLabel("wording")}": ${other}.`
     })
   ];
 }
@@ -8389,131 +9469,26 @@ var explainers = [
 var byId = new Map(explainers.map((explainer) => [explainer.id, explainer]));
 var explainerFor = (id) => byId.get(id);
 
-// src/core/settings-text.ts
-var itemText = /* @__PURE__ */ new Map([
-  ["workspace", { label: "Project folder", note: "The project folder, shortened when tight." }],
-  ["branch", { label: "Git branch", note: "The current Git branch." }],
-  ["changes", { label: "Changed files", note: "Files with uncommitted changes." }],
-  ["ahead", { label: "Commits ahead", note: "Commits not pushed yet." }],
-  ["model", { label: "Model", note: "The model, with its provider when there is room." }],
-  ["thinking", { label: "Thinking level", note: "The model's thinking level." }],
-  ["context", { label: "Context icon", note: "Icon before context usage; click for its action." }],
-  ["context-usage", { label: "Context usage", note: "How much of the context window is used." }],
-  ["compaction", { label: "Compaction notice", note: "Notice before the context is compacted." }],
-  ["input", { label: "Input tokens", note: "Input tokens used in this session." }],
-  ["output", { label: "Output tokens", note: "Output tokens used in this session." }],
-  ["cache", { label: "Cache", note: "Share of the prompt served from the cache." }],
-  ["speed", { label: "Tokens per second", note: "Output speed of the last response." }],
-  ["quota", { label: "Limit usage", note: "What is left of each provider limit." }],
-  ["cost", { label: "Cost", note: "Estimated spend at API prices." }]
-]);
-var layerText = /* @__PURE__ */ new Map([
-  ["model:provider", { label: "Model: provider", note: "The provider before the model name." }],
-  [
-    "model:name",
-    { label: "Model: name", note: "The model name. With both off the item is hidden." }
-  ],
-  ["quota:meter", { label: "Limit usage: meter", note: "The bar before the percent." }],
-  [
-    "quota:reset",
-    { label: "Limit usage: reset time", note: "The reload icon and the time until the reset." }
-  ]
-]);
-var costText = {
-  period: "Spend over a day, a week, a month, or this session."
-};
-var compactionText = "How it is shown; click it for the table.";
-var quotaText = {
-  window: (label3) => `Show or hide the ${label3} window.`,
-  network: "Ask your provider for its limits. Off sends nothing.",
-  wording: "Show the percent left, or the percent used.",
-  collapse: "When to collapse, and which windows stay.",
-  collapsedWindow: (label3) => `Keep ${label3} visible when collapsed.`,
-  expanded: "Start with every limit window shown.",
-  animation: "Let the limit meter animate.",
-  meter: "Lavender, or your Pi theme colour.",
-  glyphs: "Nerd Font icons, or portable symbols."
-};
-
 // src/ui/segments.ts
 import { stripTerminalSequences as stripTerminalSequences7 } from "@earendil-works/pi-tui";
 
 // src/ui/quota.ts
-import { visibleWidth as visibleWidth4 } from "@earendil-works/pi-tui";
-function quotaMeter(percent2, options, slot) {
-  const bounded2 = Math.min(100, Math.max(0, percent2));
-  const filled = bounded2 > 0 ? Math.max(1, Math.round(bounded2 / 100 * 7)) : 0;
-  const tone = percent2 <= 25 ? "yellow" : slot.meterColor === "theme" ? "cyan" : "lavender";
-  return Array.from(
-    { length: 7 },
-    (_, index) => options.paint(
-      index < filled ? "\u25B0" : "\u25B1",
-      index < filled ? tone : "muted",
-      index < filled && options.quotaFrame === index ? "bold" : void 0
-    )
-  ).join("");
-}
-var SEPARATOR2 = "   \u2502   ";
-var SLIM_SEPARATOR = " \u2502 ";
-function windowText(window2, tier, options, slot) {
-  const p = options.paint;
-  const blocked = window2.badge !== void 0;
-  const level = Math.min(4, tier);
-  const tone = blocked ? "red" : window2.remainingPercent <= 25 ? "yellow" : "text";
-  const reset = formatReset(window2.resetAt, options.now);
-  const shown2 = slot.wording === "used" ? 100 - window2.remainingPercent : window2.remainingPercent;
-  return p(`${safeLabel(window2.label)} `, "muted") + (level <= 1 && layerOn(slot, "meter") ? quotaMeter(shown2, options, slot) + p(" ") : "") + p(formatPercent(shown2), tone, "bold") + (level <= 2 && layerOn(slot, "reset") ? p(" ") + p(options.glyphs.reset, "cyan") + p(` ${reset}`, "muted") : "");
-}
-var separatorAt = (tier) => tier === 0 ? SEPARATOR2 : SLIM_SEPARATOR;
-function liveWindows(snapshot, options) {
-  const now = (options.now ?? Date.now()) / 1e3;
-  return (snapshot.rateLimits?.windows ?? []).filter((window2) => window2.resetAt > now);
-}
-function prepare(snapshot, options, settings) {
-  return {
-    prefix: settings.icon ? `${settings.icon}  ` : "",
-    suffix: quotaSuffix(snapshot),
-    live: liveWindows(snapshot, options)
-  };
-}
-function compose2(p, parts, shape) {
-  const separator = p(separatorAt(shape.tier), "muted");
-  return p(parts.prefix, "cyan") + shape.texts.join(separator) + p(parts.suffix, "muted");
-}
-var COLLAPSES_AT = lookIndex("sm");
-var collapsedView = (windows, slot) => slot.collapsedShow ? windows.filter((window2) => slot.collapsedShow?.includes(window2.label)) : windows.slice(0, -1);
-var collapsible = (look, windows, slot) => windows.length > 1 && (slot.collapse === "always" || lookIndex(look) >= COLLAPSES_AT) && collapsedView(windows, slot).length < windows.length;
-function quotaForLook(snapshot, options, settings, look) {
-  const parts = prepare(snapshot, options, settings);
-  if (parts.live.length === 0)
-    return options.paint(snapshot.quotaStatus ?? "quota unavailable", "muted");
-  const collapsed = collapsible(look, parts.live, settings.slot) && !options.quotaExpanded;
-  const tier = Math.max(0, lookIndex(look) - (collapsed ? 1 : 0));
-  const shown2 = collapsed ? collapsedView(parts.live, settings.slot) : parts.live;
-  if (shown2.length === 0) return "";
-  const texts = shown2.map((window2) => windowText(window2, tier, options, settings.slot));
-  return compose2(options.paint, parts, { texts, tier });
-}
-function quotaToggle(snapshot, options, look, slot) {
-  if (!collapsible(look, liveWindows(snapshot, options), slot)) return "";
-  const glyph2 = options.quotaExpanded ? options.glyphs.collapse : options.glyphs.expand;
-  return options.paint(` ${glyph2} `, "cyan", "bold");
-}
+import { visibleWidth as visibleWidth5 } from "@earendil-works/pi-tui";
 
 // src/ui/segment-parts.ts
-import { visibleWidth as visibleWidth5 } from "@earendil-works/pi-tui";
+import { visibleWidth as visibleWidth4 } from "@earendil-works/pi-tui";
 function iconSpan(id, icon) {
-  return visibleWidth5(icon) + (id === "changes" || id === "ahead" ? 2 : 1);
+  return visibleWidth4(icon) + (id === "changes" || id === "ahead" ? 2 : 1);
 }
 function paintIcon(p, text) {
-  return p(text, "cyan");
+  return p(text, "icon");
 }
 function modelText(snapshot, p, rendering) {
   const { slot, variant } = rendering;
   const name = layerOn(slot, "name") ? safeLabel(snapshot.model) : "";
   const provider = layerOn(slot, "provider") && (variant === "full" || name === "") ? safeLabel(snapshot.provider) : "";
   if (provider === "" && name === "") return "";
-  return paintIcon(p, `${rendering.icon} `) + (provider === "" ? "" : p(name === "" ? provider : `${provider}/`, "muted")) + (name === "" ? "" : p(name, "cyan", "bold"));
+  return paintIcon(p, `${rendering.icon} `) + (provider === "" ? "" : p(name === "" ? provider : `${provider}/`, "muted")) + (name === "" ? "" : p(name, "accent", "bold"));
 }
 function elide(path) {
   const parts = path.split("/");
@@ -8529,10 +9504,10 @@ function workspace(snapshot, p, rendering) {
 }
 function usage(snapshot, p, variant) {
   const fill = Math.round(Math.min(100, Math.max(0, snapshot.percent ?? 0)) / 100 * 10);
-  const bar = p("\u2501".repeat(fill), "yellow") + p("\u2501".repeat(10 - fill), "muted");
+  const bar = p("\u2501".repeat(fill), "highlight") + p("\u2501".repeat(10 - fill), "muted");
   if (variant === "bare")
-    return snapshot.percent === null ? p("pending", "muted") : p(formatPercent(snapshot.percent), "yellow", "bold");
-  const value = snapshot.percent === null ? p("context pending / ", "muted") + p(formatTokens(snapshot.capacity)) : p(formatPercent(snapshot.percent), "yellow", "bold") + p(" of ", "muted") + p(formatTokens(snapshot.capacity));
+    return snapshot.percent === null ? p("pending", "muted") : p(formatPercent(snapshot.percent), "highlight", "bold");
+  const value = snapshot.percent === null ? p("context pending / ", "muted") + p(formatTokens(snapshot.capacity)) : p(formatPercent(snapshot.percent), "highlight", "bold") + p(" of ", "muted") + p(formatTokens(snapshot.capacity));
   return variant === "short" ? value : bar + p("  ") + value;
 }
 function compaction2(snapshot, unit = "tokens") {
@@ -8541,25 +9516,86 @@ function compaction2(snapshot, unit = "tokens") {
     return snapshot.compactAt === void 0 || snapshot.compactAt === null ? "awaiting usage" : `compacts at ${snapshot.compactAt}%`;
   return snapshot.compactRemaining === null ? "awaiting usage" : `compacts in ${formatTokens(snapshot.compactRemaining)}`;
 }
-function gitValue(value, p, options) {
+function gitValue(value, p, options2) {
   if (value === null) return "";
-  const color = options.kind === "files" ? "yellow" : "muted";
-  const unit = options.kind === "files" && value === 1 ? "file" : options.kind;
-  return paintIcon(p, `${options.icon}  `) + p(`${value}`, color) + (options.short ? "" : p(` ${unit}`, color));
+  const color = options2.kind === "files" ? "highlight" : "muted";
+  const unit = options2.kind === "files" && value === 1 ? "file" : options2.kind;
+  return paintIcon(p, `${options2.icon}  `) + p(`${value}`, color) + (options2.short ? "" : p(` ${unit}`, color));
 }
 function gitBranch(snapshot, p, icon) {
   if (snapshot.git.monitoring === "unavailable") return p("Git unavailable", "muted");
   return snapshot.git.branch === null ? "" : paintIcon(p, `${icon} `) + p(safeLabel(snapshot.git.branch), "text");
 }
 
+// src/ui/quota.ts
+function quotaMeter(percent2, options2, style = "slanted") {
+  const bounded2 = Math.min(100, Math.max(0, percent2));
+  const filled = bounded2 > 0 ? Math.max(1, Math.round(bounded2 / 100 * 7)) : 0;
+  const tone = percent2 <= 25 ? "warning" : "accent";
+  return Array.from(
+    { length: 7 },
+    (_, index) => options2.paint(
+      index < filled ? METER_CELLS[style].on : METER_CELLS[style].off,
+      index < filled ? tone : "muted",
+      index < filled && options2.quotaFrame === index ? "bold" : void 0
+    )
+  ).join("");
+}
+var SEPARATOR2 = "   \u2502   ";
+var SLIM_SEPARATOR = " \u2502 ";
+function windowText(window2, tier, options2, slot) {
+  const p = options2.paint;
+  const blocked = window2.badge !== void 0;
+  const level = Math.min(4, tier);
+  const tone = blocked ? "error" : window2.remainingPercent <= 25 ? "warning" : "text";
+  const reset = formatReset(window2.resetAt, options2.now);
+  const shown2 = slot.wording === "used" ? 100 - window2.remainingPercent : window2.remainingPercent;
+  return p(`${safeLabel(window2.label)} `, "muted") + (level <= 1 && layerOn(slot, "meter") ? quotaMeter(shown2, options2, slot.meterStyle) + p(" ") : "") + p(formatPercent(shown2), tone, "bold") + (level <= 2 && layerOn(slot, "reset") ? p(" ") + paintIcon(p, options2.glyphs.reset) + p(` ${reset}`, "muted") : "");
+}
+var separatorAt = (tier) => tier === 0 ? SEPARATOR2 : SLIM_SEPARATOR;
+function liveWindows(snapshot, options2) {
+  const now = (options2.now ?? Date.now()) / 1e3;
+  return (snapshot.rateLimits?.windows ?? []).filter((window2) => window2.resetAt > now);
+}
+function prepare(snapshot, options2, settings) {
+  return {
+    prefix: settings.icon ? `${settings.icon}  ` : "",
+    suffix: quotaSuffix(snapshot),
+    live: liveWindows(snapshot, options2)
+  };
+}
+function compose2(p, parts, shape) {
+  const separator = p(separatorAt(shape.tier), "muted");
+  return p(parts.prefix, "icon") + shape.texts.join(separator) + p(parts.suffix, "muted");
+}
+var COLLAPSES_AT = lookIndex("sm");
+var collapsedView = (windows, slot) => slot.collapsedShow ? windows.filter((window2) => slot.collapsedShow?.includes(window2.label)) : windows.slice(0, -1);
+var collapsible = (look, windows, slot) => windows.length > 1 && (slot.collapse === "always" || lookIndex(look) >= COLLAPSES_AT) && collapsedView(windows, slot).length < windows.length;
+function quotaForLook(snapshot, options2, settings, look) {
+  const parts = prepare(snapshot, options2, settings);
+  if (parts.live.length === 0)
+    return options2.paint(snapshot.quotaStatus ?? "quota unavailable", "muted");
+  const collapsed = collapsible(look, parts.live, settings.slot) && !options2.quotaExpanded;
+  const tier = Math.max(0, lookIndex(look) - (collapsed ? 1 : 0));
+  const shown2 = collapsed ? collapsedView(parts.live, settings.slot) : parts.live;
+  if (shown2.length === 0) return "";
+  const texts = shown2.map((window2) => windowText(window2, tier, options2, settings.slot));
+  return compose2(options2.paint, parts, { texts, tier });
+}
+function quotaToggle(snapshot, options2, look, slot) {
+  if (!collapsible(look, liveWindows(snapshot, options2), slot)) return "";
+  const glyph2 = options2.quotaExpanded ? options2.glyphs.collapse : options2.glyphs.expand;
+  return options2.paint(` ${glyph2} `, "icon", "bold");
+}
+
 // src/ui/ext-segment.ts
 var TONES = {
   text: "text",
   muted: "muted",
-  accent: "cyan",
-  success: "green",
-  warning: "yellow",
-  error: "red"
+  accent: "accent",
+  success: "success",
+  warning: "warning",
+  error: "error"
 };
 function formAt(item2, look) {
   for (let index = LOOKS.indexOf(look); index >= 0; index -= 1) {
@@ -8569,21 +9605,21 @@ function formAt(item2, look) {
   }
   return item2.at.xl;
 }
-function renderExtensionItem(item2, look, options) {
+function renderExtensionItem(item2, look, options2) {
   const form = formAt(item2, look);
   if (form === "hide") return { text: "", iconWidth: 0 };
-  const icon = form.icon ? options.glyphs[form.icon] : "";
+  const icon = form.icon ? options2.glyphs[form.icon] : "";
   const tone = form.dim === true ? "muted" : TONES[form.tone ?? "text"];
-  const text = (icon ? paintIcon(options.paint, `${icon} `) : "") + options.paint(form.text, tone);
+  const text = (icon ? paintIcon(options2.paint, `${icon} `) : "") + options2.paint(form.text, tone);
   return { text, iconWidth: icon && item2.icon === "event" ? iconSpan(item2.id, icon) : 0 };
 }
 
 // src/ui/problem-marker.ts
-function problemMarker(options, icon) {
-  const { count: count5, bright } = options.problems ?? { count: 0, bright: true };
+function problemMarker(options2, icon) {
+  const { count: count5, bright } = options2.problems ?? { count: 0, bright: true };
   if (count5 === 0) return "";
   const label3 = count5 === 1 ? "1 problem" : `${count5} problems`;
-  return options.paint(`${icon} ${label3}`, bright ? "red" : "muted", "bold");
+  return options2.paint(`${icon} ${label3}`, bright ? "error" : "muted", "bold");
 }
 
 // src/core/click-targets.ts
@@ -8646,7 +9682,7 @@ var stockTexts = /* @__PURE__ */ new Map([
   ],
   ["context", (_s, { paint: p }, { icon }) => paintIcon(p, `${icon} `)],
   ["context-usage", (s, { paint: p }, { variant }) => usage(s, p, variant)],
-  ["compaction", (s, { paint: p }, { slot }) => p(compaction2(s, slot.unit), "yellow")],
+  ["compaction", (s, { paint: p }, { slot }) => p(compaction2(s, slot.unit), "highlight")],
   [
     "input",
     (s, { paint: p }, { icon }) => paintIcon(p, `${icon} `) + p(formatTokens(s.totals.input))
@@ -8674,7 +9710,6 @@ var stockTexts = /* @__PURE__ */ new Map([
   [QUOTA_TOGGLE, (s, o, r) => quotaToggle(s, o, r.look, r.slot)],
   [
     "cost",
-    // Nothing to say without an amount: an "n/a" would only take room from values that exist.
     (s, { paint: p }, { slot }) => {
       const text = costDisplay(s, slot.period);
       return text === "" ? "" : p(text);
@@ -8717,23 +9752,23 @@ function ownSlot(config, id) {
     ...collapsedShow ? { collapsedShow } : {}
   };
 }
-function renderSegment(id, snapshot, options, settings) {
-  const external = options.extensions?.find(id);
-  if (!external) return renderStock(id, snapshot, options, settings);
-  const shown2 = renderExtensionItem(external.item, settings.look, options);
+function renderSegment(id, snapshot, options2, settings) {
+  const external = options2.extensions?.find(id);
+  if (!external) return renderStock(id, snapshot, options2, settings);
+  const shown2 = renderExtensionItem(external.item, settings.look, options2);
   return { id, ...shown2, gap: segmentGap(settings.config, id) };
 }
-function renderStock(id, snapshot, options, settings) {
+function renderStock(id, snapshot, options2, settings) {
   const slot = ownSlot(settings.config, id);
   const key = iconKeys.get(id);
-  const icon = slot.icon ?? (key ? options.glyphs[key] : "");
+  const icon = slot.icon ?? (key ? options2.glyphs[key] : "");
   const variant = variantAt(stockForms.get(id), settings.look, slot.hideAt);
-  const text = variant === "hide" ? "" : slot.text === void 0 ? stockTexts.get(id)?.(snapshot, options, {
+  const text = variant === "hide" ? "" : slot.text === void 0 ? stockTexts.get(id)?.(snapshot, options2, {
     icon,
     slot,
     look: settings.look,
     variant
-  }) ?? "" : slot.text.split("{icon}").map((part) => options.paint(template(part, snapshot, icon))).join(paintIcon(options.paint, icon));
+  }) ?? "" : slot.text.split("{icon}").map((part) => options2.paint(template(part, snapshot, icon))).join(paintIcon(options2.paint, icon));
   const hasIcon = text && slot.text === void 0 && stripTerminalSequences7(text).startsWith(icon);
   const iconWidth = hasIcon && ICON_ACTION_IDS.has(id) ? iconSpan(id, icon) : 0;
   return { id, text, gap: segmentGap(settings.config, id), ...attachment(id, slot), iconWidth };
@@ -8745,7 +9780,6 @@ function explainContext(id, context) {
   const value = renderSegment(
     id,
     snapshot,
-    // An explanation lists everything: a collapsed quota would leave its last window out.
     {
       paint: (text) => text,
       glyphs,
@@ -8833,7 +9867,6 @@ var ExplainPresenter = class {
       ...period ? { period } : {}
     });
   }
-  /** The explanation as a notice: the keyboard path, `/dock-info`. */
   notice(id, ctx) {
     if (ctx.mode !== "tui") return;
     const found = this.doc(id);
@@ -8848,7 +9881,6 @@ ${explainText(found, this.ascii())}`,
       "info"
     );
   }
-  /** The explanation as a live screen, like the ones the icons open; the same click closes it. */
   async screen(id, ctx) {
     const found = this.doc(id);
     if (!found) {
@@ -8867,7 +9899,6 @@ ${explainText(found, this.ascii())}`,
 
 // src/ui/screen-toggle.ts
 var ScreenToggle = class {
-  /** The target whose screen is open now. */
   open;
   async toggle(key, action, ctx) {
     const wasOpen = this.open;
@@ -8882,29 +9913,123 @@ var ScreenToggle = class {
   }
 };
 
-// src/footer-interactions.ts
+// src/core/config-command.ts
+function explainConfig(args) {
+  const where = "/dock-config";
+  if (args.length > 16384)
+    return formatProblems("Nothing changed: the footer configuration was not applied", [
+      problem(
+        where,
+        "(command)",
+        "The command is longer than 16 KiB.",
+        "Keep only what you want to change, or use the settings file."
+      )
+    ]);
+  let value;
+  try {
+    value = JSON.parse(args);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "It is not valid JSON.";
+    return formatProblems("Nothing changed: the footer configuration was not applied", [
+      problem(
+        where,
+        "(command)",
+        `The text after /dock-config is not valid JSON: ${reason}`,
+        'Write one JSON object on one line, for example {"shrink":["drop:cost"]}; or use /dock-config show or /dock-config reset.'
+      )
+    ]);
+  }
+  const problems = checkConfig(value, where);
+  return problems.length > 0 ? formatProblems("Nothing changed: the footer configuration was not applied", problems) : "Nothing changed: the footer configuration was not applied: it is not valid (two rows, unique slots).";
+}
+
+// src/session-config.ts
 var CONFIG_ENTRY = NAMES.configEntry;
+var SessionConfig = class {
+  constructor(pi, settings, changed2) {
+    this.pi = pi;
+    this.settings = settings;
+    this.changed = changed2;
+  }
+  pi;
+  settings;
+  changed;
+  config = defaultFooterConfig();
+  base = this.config;
+  targets = actionTargets(this.config);
+  restore(ctx) {
+    this.base = this.saved(ctx);
+    this.reapply();
+    this.updateTargets();
+  }
+  reapply() {
+    this.config = applySettings(this.base, this.settings());
+  }
+  configure(args, ctx) {
+    if (ctx.mode !== "tui") return;
+    if (!args.trim() || args.trim() === "show") {
+      say(ctx, JSON.stringify(this.config, null, 2), "info");
+      return;
+    }
+    try {
+      if (args.length > 16384) throw new Error("Config too large");
+      const value = args.trim() === "reset" ? defaultFooterConfig() : JSON.parse(args);
+      const next = parseFooterConfig(value);
+      this.pi.appendEntry(CONFIG_ENTRY, next);
+      this.base = next;
+      this.reapply();
+      this.updateTargets();
+      this.changed();
+      say(ctx, "Footer configuration saved for this session.", "info");
+    } catch {
+      say(ctx, explainConfig(args), "error");
+    }
+  }
+  updateTargets() {
+    this.targets.clear();
+    this.targets.add("context");
+    for (const target2 of actionTargets(this.config)) this.targets.add(target2);
+  }
+  saved(ctx) {
+    const entries = ctx.sessionManager.getBranch();
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const entry = entries[index];
+      if (entry?.type !== "custom") continue;
+      if (entry.customType !== CONFIG_ENTRY && !NAMES.legacyConfigEntries.includes(entry.customType))
+        continue;
+      try {
+        return parseFooterConfig(entry.data);
+      } catch {
+      }
+    }
+    return defaultFooterConfig();
+  }
+};
+
+// src/footer-interactions.ts
 var FooterInteractions = class {
   constructor(pi, snapshot, trace, display) {
-    this.pi = pi;
     this.snapshot = snapshot;
     this.trace = trace;
     this.display = display;
-    this.actions = new UIActionRegistry(pi.events, this.targets, trace);
+    this.session = new SessionConfig(
+      pi,
+      () => display.settings(),
+      () => {
+        this.actions.start();
+        display.redraw();
+      }
+    );
+    this.actions = new UIActionRegistry(pi.events, this.session.targets, trace);
     this.iconActions = createIconActions(pi);
   }
-  pi;
   snapshot;
   trace;
   display;
-  /** What the footer uses: the session configuration with the global settings applied. */
-  config = defaultFooterConfig();
-  base = this.config;
-  /** Whether the quota shows every window when the footer is narrow; per session, not saved. */
+  session;
   quotaExpanded = false;
   lastOpen = 0;
   screens = new ScreenToggle();
-  targets = actionTargets(this.config);
   actions;
   iconActions;
   explainer = new ExplainPresenter({
@@ -8913,15 +10038,15 @@ var FooterInteractions = class {
     glyphs: () => this.display.glyphs(),
     extensions: () => this.display.extensions.registry
   });
-  /** The configuration problems of this session (the footer marker, its screen, re-reading the file). */
   get problems() {
     return this.display.problems;
   }
+  get config() {
+    return this.session.config;
+  }
   start(ctx) {
-    this.base = this.restore(ctx);
-    this.config = applySettings(this.base, this.display.settings());
+    this.session.restore(ctx);
     this.quotaExpanded = this.display.settings().quotaExpanded === true;
-    this.updateTargets();
     this.actions.start();
   }
   stop() {
@@ -8930,7 +10055,6 @@ var FooterInteractions = class {
   interactive(target2) {
     return clickMode(this.config, parseTarget(target2).id) !== "none";
   }
-  /** What the footer component needs to read from here on every draw. */
   bindings() {
     return {
       configuration: () => this.config,
@@ -8940,14 +10064,12 @@ var FooterInteractions = class {
       extensions: this.display.extensions.registry
     };
   }
-  /** The global settings changed (from the menu): re-apply them to the live footer. */
   settingsChanged(before) {
     const now = this.display.settings();
-    this.config = applySettings(this.base, now);
+    this.session.reapply();
     if (now.quotaExpanded !== before.quotaExpanded) this.quotaExpanded = now.quotaExpanded === true;
     this.display.redraw();
   }
-  /** What a click does besides explaining; false when the item has no action or clicks only explain. */
   async act(id, ctx) {
     if (this.display.settings().clicks === "explain") return false;
     if (id === "workspace") {
@@ -8959,7 +10081,6 @@ var FooterInteractions = class {
     await this.screens.toggle(iconTarget(id), action, ctx);
     return true;
   }
-  /** Opens the project folder in the file manager (or the user's app); at most once a second. */
   async openFolder(ctx) {
     if (ctx.mode !== "tui" || Date.now() - this.lastOpen < 1e3) return;
     this.lastOpen = Date.now();
@@ -8970,7 +10091,6 @@ var FooterInteractions = class {
     this.quotaExpanded = !this.quotaExpanded;
     this.display.redraw();
   }
-  /** A click on a token of an item: its icon may act (open, pick); its text explains. */
   async activate(target2, ctx) {
     const { id, icon } = parseTarget(target2);
     if (ctx.mode !== "tui") return;
@@ -8991,7 +10111,6 @@ var FooterInteractions = class {
     }
     await this.screens.toggle(target2, () => this.explainer.screen(id, ctx), ctx);
   }
-  /** A click on an extension's item: an event for it, or Footer Dock's explanation of it, as it declared. */
   async activateExternal({ registration: registration2, item: item2 }, click, ctx) {
     const token2 = click.icon && item2.icon === "event" ? "icon" : "text";
     const behaviour = token2 === "icon" ? "event" : item2.text;
@@ -9017,7 +10136,6 @@ var FooterInteractions = class {
     this.trace({ layer: "runtime", event: "action-result", result });
     return result;
   }
-  /** The explanation as a notice: the keyboard path, `/dock-info`. */
   explain(id, ctx) {
     this.explainer.notice(id, ctx);
   }
@@ -9027,61 +10145,48 @@ var FooterInteractions = class {
     if (id) this.explain(id, ctx);
   }
   configure(args, ctx) {
-    if (ctx.mode !== "tui") return;
-    if (!args.trim() || args.trim() === "show") {
-      say(ctx, JSON.stringify(this.config, null, 2), "info");
-      return;
-    }
-    try {
-      if (args.length > 16384) throw new Error("Config too large");
-      const value = args.trim() === "reset" ? defaultFooterConfig() : JSON.parse(args);
-      const next = parseFooterConfig(value);
-      this.pi.appendEntry(CONFIG_ENTRY, next);
-      this.base = next;
-      this.config = applySettings(next, this.display.settings());
-      this.updateTargets();
-      this.actions.start();
-      this.display.redraw();
-      say(ctx, "Footer configuration saved for this session.", "info");
-    } catch {
-      say(ctx, explainConfig(args), "error");
-    }
-  }
-  updateTargets() {
-    this.targets.clear();
-    this.targets.add("context");
-    for (const target2 of actionTargets(this.config)) this.targets.add(target2);
-  }
-  restore(ctx) {
-    const entries = ctx.sessionManager.getBranch();
-    for (let index = entries.length - 1; index >= 0; index -= 1) {
-      const entry = entries[index];
-      if (entry?.type !== "custom") continue;
-      if (entry.customType !== CONFIG_ENTRY && !NAMES.legacyConfigEntries.includes(entry.customType))
-        continue;
-      try {
-        return parseFooterConfig(entry.data);
-      } catch {
-      }
-    }
-    return defaultFooterConfig();
+    this.session.configure(args, ctx);
   }
 };
+
+// src/core/glyph-auto.ts
+function autoGlyphs(env) {
+  if (env.TERM === "linux" || env.TERM === "dumb") return "portable";
+  const locale = [env.LC_ALL, env.LC_CTYPE, env.LANG].find((value) => value);
+  const charset = locale?.split(".")[1]?.split("@")[0];
+  return charset !== void 0 && !/^utf-?8$/iu.test(charset) ? "portable" : "nerd";
+}
 
 // src/settings-controller.ts
 var GLYPH_HINT = `${PRODUCT}: if the icons look like empty boxes, your terminal font has no Nerd Font symbols. Run /dock-glyphs for plain symbols, or install a Nerd Font.`;
 var SettingsController = class {
-  constructor(store) {
+  constructor(store, env = process.env) {
     this.store = store;
+    this.env = env;
   }
   store;
+  env;
   current = defaultSettings();
-  /** The problems of the settings file as last read; empty when it was read cleanly. */
   problems = [];
-  /** The /dock-glyphs toggle overrides the saved icon preference until the menu changes it. */
   toggled;
+  painting;
+  paintSettings(config) {
+    const meter = config.slots.quota?.meterColor;
+    const iconBold = this.current.iconBold !== false && this.glyphs !== nerdGlyphs;
+    if (this.painting?.source !== this.current || this.painting.meter !== meter || this.painting.value.iconBold !== iconBold)
+      this.painting = {
+        source: this.current,
+        meter,
+        value: { colors: effectiveColors(this.current, meter), iconBold }
+      };
+    return this.painting.value;
+  }
   get glyphs() {
-    return this.toggled ?? (this.current.glyphs === "portable" ? portableGlyphs : nerdGlyphs);
+    const saved = this.current.glyphs ?? autoGlyphs(this.env);
+    return this.toggled ?? (saved === "portable" ? portableGlyphs : nerdGlyphs);
+  }
+  get iconKind() {
+    return this.glyphs === portableGlyphs ? "portable" : "nerd";
   }
   toggleGlyphs() {
     this.toggled = this.glyphs === nerdGlyphs ? portableGlyphs : nerdGlyphs;
@@ -9089,9 +10194,7 @@ var SettingsController = class {
   followSavedGlyphs() {
     this.toggled = void 0;
   }
-  /** Set while the file on disk was ignored: it must not be overwritten with defaults. */
   ignored = false;
-  /** Re-reads the file; says why through `report` if it had to be ignored. */
   load(report) {
     const { settings, problem: problem2, problems } = this.store.load();
     this.current = settings;
@@ -9106,18 +10209,13 @@ var SettingsController = class {
       );
     else if (problem2) report(`${PRODUCT} settings ignored: ${problem2}.`);
   }
-  /**
-   * Once, for a user who never chose an icon set: what to do if the icons are not drawn (a
-   * terminal cannot tell us its font). Never touches a file that was ignored; a failed save only
-   * means the note may come again.
-   */
   announceGlyphs(report) {
     const { glyphs, glyphHintShown } = this.current;
     if (this.ignored || glyphs !== void 0 || glyphHintShown) return;
+    if (autoGlyphs(this.env) !== "nerd") return;
     report(GLYPH_HINT);
     this.update({ ...this.current, glyphHintShown: true });
   }
-  /** Applies a change in memory first, so the footer follows even if saving fails. */
   update(next) {
     this.current = next;
     try {
@@ -9128,607 +10226,6 @@ var SettingsController = class {
     }
   }
 };
-
-// src/core/menu-row.ts
-var HIDDEN = "hidden";
-var SHOWN2 = "shown";
-var row3 = (id, label3, current, values) => ({
-  id,
-  label: label3,
-  description: "",
-  values,
-  current
-});
-var withNote = (base2, description) => ({ ...base2, description });
-var savable = (label3) => label3.length <= 24 && safeLabel(label3) === label3;
-
-// src/core/settings-collapse.ts
-var MAX_LABELS = 8;
-var PREFIX = "collapsed:";
-var visible = (settings, published) => published.filter((label3) => !(settings.slots.quota?.hideWindows ?? []).includes(label3));
-var kept = (settings, published) => settings.slots.quota?.collapsedShow ?? visible(settings, published).slice(0, -1);
-function collapsedRows(settings, published) {
-  const stays = kept(settings, published);
-  const all = visible(settings, published);
-  return all.filter(savable).map((label3) => ({
-    ...withNote(
-      row3(
-        `${PREFIX}${label3}`,
-        `Stays when collapsed: ${label3}`,
-        stays.includes(label3) ? SHOWN2 : HIDDEN,
-        [SHOWN2, HIDDEN]
-      ),
-      quotaText.collapsedWindow(label3)
-    ),
-    // Untouched, every window stays except the last.
-    default: label3 === all.at(-1) ? HIDDEN : SHOWN2
-  }));
-}
-var isCollapsedRow = (id) => id.startsWith(PREFIX);
-var collapsedLabel = (id) => id.slice(PREFIX.length);
-function collapsedChoice(settings, label3, value, published) {
-  const others = kept(settings, published).filter((item2) => item2 !== label3);
-  const next = value === SHOWN2 ? [...others, label3] : others;
-  return next.length > MAX_LABELS ? settings : withSlot(settings, "quota", { collapsedShow: next });
-}
-function windowRows(settings, published) {
-  const hidden = settings.slots.quota?.hideWindows ?? [];
-  return [.../* @__PURE__ */ new Set([...published, ...hidden])].filter(savable).map(
-    (label3) => withNote(
-      row3(`window:${label3}`, `Limit window: ${label3}`, hidden.includes(label3) ? HIDDEN : SHOWN2, [
-        SHOWN2,
-        HIDDEN
-      ]),
-      quotaText.window(label3)
-    )
-  );
-}
-function windowChoice(settings, label3, value) {
-  const others = (settings.slots.quota?.hideWindows ?? []).filter((item2) => item2 !== label3);
-  const next = value === HIDDEN ? [...others, label3] : others;
-  return next.length > MAX_LABELS ? settings : withSlot(settings, "quota", { hideWindows: next.length ? next : void 0 });
-}
-
-// src/core/settings-layers.ts
-var PREFIX2 = "layer:";
-var split2 = (id) => {
-  const [prefix, item2, part, ...more] = id.split(":");
-  return `${prefix}:` === PREFIX2 && item2 && part && more.length === 0 ? { item: item2, part } : void 0;
-};
-var layerItem = (id) => split2(id)?.item;
-var isLayerRow = (id) => split2(id) !== void 0;
-var layerValues = () => [SHOWN2, HIDDEN];
-var isKnownLayerRow = (id) => {
-  const found = split2(id);
-  return found !== void 0 && settingsItems().includes(found.item) && (layerNames.get(found.item) ?? []).includes(found.part);
-};
-function layerRows(settings) {
-  return settingsItems().flatMap(
-    (item2) => (layerNames.get(item2) ?? []).map((part) => {
-      const text = layerText.get(`${item2}:${part}`);
-      return withNote(
-        row3(
-          `${PREFIX2}${item2}:${part}`,
-          text?.label ?? `${item2}: ${part}`,
-          settings.slots[item2]?.layers?.[part] === false ? HIDDEN : SHOWN2,
-          layerValues()
-        ),
-        text?.note ?? ""
-      );
-    })
-  );
-}
-function layerChoice(settings, id, value) {
-  const found = split2(id);
-  if (!found || !isKnownLayerRow(id)) return settings;
-  const next = { ...settings.slots[found.item]?.layers, [found.part]: value === SHOWN2 };
-  const off = Object.entries(next).filter(([, on]) => !on);
-  return withSlot(settings, found.item, {
-    layers: off.length > 0 ? Object.fromEntries(off) : void 0
-  });
-}
-
-// src/core/settings-menu.ts
-var choices = {
-  unit: ["tokens", "percent"],
-  period: ["day", "week", "month", "session"],
-  wording: ["left", "used"],
-  collapse: ["when tight", "always collapsed"],
-  expanded: ["no", "yes"],
-  animation: ["on", "off"],
-  meter: ["lavender", "theme"],
-  glyphs: ["nerd", "portable"],
-  clicks: ["do things", "explain only"],
-  limits: ["off", "on"]
-};
-var isPeriod = (value) => COST_PERIODS.includes(value);
-var visibility = [SHOWN2, ...LOOKS.slice(1).map((look) => `hidden from ${look}`), HIDDEN];
-function visibilityOf(hideAt) {
-  if (hideAt === void 0) return SHOWN2;
-  return hideAt === LOOKS[0] ? HIDDEN : `hidden from ${hideAt}`;
-}
-function itemRows(settings) {
-  return settingsItems().map(
-    (id) => withNote(
-      row3(
-        `item:${id}`,
-        itemText.get(id)?.label ?? id,
-        visibilityOf(settings.slots[id]?.hideAt),
-        visibility
-      ),
-      itemText.get(id)?.note ?? ""
-    )
-  );
-}
-function limitsRow(settings) {
-  return withNote(
-    row3(
-      "limits",
-      "Ask providers for limits",
-      settings.limits === "on" ? "on" : "off",
-      choices.limits ?? []
-    ),
-    quotaText.network
-  );
-}
-function clicksRow(settings) {
-  const current = settings.clicks === "explain" ? "explain only" : "do things";
-  return withNote(
-    row3("clicks", "Item clicks", current, choices.clicks ?? []),
-    "The folder icon opens the folder."
-  );
-}
-function compactionRow(settings) {
-  const current = settings.slots.compaction?.unit ?? "tokens";
-  return withNote(row3("unit", "Compaction unit", current, choices.unit ?? []), compactionText);
-}
-function costRow(settings) {
-  const current = settings.slots.cost?.period ?? DEFAULT_COST_PERIOD;
-  return {
-    ...withNote(row3("period", "Cost period", current, choices.period ?? []), costText.period),
-    default: DEFAULT_COST_PERIOD
-  };
-}
-function quotaRows(settings) {
-  const quota2 = settings.slots.quota ?? {};
-  const pick = (id) => choices[id] ?? [];
-  return [
-    withNote(
-      row3("wording", "Limit shows", quota2.wording ?? "left", pick("wording")),
-      quotaText.wording
-    ),
-    withNote(
-      row3(
-        "collapse",
-        "Collapse",
-        quota2.collapse === "always" ? "always collapsed" : "when tight",
-        pick("collapse")
-      ),
-      quotaText.collapse
-    ),
-    withNote(
-      row3(
-        "expanded",
-        "Limits start expanded",
-        settings.quotaExpanded ? "yes" : "no",
-        pick("expanded")
-      ),
-      quotaText.expanded
-    ),
-    withNote(
-      row3(
-        "animation",
-        "Limit animation",
-        quota2.animation === false ? "off" : "on",
-        pick("animation")
-      ),
-      quotaText.animation
-    ),
-    withNote(
-      row3("meter", "Meter colour", quota2.meterColor ?? "lavender", pick("meter")),
-      quotaText.meter
-    )
-  ];
-}
-function menuRows(settings, published) {
-  return [
-    ...itemRows(settings),
-    compactionRow(settings),
-    costRow(settings),
-    ...windowRows(settings, published),
-    limitsRow(settings),
-    ...quotaRows(settings),
-    ...layerRows(settings),
-    ...collapsedRows(settings, published),
-    clicksRow(settings),
-    withNote(
-      row3("glyphs", "Icons", settings.glyphs ?? "nerd", choices.glyphs ?? []),
-      quotaText.glyphs
-    )
-  ];
-}
-function visibilityChoice(settings, id, value) {
-  const look = value === HIDDEN ? LOOKS[0] : value.replace("hidden from ", "");
-  return withSlot(settings, id, { hideAt: value !== SHOWN2 && isLook(look) ? look : void 0 });
-}
-function allowed(id) {
-  if (id.startsWith("item:"))
-    return settingsItems().includes(id.slice("item:".length)) ? visibility : void 0;
-  if (id.startsWith("window:"))
-    return savable(id.slice("window:".length)) ? [SHOWN2, HIDDEN] : void 0;
-  if (isCollapsedRow(id)) return savable(collapsedLabel(id)) ? [SHOWN2, HIDDEN] : void 0;
-  if (isLayerRow(id)) return isKnownLayerRow(id) ? layerValues() : void 0;
-  return choices[id];
-}
-function globalChoice(settings, id, value) {
-  switch (id) {
-    case "clicks":
-      return { ...settings, clicks: value === "explain only" ? "explain" : "actions" };
-    case "period":
-      return withSlot(settings, "cost", {
-        period: value !== DEFAULT_COST_PERIOD && isPeriod(value) ? value : void 0
-      });
-    case "unit":
-      return withSlot(settings, "compaction", {
-        unit: value === "percent" ? "percent" : void 0
-      });
-    case "expanded":
-      return { ...settings, quotaExpanded: value === "yes" };
-    case "glyphs":
-      return { ...settings, glyphs: value === "portable" ? "portable" : "nerd" };
-    default:
-      return quotaChoice(settings, id, value);
-  }
-}
-function withLimits(settings, value) {
-  const next = { ...settings };
-  if (value === "on") next.limits = "on";
-  else delete next.limits;
-  return next;
-}
-function quotaChoice(settings, id, value) {
-  switch (id) {
-    case "limits":
-      return withLimits(settings, value);
-    case "wording":
-      return withSlot(settings, "quota", { wording: value === "used" ? "used" : void 0 });
-    case "collapse":
-      return withSlot(settings, "quota", {
-        collapse: value === "always collapsed" ? "always" : void 0
-      });
-    case "animation":
-      return withSlot(settings, "quota", { animation: value === "off" ? false : void 0 });
-    default:
-      return withSlot(settings, "quota", { meterColor: value === "theme" ? "theme" : void 0 });
-  }
-}
-function choose(settings, id, value, published = []) {
-  if (!allowed(id)?.includes(value)) return settings;
-  if (id.startsWith("item:")) return visibilityChoice(settings, id.slice("item:".length), value);
-  if (id.startsWith("window:")) return windowChoice(settings, id.slice("window:".length), value);
-  if (isCollapsedRow(id)) return collapsedChoice(settings, collapsedLabel(id), value, published);
-  if (isLayerRow(id)) return layerChoice(settings, id, value);
-  return globalChoice(settings, id, value);
-}
-
-// src/core/settings-groups.ts
-function findEntry(entries, id) {
-  for (const entry of entries) {
-    const found = entry.id === id ? entry : findEntry(entry.children ?? [], id);
-    if (found) return found;
-  }
-  return void 0;
-}
-var groups = [
-  {
-    id: "workspace",
-    label: "Project and Git",
-    note: "Folder, branch, changed files, commits ahead.",
-    items: ["workspace", "branch", "changes", "ahead"]
-  },
-  {
-    id: "model",
-    label: "Model",
-    note: "The model and its thinking level.",
-    items: ["model", "thinking"]
-  },
-  {
-    id: "context",
-    label: "Context and tokens",
-    note: "Context, compaction notice, input and output.",
-    items: ["context", "context-usage", "compaction", "input", "output"],
-    rows: ["unit"]
-  },
-  {
-    id: "usage",
-    label: "Cache, speed and cost",
-    note: "Cache, speed and estimated cost.",
-    items: ["cache", "speed", "cost"],
-    rows: ["period"]
-  }
-];
-var QUOTA_ROWS = ["limits", "wording", "collapse", "expanded", "animation", "meter"];
-var changed = (rows) => rows.reduce(
-  (total, entry) => total + (entry.children ? changed(entry.children) : Number(entry.current !== (entry.default ?? entry.values[0]))),
-  0
-);
-var summary = (rows) => {
-  const count5 = changed(rows);
-  return count5 === 0 ? "all default" : `${count5} changed`;
-};
-function group(spec, children2) {
-  return {
-    id: `group:${spec.id}`,
-    label: spec.label,
-    description: spec.note,
-    values: [],
-    current: summary(children2),
-    children: children2
-  };
-}
-function collapseGroup(take3) {
-  const children2 = take3((row4) => row4.id === "collapse" || isCollapsedRow(row4.id));
-  return {
-    id: "group:collapse",
-    label: "Limit windows",
-    description: quotaText.collapse,
-    values: [],
-    current: children2.find((row4) => row4.id === "collapse")?.current ?? "",
-    children: children2
-  };
-}
-function menuEntries(settings, published) {
-  const rows = menuRows(settings, published);
-  const take3 = (match) => rows.filter(match);
-  const entries = groups.map(
-    (spec) => group(
-      spec,
-      take3(
-        (row4) => spec.items.some((item2) => row4.id === `item:${item2}` || layerItem(row4.id) === item2) || (spec.rows ?? []).includes(row4.id)
-      )
-    )
-  );
-  const limits = take3(
-    (row4) => row4.id === "item:quota" || layerItem(row4.id) === "quota" || row4.id.startsWith("window:") || QUOTA_ROWS.includes(row4.id) || isCollapsedRow(row4.id)
-  ).flatMap((row4) => {
-    if (isCollapsedRow(row4.id)) return [];
-    return row4.id === "collapse" ? [collapseGroup(take3)] : [row4];
-  });
-  return [
-    ...entries,
-    group(
-      {
-        id: "quota",
-        label: "Limit usage",
-        note: "Visibility, windows, collapse, left or used, meter."
-      },
-      limits
-    ),
-    ...take3((row4) => row4.id === "clicks" || row4.id === "glyphs")
-  ];
-}
-
-// src/core/ext/menu.ts
-var PREFIX3 = "ext:";
-var isExtensionRow = (id) => id.startsWith(PREFIX3);
-function parseRowId(id) {
-  const [, ext, row4] = id.split(":");
-  return ext && row4 ? { ext, row: row4 } : void 0;
-}
-function extensionEntries(registry) {
-  return registry.all().flatMap((registration2) => {
-    if (!registration2.settings) return [];
-    const children2 = registration2.settings.rows.map((row4) => ({
-      id: `${PREFIX3}${registration2.ext}:${row4.id}`,
-      label: row4.label,
-      description: row4.description,
-      values: row4.values,
-      current: row4.current,
-      ...row4.default ? { default: row4.default } : {}
-    }));
-    return [
-      {
-        id: `${PREFIX3}${registration2.ext}`,
-        label: registration2.label,
-        description: registration2.settings.note || `Settings of ${registration2.label}.`,
-        values: [],
-        current: summary(children2),
-        children: children2
-      }
-    ];
-  });
-}
-
-// src/ui/settings-screen.ts
-import { getSettingsListTheme } from "@earendil-works/pi-coding-agent";
-import { SettingsList as SettingsList2 } from "@earendil-works/pi-tui";
-
-// src/ui/stable-list.ts
-import { SettingsList } from "@earendil-works/pi-tui";
-var FOOTER_LINES = 2;
-var noop = () => void 0;
-function withEscape(theme, wording) {
-  return {
-    ...theme,
-    hint: (text) => theme.hint(text.replace("Esc to cancel", `Esc to ${wording}`))
-  };
-}
-function tallest(lists, width2, options) {
-  let height = 0;
-  for (const items of lists) {
-    const probe = new SettingsList(items, options.visible, options.theme, noop, noop);
-    for (const item2 of items) {
-      probe.selectItem(item2.id);
-      height = Math.max(height, probe.render(width2).length);
-    }
-  }
-  return height;
-}
-var StableList = class {
-  constructor(list2, height, header2 = () => [], footer = () => []) {
-    this.list = list2;
-    this.height = height;
-    this.header = header2;
-    this.footer = footer;
-  }
-  list;
-  height;
-  header;
-  footer;
-  render(width2) {
-    return [...this.header(width2), ...this.body(width2), ...this.footer(width2)];
-  }
-  body(width2) {
-    const lines = this.list.render(width2);
-    const missing = this.height(width2) - lines.length;
-    if (missing <= 0) return lines;
-    return [
-      ...lines.slice(0, -FOOTER_LINES),
-      ...Array(missing).fill(""),
-      ...lines.slice(-FOOTER_LINES)
-    ];
-  }
-  handleInput(data) {
-    this.list.handleInput(data);
-  }
-  handleMouse(event) {
-    return this.list.handleMouse({ ...event, y: event.y - this.header(event.width).length });
-  }
-  invalidate() {
-    this.list.invalidate();
-  }
-};
-
-// src/ui/settings-screen.ts
-var VISIBLE_ROWS = 14;
-var TITLE = `${PRODUCT} settings`;
-function apply(model, id, value) {
-  if (isExtensionRow(id)) {
-    model.extensions?.pick(id, value);
-    return;
-  }
-  const next = choose(model.current(), id, value, model.windows());
-  if (next !== model.current()) model.change(next);
-}
-var item = (row4, extra = {}) => ({
-  id: row4.id,
-  label: row4.label,
-  description: row4.description,
-  currentValue: row4.current,
-  ...row4.values.length > 0 ? { values: row4.values } : {},
-  ...extra
-});
-var Menu = class {
-  constructor(model, pi) {
-    this.model = model;
-    this.pi = pi;
-  }
-  model;
-  pi;
-  theme = getSettingsListTheme();
-  /** The groups open right now, outermost first; a list covered by an open group draws nothing. */
-  open = [];
-  entries() {
-    return [
-      ...menuEntries(this.model.current(), this.model.windows()),
-      ...this.model.extensions?.entries() ?? []
-    ];
-  }
-  /** Pi's own rule and title styles, taken from the theme Pi hands to the screen. */
-  rule = (width2) => this.pi.fg("border", "\u2500".repeat(Math.max(1, width2)));
-  /** Framed like Pi's own menus, between two rules; inside a group the title is a breadcrumb. */
-  frame(page) {
-    const covered = () => this.open.length > page.crumbs.length;
-    const title = [TITLE, ...page.crumbs].join(" \u203A ");
-    return {
-      header: (width2) => covered() ? [] : [this.rule(width2), this.pi.bold(this.pi.fg("accent", ` ${title}`))],
-      footer: (width2) => covered() ? [] : [this.rule(width2)]
-    };
-  }
-  list(items, page) {
-    const list2 = new SettingsList2(
-      items,
-      VISIBLE_ROWS,
-      withEscape(this.theme, page.escape),
-      (id, value) => {
-        apply(this.model, id, value);
-      },
-      page.onCancel
-    );
-    const options = { theme: this.theme, visible: VISIBLE_ROWS };
-    const height = (width2) => this.open.length > page.crumbs.length ? 0 : tallest([items], width2, options);
-    const { header: header2, footer } = this.frame(page);
-    return new StableList(list2, height, header2, footer);
-  }
-  /** A row, which opens a list of its own when it is a group. */
-  entryItem(entry, crumbs) {
-    return item(
-      entry,
-      entry.children ? { submenu: (_c, done) => this.group(entry, crumbs, done) } : {}
-    );
-  }
-  group(entry, crumbs, done) {
-    this.open.push(entry.id);
-    const inside = [...crumbs, entry.label];
-    const rows = () => findEntry(this.entries(), entry.id)?.children ?? [];
-    return this.list(
-      rows().map((row4) => this.entryItem(row4, inside)),
-      {
-        escape: "go back",
-        crumbs: inside,
-        onCancel: () => {
-          this.open.pop();
-          done(findEntry(this.entries(), entry.id)?.current);
-        }
-      }
-    );
-  }
-  top(close) {
-    const items = this.entries().map((entry) => this.entryItem(entry, []));
-    return this.list(items, { escape: "close", crumbs: [], onCancel: close });
-  }
-};
-async function openSettingsScreen(ctx, model) {
-  await ctx.ui.custom(
-    (_tui, theme, _keys, done) => new Menu(model, theme).top(() => {
-      done(true);
-    })
-  );
-}
-
-// src/settings-command.ts
-async function runSettingsCommand(ctx, command) {
-  const { settings, interactions } = command;
-  if (ctx.mode !== "tui") {
-    say(ctx, JSON.stringify(settings.current, null, 2), "info");
-    return;
-  }
-  settings.load((message) => {
-    say(ctx, message, "warning");
-  });
-  interactions.problems.load();
-  if (interactions.problems.state.count > 0) return interactions.problems.open(ctx);
-  const iconsBefore = settings.current.glyphs;
-  await openSettingsScreen(ctx, {
-    current: () => settings.current,
-    windows: command.windows,
-    extensions: {
-      entries: () => extensionEntries(command.extensions.registry),
-      pick: (id, value) => {
-        const row4 = parseRowId(id);
-        if (row4) command.extensions.setting(row4.ext, row4.row, value);
-      }
-    },
-    change: (next) => {
-      const previous = settings.current;
-      const failure3 = settings.update(next);
-      interactions.settingsChanged(previous);
-      if (next.limits !== previous.limits) command.limitsChanged();
-      if (failure3) say(ctx, failure3, "warning");
-    }
-  });
-  if (settings.current.glyphs !== iconsBefore) command.iconsChanged();
-}
 
 // src/ui/layout.ts
 import { stripTerminalSequences as stripTerminalSequences9, truncateToWidth as truncateToWidth10, visibleWidth as visibleWidth7 } from "@earendil-works/pi-tui";
@@ -9806,8 +10303,8 @@ function fitRow(row4, ctx, plain3) {
     const key = `${id}|${look}|${expanded}`;
     const known = memo.get(key);
     if (known) return known;
-    const options = { ...ctx.options, quotaExpanded: expanded };
-    const made = renderSegment(id, ctx.snapshot, options, { config: plain3, look });
+    const options2 = { ...ctx.options, quotaExpanded: expanded };
+    const made = renderSegment(id, ctx.snapshot, options2, { config: plain3, look });
     memo.set(key, made);
     return made;
   };
@@ -9851,9 +10348,9 @@ function fitRow(row4, ctx, plain3) {
   };
   const depth = (id) => Math.max(0, wordingsOf(id).length - 1);
   const own = ids.filter((id) => ctx.options.extensions?.find(id));
-  const plan = orderPlan(planWithExtensions(own, depth), ctx.config.shrink);
+  const plan2 = orderPlan(planWithExtensions(own, depth), ctx.config.shrink);
   const model = { ids, depth, fits: (state) => rowWidth(render(state)) <= ctx.available };
-  return render(shrinkRow(model, plan));
+  return render(shrinkRow(model, plan2));
 }
 
 // src/ui/layout.ts
@@ -9882,14 +10379,14 @@ function regions(group2, bounds, config) {
   }
   return result;
 }
-function layoutFooter(fullSnapshot, width2, options) {
+function layoutFooter(fullSnapshot, width2, options2) {
   const available = Math.max(0, Math.floor(width2));
   const config = withProblemMarker(
-    withExtensionRows(options.config ?? defaultFooterConfig(), options.extensions),
-    options.problems
+    withExtensionRows(options2.config ?? defaultFooterConfig(), options2.extensions),
+    options2.problems
   );
   const snapshot = withoutWindows(fullSnapshot, config.slots.quota?.hideWindows);
-  const ctx = { snapshot, options, config, available };
+  const ctx = { snapshot, options: options2, config, available };
   const plain3 = withoutHideAt(config);
   const rows = config.rows.map((row4) => fitRow(row4, ctx, plain3));
   const hitRegions = [];
@@ -9898,14 +10395,14 @@ function layoutFooter(fullSnapshot, width2, options) {
     const leftWidth = row4.right.text ? Math.max(0, column - 2) : available;
     const left = truncateToWidth10(row4.left.text, leftWidth, "\u2026", false);
     hitRegions.push(...regions(row4.left, { x: 0, y, width: leftWidth }, config));
-    if (!row4.right.text) return panelLine(left, available, options.paint);
+    if (!row4.right.text) return panelLine(left, available, options2.paint);
     hitRegions.push(
       ...regions(row4.right, { x: column, y, width: Math.max(0, available - column) }, config)
     );
     return panelLine(
-      left + options.paint(" ".repeat(Math.max(2, column - visibleWidth7(left)))) + row4.right.text,
+      left + options2.paint(" ".repeat(Math.max(2, column - visibleWidth7(left)))) + row4.right.text,
       available,
-      options.paint
+      options2.paint
     );
   });
   return { lines, hitRegions };
@@ -10010,8 +10507,8 @@ function statusLine(statuses, width2) {
 
 // src/ui/footer.ts
 var DockFooter = class {
-  constructor(options) {
-    this.options = options;
+  constructor(options2) {
+    this.options = options2;
     this.animation = new QuotaAnimation(() => this.options.requestRender?.());
     this.blink = new ProblemBlink(() => this.options.requestRender?.());
   }
@@ -10031,7 +10528,6 @@ var DockFooter = class {
       ...config ? { config } : {}
     };
   }
-  /** The quota's highlight and the problem marker's blink: both follow the animation setting. */
   animate(snapshot, config, problems) {
     const enabled = !this.disposed && !!this.options.requestRender && config?.slots.quota?.animation !== false;
     this.animation.update(snapshot, enabled);
@@ -10119,24 +10615,79 @@ var DockFooter = class {
   }
 };
 
-// src/ui/palette.ts
-var token = {
-  muted: "dim",
-  text: "text",
-  yellow: "warning",
-  red: "error",
-  green: "success",
-  lavender: "accent",
-  cyan: "accent"
+// src/footer-colours.ts
+import { parseColor as parseColor3 } from "@earendil-works/pi-tui";
+
+// src/ui/terminal-background.ts
+var byte = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 255;
+var TerminalBackground = class {
+  known;
+  asked = false;
+  get value() {
+    return this.known;
+  }
+  watch(source, redraw) {
+    const ask = () => {
+      if (typeof source.queryTerminalColors !== "function") return;
+      const learn = (colors) => {
+        this.learn(colors.background, redraw);
+      };
+      source.queryTerminalColors({ timeoutMs: 250, onLateReply: learn }).then(learn, () => void 0);
+    };
+    if (!this.asked) {
+      this.asked = true;
+      ask();
+    }
+    const stop = typeof source.onTerminalColorSchemeChange === "function" ? source.onTerminalColorSchemeChange(ask) : void 0;
+    return () => {
+      stop?.();
+    };
+  }
+  learn(colour, redraw) {
+    if (!colour || !byte(colour.r) || !byte(colour.g) || !byte(colour.b)) return;
+    const { r, g, b } = this.known ?? {};
+    if (r === colour.r && g === colour.g && b === colour.b) return;
+    this.known = { r: colour.r, g: colour.g, b: colour.b };
+    redraw();
+  }
 };
-function createPaint(theme) {
-  return (text, tone = "text", emphasis) => {
-    const colored = tone === "lavender" ? `\x1B[38;2;180;160;229m${text}\x1B[39m` : theme.fg(token[tone], text);
-    if (emphasis === "bold") return theme.bold(colored);
-    if (emphasis === "underline") return theme.underline(colored);
-    return colored;
+
+// src/footer-colours.ts
+var FooterColours = class {
+  background = new TerminalBackground();
+  tui;
+  paint(theme, settings, config) {
+    return createPaint(
+      theme,
+      () => settings.paintSettings(config()),
+      () => this.background.value
+    );
+  }
+  watch(tui) {
+    this.tui = tui;
+    const stop = this.background.watch(tui, () => {
+      tui.requestRender();
+    });
+    return () => {
+      stop();
+      if (this.tui === tui) this.tui = void 0;
+    };
+  }
+  contrastOf = (hex) => {
+    const background = this.background.value;
+    return background ? contrast(parseColor3(hex), luminanceOf(background)) : void 0;
   };
-}
+  describeBackground = () => {
+    const { r, g, b } = this.background.value ?? {};
+    if (r === void 0 || g === void 0 || b === void 0)
+      return "terminal background: not reported (Footer Dock follows your Pi theme's light or dark)";
+    const hex = [r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("");
+    return `terminal background: #${hex} (reported by your terminal)`;
+  };
+  redraw() {
+    this.tui?.requestRender();
+  }
+};
 
 // src/runtime.ts
 var DockRuntime = class {
@@ -10161,7 +10712,6 @@ var DockRuntime = class {
   ctx;
   tui;
   live;
-  /** What the trackers call when their data changed: draw again from the latest snapshot. */
   changed = () => {
     if (this.ctx) this.refresh(this.ctx);
   };
@@ -10176,6 +10726,8 @@ var DockRuntime = class {
     this.pi.events.emit(NAMES.traceChannel, record6);
   });
   interactions;
+  colours = new FooterColours();
+  commands = new DockCommands(this);
   start(ctx) {
     this.stop();
     if (ctx.mode !== "tui") return;
@@ -10194,6 +10746,7 @@ var DockRuntime = class {
     ctx.ui.setFooter((tui, theme, footerData) => {
       const revision = ++this.footerRevision;
       this.tui = tui;
+      const stopColours = this.colours.watch(tui);
       this.trackers.quotas.resume();
       this.trackers.git.branchHint = () => footerData.getGitBranch();
       if (this.live) this.live = { ...this.live, git: this.trackers.git.shown };
@@ -10201,7 +10754,7 @@ var DockRuntime = class {
         this.refreshGit();
       });
       return new DockFooter({
-        paint: createPaint(theme),
+        paint: this.colours.paint(theme, this.settings, () => this.interactions.config),
         requestRender: tui.requestRender.bind(tui),
         statuses: () => footerData.getExtensionStatuses(),
         glyphs: this.settings.glyphs,
@@ -10213,11 +10766,12 @@ var DockRuntime = class {
           if (this.ctx) {
             const ctx2 = this.ctx;
             this.interactions.activate(target2, ctx2).catch((error) => {
-              this.notifyError(ctx2, error);
+              this.reportError(ctx2, error);
             });
           }
         },
         dispose: () => {
+          stopColours();
           unsubscribe();
           this.detachFooter(revision);
         }
@@ -10233,7 +10787,6 @@ var DockRuntime = class {
       if (revision === this.footerRevision && !this.tui) this.stop();
     });
   }
-  /** The quota controller while a session is bound; provider traffic is ignored otherwise. */
   quotaFeed() {
     return this.ctx ? this.trackers.quotas : void 0;
   }
@@ -10273,46 +10826,24 @@ var DockRuntime = class {
       try {
         this.refresh(ctx);
       } catch (error) {
-        this.notifyError(ctx, error);
+        this.reportError(ctx, error);
       }
     });
   }
   refreshGit() {
     if (this.ctx) this.trackers.git.refresh(this.ctx.cwd);
   }
-  diagnostics(ctx) {
-    return diagnosticReport({
-      command: ctx,
-      bound: this.ctx,
-      cached: this.live,
-      source: import.meta.url,
-      ...this.trackers.diagnostics(),
-      footerSlots: this.interactions.config.rows.flatMap((row4) => [...row4.left, ...row4.right])
-    });
+  diagnosticInput() {
+    return { bound: this.ctx, cached: this.live, ...this.trackers.diagnostics() };
   }
-  contextAction(ctx) {
-    return this.interactions.invokeTarget("context", ctx).catch((error) => {
-      this.notifyError(ctx, error);
-    });
+  windowLabels() {
+    return (this.live?.rateLimits?.windows ?? []).map((window2) => window2.label);
   }
-  toggleGlyphs(ctx) {
-    this.settings.toggleGlyphs();
-    this.start(ctx);
+  refreshLimits(ctx) {
+    this.trackers.quotas.refresh(ctx);
   }
-  openSettings(ctx) {
-    return runSettingsCommand(ctx, {
-      settings: this.settings,
-      interactions: this.interactions,
-      extensions: this.trackers.extensions,
-      windows: () => (this.snapshot().rateLimits?.windows ?? []).map((window2) => window2.label),
-      limitsChanged: () => {
-        this.trackers.quotas.refresh(ctx);
-      },
-      iconsChanged: () => {
-        this.settings.followSavedGlyphs();
-        this.start(ctx);
-      }
-    });
+  get extensions() {
+    return this.trackers.extensions;
   }
   stop() {
     this.footerRevision += 1;
@@ -10330,7 +10861,7 @@ var DockRuntime = class {
     if (!this.live) throw new Error("Footer Dock footer rendered outside its session lifecycle");
     return this.live;
   }
-  notifyError(ctx, error) {
+  reportError(ctx, error) {
     if (this.ctx !== ctx || !this.tui) return;
     say(ctx, error instanceof Error ? error.message : "Footer Dock refresh failed", "error");
   }
@@ -10417,7 +10948,7 @@ function registerInteractionCommands(pi, runtime) {
   });
   pi.registerCommand("dock-settings", {
     description: "Open the footer settings: what to show or hide, limits, icons",
-    handler: (_args, ctx) => runtime.openSettings(ctx)
+    handler: (_args, ctx) => runtime.commands.openSettings(ctx)
   });
   pi.registerCommand("dock-open", {
     description: "Open the project folder in your file manager (keyboard form of the click)",
@@ -10458,21 +10989,22 @@ function registerInteractionCommands(pi, runtime) {
 }
 function registerCommands(pi, runtime) {
   registerInteractionCommands(pi, runtime);
+  registerColorCommand(pi, runtime);
   pi.registerCommand("dock-context", {
     description: "Invoke an optional registered context UI action",
-    handler: (_args, ctx) => runtime.contextAction(ctx)
+    handler: (_args, ctx) => runtime.commands.contextAction(ctx)
   });
   pi.registerCommand("dock-debug", {
     description: "Show loaded source, bound session and live/cached usage (no conversation content)",
     handler: (_args, ctx) => {
-      say(ctx, runtime.diagnostics(ctx), "info");
+      say(ctx, runtime.commands.diagnostics(ctx), "info");
       return Promise.resolve();
     }
   });
   pi.registerCommand("dock-glyphs", {
-    description: "Toggle Nerd Font / portable glyphs",
+    description: "Switch between Nerd Font icons and plain symbols",
     handler: (_args, ctx) => {
-      runtime.toggleGlyphs(ctx);
+      runtime.commands.toggleGlyphs(ctx);
       return Promise.resolve();
     }
   });

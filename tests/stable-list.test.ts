@@ -17,7 +17,6 @@ const VISIBLE = 5;
 const options = { theme, visible: VISIBLE };
 const plain = (lines: string[]) => lines.map((line) => stripVTControlCharacters(line));
 
-/** Rows whose descriptions differ wildly: none, short, and long enough to wrap. */
 function uneven(count: number): SettingItem[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `row-${index}`,

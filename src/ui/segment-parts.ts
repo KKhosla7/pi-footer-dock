@@ -6,19 +6,13 @@ import { formatPercent, formatTokens, safeLabel } from '../core/model.js';
 import type { SlotOptions } from '../core/slot-options.js';
 import type { Paint } from './palette.js';
 
-/** Columns an item's icon takes, with the space or two that follow it before the text. */
 export function iconSpan(id: string, icon: string): number {
   return visibleWidth(icon) + (id === 'changes' || id === 'ahead' ? 2 : 1);
 }
 export function paintIcon(p: Paint, text: string): string {
-  return p(text, 'cyan');
+  return p(text, 'icon');
 }
 
-/**
- * The model item: `icon provider/name`. The provider is the first part to give way (the short look
- * leaves it out), unless the name is switched off, when it is all the item has. Each part can be
- * switched off; with both off the item prints nothing.
- */
 export function modelText(
   snapshot: Snapshot,
   p: Paint,
@@ -34,11 +28,10 @@ export function modelText(
   return (
     paintIcon(p, `${rendering.icon} `) +
     (provider === '' ? '' : p(name === '' ? provider : `${provider}/`, 'muted')) +
-    (name === '' ? '' : p(name, 'cyan', 'bold'))
+    (name === '' ? '' : p(name, 'accent', 'bold'))
   );
 }
 
-/** `~/a/b/project` to `~/…/project`; short paths are left alone. */
 function elide(path: string): string {
   const parts = path.split('/');
   return parts.length > 2 ? `${parts[0] ?? ''}/…/${parts.at(-1) ?? ''}` : path;
@@ -61,15 +54,15 @@ export function workspace(
 }
 export function usage(snapshot: Snapshot, p: Paint, variant: Variant): string {
   const fill = Math.round((Math.min(100, Math.max(0, snapshot.percent ?? 0)) / 100) * 10);
-  const bar = p('━'.repeat(fill), 'yellow') + p('━'.repeat(10 - fill), 'muted');
+  const bar = p('━'.repeat(fill), 'highlight') + p('━'.repeat(10 - fill), 'muted');
   if (variant === 'bare')
     return snapshot.percent === null
       ? p('pending', 'muted')
-      : p(formatPercent(snapshot.percent), 'yellow', 'bold');
+      : p(formatPercent(snapshot.percent), 'highlight', 'bold');
   const value =
     snapshot.percent === null
       ? p('context pending / ', 'muted') + p(formatTokens(snapshot.capacity))
-      : p(formatPercent(snapshot.percent), 'yellow', 'bold') +
+      : p(formatPercent(snapshot.percent), 'highlight', 'bold') +
         p(' of ', 'muted') +
         p(formatTokens(snapshot.capacity));
   return variant === 'short' ? value : bar + p('  ') + value;
@@ -90,7 +83,7 @@ export function gitValue(
   options: { icon: string; kind: 'files' | 'ahead'; short: boolean },
 ): string {
   if (value === null) return '';
-  const color = options.kind === 'files' ? 'yellow' : 'muted';
+  const color = options.kind === 'files' ? 'highlight' : 'muted';
   const unit = options.kind === 'files' && value === 1 ? 'file' : options.kind;
   return (
     paintIcon(p, `${options.icon}  `) +

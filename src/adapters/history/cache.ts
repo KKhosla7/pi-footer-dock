@@ -8,7 +8,6 @@ import type { FileEntry } from '../../core/history/cache-format.js';
 
 const MAX_BYTES = 32 * 1024 * 1024;
 
-/** The saved rollup, or nothing when it is missing, unsafe, too large or not exactly our format. */
 export async function loadCache(path: string): Promise<FileEntry[]> {
   let handle: FileHandle | undefined;
   try {
@@ -24,7 +23,6 @@ export async function loadCache(path: string): Promise<FileEntry[]> {
   }
 }
 
-/** Complete-or-nothing, private to the user: a temp file written exclusively, then renamed. */
 export async function saveCache(path: string, files: readonly FileEntry[]): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;

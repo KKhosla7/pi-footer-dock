@@ -27,8 +27,6 @@ module.exports = {
       to: { path: '^src/(adapters|runtime|index)' },
     },
     {
-      // A provider is one module that knows the shared contract and nothing about the others, so a
-      // new provider can never need a change to an old one.
       name: 'quota-sources-are-independent',
       severity: 'error',
       from: {
@@ -38,7 +36,6 @@ module.exports = {
       to: { path: '^src/quota-sources/[^/]+\\.ts$', pathNot: '^src/quota-sources/contract\\.ts$' },
     },
     {
-      // Every git call carries the protections in git-inert.ts, so there is one door and it is guarded.
       name: 'git-only-through-git-command',
       severity: 'error',
       from: { path: '^src/', pathNot: '^src/adapters/(git-command|git-inert|folder-opener)\\.ts$' },

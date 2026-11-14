@@ -12,7 +12,6 @@ import { idleFact, lifetimeFact, readFact, tokens, writeFact } from './cache-fac
 const toneOf = (percent: number): Tone =>
   percent >= 80 ? 'success' : percent >= 40 ? 'warning' : 'error';
 
-/** Reuse over the whole session: every recorded response, as read ÷ (uncached + read + written). */
 export function sessionShare(snapshot: Snapshot): number | null {
   const { input, cacheRead, cacheWrite } = snapshot.totals;
   if (input === null || cacheRead === null || cacheWrite === null) return null;

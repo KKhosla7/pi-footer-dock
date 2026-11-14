@@ -1,4 +1,3 @@
-/** Opt-in, bounded metadata-only diagnostics. Callers must never pass message/auth payloads. */
 export class InteractionTrace {
   enabled = false;
   private records: Record<string, unknown>[] = [];

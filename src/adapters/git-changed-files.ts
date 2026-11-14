@@ -22,7 +22,6 @@ function failureKind(error: unknown): 'not-repository' | 'git-missing' | 'failed
   return status === 128 ? 'not-repository' : 'failed';
 }
 
-/** HEAD, or the empty tree in a repository without commits (asked from Git, not hard-coded). */
 export async function baseline(root: string, signal: AbortSignal): Promise<string> {
   const head = gitLine(
     await gitOutput(root, ['rev-parse', '--verify', '--quiet', 'HEAD'], signal, {
@@ -34,7 +33,6 @@ export async function baseline(root: string, signal: AbortSignal): Promise<strin
   return gitLine(await gitOutput(root, args, signal, { input: '' }));
 }
 
-/** Rows to measure: the first ones that are drawn, then untracked ones that only feed the header. */
 function toMeasure(entries: readonly StatusEntry[]): StatusEntry[] {
   const sorted = [...entries].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   const drawn = sorted.slice(0, MAX_ROWS);
@@ -77,7 +75,6 @@ async function read(cwd: string, signal: AbortSignal): Promise<ChangedFilesState
   return { kind: 'files', files: mergeChangedFiles(entries, parseNumstat(numstat), sizes) };
 }
 
-/** Every file the footer counts, with line counts; failures become a state, never an exception. */
 export async function readChangedFiles(cwd: string): Promise<ChangedFilesState> {
   try {
     return await read(cwd, AbortSignal.timeout(GIT_DEADLINE_MS));

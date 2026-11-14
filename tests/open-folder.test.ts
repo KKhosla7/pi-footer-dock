@@ -8,9 +8,7 @@ import { openFolder } from '../src/adapters/folder-opener.js';
 import { defaultOpener, launchFor, parseOpenWith, splitCommand } from '../src/core/open-folder.js';
 import { quotaRoot } from './support/quota-fixtures.js';
 
-/** A scratch directory the test framework removes afterwards. */
 const scratch = (t: TestContext): string => quotaRoot(t);
-/** An "app" that records the arguments it was started with, so a test can read them back. */
 function recorder(out: string): string[] {
   const code =
     'require("node:fs").writeFileSync(process.argv[1], JSON.stringify(process.argv.slice(2)))';

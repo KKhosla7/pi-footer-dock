@@ -13,18 +13,15 @@ export interface FooterOptions extends LayoutOptions {
   dispose: () => void;
   isInteractive?: (target: string) => boolean;
   isQuotaExpanded?: () => boolean;
-  /** Configuration problems and whether the user has looked at them; absent or empty means none. */
   problemState?: () => { count: number; alerting: boolean };
   onActivate?: (target: string) => void;
   configuration?: () => FooterConfig;
   trace?: (metadata: Record<string, unknown>) => void;
   traceEnabled?: () => boolean;
   requestRender?: () => void;
-  /** What other extensions set with `ctx.ui.setStatus`: shown on a last line, as Pi's own footer does. */
   statuses?: () => ReadonlyMap<string, string>;
 }
 
-/** Footer-only component: owns neither a context widget nor editor input. */
 export class DockFooter implements Component {
   private regions: HitRegion[] = [];
   private renderedWidth = -1;
@@ -54,7 +51,6 @@ export class DockFooter implements Component {
     };
   }
 
-  /** The quota's highlight and the problem marker's blink: both follow the animation setting. */
   private animate(
     snapshot: Snapshot,
     config: FooterConfig | undefined,
@@ -81,7 +77,6 @@ export class DockFooter implements Component {
     this.regions = regions;
     this.renderedWidth = nextWidth;
     this.renderVersion += 1;
-    // Trace only geometry changes: diagnostics must not create a render/log feedback loop.
     if (changed)
       this.options.trace?.({
         layer: 'footer',
@@ -122,8 +117,6 @@ export class DockFooter implements Component {
         reason: reason ?? 'handled',
       });
     if (reason) return undefined;
-    // Pi retains a handled press target and emits click on a matching release.
-    // Reserve only configured interactive spans; activation happens exclusively on click.
     if (event.type === 'click' && region) this.options.onActivate?.(region.target);
     return { handled: true, render: false };
   }

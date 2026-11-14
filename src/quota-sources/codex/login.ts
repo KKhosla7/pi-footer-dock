@@ -2,15 +2,12 @@ import { createHash } from 'node:crypto';
 import { QuotaProblem } from '../contract.js';
 import type { QuotaContext } from '../contract.js';
 
-/** The headers to send and the one-way identity of the account they belong to. */
 export interface CodexLogin {
   headers: Record<string, string>;
   identityKey: string;
 }
 
-/** The login is unusable (malformed, missing claims): the user should look at their login. */
 const broken = (): QuotaProblem => new QuotaProblem('auth');
-/** Footer Dock cannot ask for this account's quota at all (API key, custom route, overrides). */
 const unsupported = (): QuotaProblem => new QuotaProblem('unsupported');
 
 function claims(token: string): Record<string, unknown> {
@@ -20,9 +17,7 @@ function claims(token: string): Record<string, unknown> {
     const value: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString());
     if (value && typeof value === 'object' && !Array.isArray(value))
       return value as Record<string, unknown>;
-  } catch {
-    /* Never expose a token or parser error. */
-  }
+  } catch {}
   throw broken();
 }
 function identityPart(value: unknown): string | undefined {
@@ -74,7 +69,6 @@ function requirePhysicalSource(ctx: QuotaContext): void {
   )
     throw unsupported();
 }
-/** Native physical legacy source only. Unknown routed/custom auth requires its own contract. */
 export async function resolveQuotaCredential(ctx: QuotaContext): Promise<CodexLogin> {
   requirePhysicalSource(ctx);
   const headers = await quotaHeaders(ctx);

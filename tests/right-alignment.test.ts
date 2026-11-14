@@ -20,13 +20,10 @@ await test('provider/thinking and quota/estimate groups independently end at the
           visibleWidth(stripVTControlCharacters(layout.lines[0] ?? '').trimEnd()),
           width,
         );
-        // The second row may end in the chevron's own trailing space, so it is measured whole.
         assert.equal(visibleWidth(layout.lines[1] ?? ''), width);
         const thinking = layout.hitRegions.find((region) => region.target === 'thinking');
         assert.ok(thinking);
         assert.equal(thinking.x + thinking.width, width);
-        // The cost is the first item of the second row to give way, so the group may end at the
-        // quota or its chevron instead; whatever ends it sits at the right edge.
         const second = layout.hitRegions.filter((region) => region.y === 1);
         assert.equal(Math.max(...second.map((region) => region.x + region.width)), width);
       }

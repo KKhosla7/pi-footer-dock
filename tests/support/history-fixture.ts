@@ -9,18 +9,15 @@ export interface Reply {
   read: number;
   output: number;
   total: number;
-  /** Milliseconds after the previous reply that this one began. */
   after?: number;
 }
 
-/** A scratch Pi `sessions` directory with real logs written by Pi's own SessionManager. */
 export class Sessions {
   readonly root = mkdtempSync(join(tmpdir(), 'history-'));
   readonly sessions: string = join(this.root, 'sessions');
   readonly cache = join(this.root, 'cache', 'rollup.json');
   private clock: number;
 
-  /** `start` is when the first reply begins; `sessions` defaults to a fresh scratch folder. */
   constructor(start = Date.UTC(2026, 9, 10, 12, 0, 0), sessions?: string) {
     this.clock = start;
     if (sessions) this.sessions = sessions;
@@ -51,7 +48,6 @@ export class Sessions {
     );
     return path;
   }
-  /** Writes a log for `cwd` and returns its manager (to append more) and its file. */
   log(cwd: string, name: string, replies: readonly Reply[]) {
     const manager = SessionManager.create(cwd, join(this.sessions, name));
     for (const reply of replies) this.reply(manager, reply);

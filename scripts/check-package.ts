@@ -1,8 +1,3 @@
-/**
- * What a user would get from npm, checked before anything is published: the tarball holds what it
- * should and nothing else, the manifest is complete, and Pi can load the packed extension.
- * Run with `npm run pack:check`; the release workflow runs it too.
- */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
@@ -16,7 +11,6 @@ const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as
   unknown
 >;
 
-// 1. The manifest.
 assert.equal(manifest.private, undefined, 'package.json must not be private');
 assert.match(String(manifest.name), /^pi-footer-dock$/u);
 assert.equal(manifest.license, 'Apache-2.0');
@@ -37,7 +31,6 @@ assert.equal(
 );
 assert.equal(manifest.dependencies, undefined, 'nothing the host provides is a dependency');
 
-// 2. The tarball.
 const packed = JSON.parse(
   execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
     cwd: root,
@@ -61,7 +54,7 @@ for (const required of [
 ])
   assert.ok(files.includes(required), `missing from the package: ${required}`);
 const forbidden = [
-  /^src\//u, // the package ships the one bundled file, not the sources
+  /^src\//u,
   /^tests\//u,
   /^scripts\//u,
   /^\.github\//u,
@@ -69,10 +62,9 @@ const forbidden = [
   /^MVP1-/u,
   /^\.task_logs/u,
   /\.test\.ts$/u,
-  /^docs\/(?!extending-footer-dock\.md$)/u, // adding-a-provider.md stays in the repository only
+  /^docs\/(?!extending-footer-dock\.md$)/u,
   /node_modules/u,
 ];
-// The entry is one file: Pi would otherwise transpile and resolve every module on each reload.
 const entry = readFileSync(join(root, 'dist/index.js'), 'utf8');
 assert.doesNotMatch(
   entry,
@@ -83,7 +75,6 @@ for (const path of files)
   for (const pattern of forbidden) assert.ok(!pattern.test(path), `must not be published: ${path}`);
 assert.ok((packed[0]?.size ?? 0) < 400_000, `package is ${packed[0]?.size} bytes`);
 
-// 3. Pi loads what was packed.
 const scratch = mkdtempSync(join(tmpdir(), 'dock-pack-'));
 try {
   execFileSync('npm', ['pack', '--pack-destination', scratch, '--ignore-scripts', '--silent'], {
@@ -95,7 +86,6 @@ try {
     '-C',
     scratch,
   ]);
-  // The host provides Pi's packages; give the extracted copy the same ones.
   symlinkSync(join(root, 'node_modules'), join(scratch, 'package', 'node_modules'));
   const loaded = await discoverAndLoadExtensions(
     [join(scratch, 'package', 'dist', 'index.js')],

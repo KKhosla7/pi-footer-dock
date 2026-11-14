@@ -5,7 +5,6 @@ import { ExtensionBus } from '../src/adapters/ext-bus.js';
 import { CHANNELS } from '../src/core/ext/protocol.js';
 import { registration } from './support/fake-registration.js';
 
-/** A tiny event bus like Pi's: synchronous, with unsubscribe, recording what was emitted. */
 function fakeEvents() {
   const handlers = new Map<string, Set<(data: unknown) => void>>();
   const seen: { channel: string; data: unknown }[] = [];

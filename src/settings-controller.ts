@@ -1,9 +1,13 @@
 import { formatProblems } from './core/problems.js';
 import type { Problem } from './core/problems.js';
 import { PRODUCT } from './core/product.js';
+import { effectiveColors } from './core/colors.js';
+import { autoGlyphs } from './core/glyph-auto.js';
 import { defaultSettings } from './core/settings.js';
 import { nerdGlyphs, portableGlyphs } from './ui/glyphs.js';
+import type { PaintSettings } from './ui/palette.js';
 import type { Glyphs } from './ui/glyphs.js';
+import type { FooterConfig } from './core/footer-config.js';
 import type { Settings } from './core/settings.js';
 import type { SettingsLoad } from './adapters/settings-file.js';
 
@@ -14,17 +18,38 @@ export interface SettingsStore {
   save: (settings: Settings) => void;
 }
 
-/** Holds the global settings in memory and keeps the file in step; knows nothing about the footer. */
 export class SettingsController {
   current: Settings = defaultSettings();
-  /** The problems of the settings file as last read; empty when it was read cleanly. */
   problems: readonly Problem[] = [];
-  /** The /dock-glyphs toggle overrides the saved icon preference until the menu changes it. */
   private toggled: Glyphs | undefined;
-  constructor(private readonly store: SettingsStore) {}
+  constructor(
+    private readonly store: SettingsStore,
+    private readonly env: Readonly<Record<string, string | undefined>> = process.env,
+  ) {}
 
+  private painting:
+    { source: Settings; meter: string | undefined; value: PaintSettings } | undefined;
+  paintSettings(config: Pick<FooterConfig, 'slots'>): PaintSettings {
+    const meter = config.slots.quota?.meterColor;
+    const iconBold = this.current.iconBold !== false && this.glyphs !== nerdGlyphs;
+    if (
+      this.painting?.source !== this.current ||
+      this.painting.meter !== meter ||
+      this.painting.value.iconBold !== iconBold
+    )
+      this.painting = {
+        source: this.current,
+        meter,
+        value: { colors: effectiveColors(this.current, meter), iconBold },
+      };
+    return this.painting.value;
+  }
   get glyphs(): Glyphs {
-    return this.toggled ?? (this.current.glyphs === 'portable' ? portableGlyphs : nerdGlyphs);
+    const saved = this.current.glyphs ?? autoGlyphs(this.env);
+    return this.toggled ?? (saved === 'portable' ? portableGlyphs : nerdGlyphs);
+  }
+  get iconKind(): 'nerd' | 'portable' {
+    return this.glyphs === portableGlyphs ? 'portable' : 'nerd';
   }
   toggleGlyphs(): void {
     this.toggled = this.glyphs === nerdGlyphs ? portableGlyphs : nerdGlyphs;
@@ -32,9 +57,7 @@ export class SettingsController {
   followSavedGlyphs(): void {
     this.toggled = undefined;
   }
-  /** Set while the file on disk was ignored: it must not be overwritten with defaults. */
   private ignored = false;
-  /** Re-reads the file; says why through `report` if it had to be ignored. */
   load(report: (message: string) => void): void {
     const { settings, problem, problems } = this.store.load();
     this.current = settings;
@@ -49,18 +72,13 @@ export class SettingsController {
       );
     else if (problem) report(`${PRODUCT} settings ignored: ${problem}.`);
   }
-  /**
-   * Once, for a user who never chose an icon set: what to do if the icons are not drawn (a
-   * terminal cannot tell us its font). Never touches a file that was ignored; a failed save only
-   * means the note may come again.
-   */
   announceGlyphs(report: (message: string) => void): void {
     const { glyphs, glyphHintShown } = this.current;
     if (this.ignored || glyphs !== undefined || glyphHintShown) return;
+    if (autoGlyphs(this.env) !== 'nerd') return;
     report(GLYPH_HINT);
     this.update({ ...this.current, glyphHintShown: true });
   }
-  /** Applies a change in memory first, so the footer follows even if saving fails. */
   update(next: Settings): string | undefined {
     this.current = next;
     try {

@@ -9,7 +9,6 @@ import { portableGlyphs } from './ui/glyphs.js';
 import type { Glyphs } from './ui/glyphs.js';
 import { say } from './notify.js';
 
-/** Shows the explanation of a footer item, as a live screen (a click) or as a notice (a command). */
 export class ExplainPresenter {
   constructor(
     private readonly source: {
@@ -32,7 +31,6 @@ export class ExplainPresenter {
       ...(period ? { period } : {}),
     });
   }
-  /** The explanation as a notice: the keyboard path, `/dock-info`. */
   notice(id: string, ctx: ExtensionContext): void {
     if (ctx.mode !== 'tui') return;
     const found = this.doc(id);
@@ -46,7 +44,6 @@ export class ExplainPresenter {
       'info',
     );
   }
-  /** The explanation as a live screen, like the ones the icons open; the same click closes it. */
   async screen(id: string, ctx: ExtensionContext): Promise<void> {
     const found = this.doc(id);
     if (!found) {

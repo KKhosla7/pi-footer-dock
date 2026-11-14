@@ -9,7 +9,6 @@ import { FooterInteractions } from '../../src/footer-interactions.js';
 import { portableGlyphs } from '../../src/ui/glyphs.js';
 import { demoSnapshot } from '../reference.js';
 
-/** Footer interactions over fakes: the folder opener, the notices, and a session context. */
 export function harness(
   settings: Settings = defaultSettings(),
   result: OpenResult = { ok: true },
@@ -53,7 +52,6 @@ export function harness(
 interface Rendered {
   render(width: number): string[];
 }
-/** The harness with custom screens counted and kept, so a test can see what each one shows. */
 export function screensHarness(
   settings: Settings = defaultSettings(),
   extensions: ExtensionBus = quietExtensions(),
@@ -73,7 +71,6 @@ export function screensHarness(
         }),
       );
     });
-  /** What screen number `index` shows, without terminal codes. */
   const shown = (index: number, width = 80): string =>
     (log.views[index]?.render(width) ?? []).join('\n');
   return { ...made, log, shown };

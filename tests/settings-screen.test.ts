@@ -4,7 +4,7 @@ import { initTheme } from '@earendil-works/pi-coding-agent';
 import { defaultSettings } from '../src/core/settings.js';
 import type { Settings } from '../src/core/settings.js';
 import { openSettingsScreen } from '../src/ui/settings-screen.js';
-import { fakeContext, flat } from './support/settings-screen-fixtures.js';
+import { fakeContext, flat, selectRow } from './support/settings-screen-fixtures.js';
 
 initTheme();
 
@@ -23,10 +23,11 @@ await test('the screen shows groups, opens one, applies a change and reports bac
   const component = state.component;
   assert.ok(component);
   const top = flat(component.render(100));
-  for (const label of ['Project and Git', 'Model', 'Limit usage', 'Icons'])
+  for (const label of ['Project and Git', 'Model', 'Limit usage', 'Appearance'])
     assert.match(top, new RegExp(label, 'u'));
   assert.doesNotMatch(top, /Project folder\s+shown/u, 'items live inside their group');
   assert.match(top, /Esc to close/u, 'the top level closes');
+  selectRow(component, 'Project and Git');
   component.handleInput('\r');
   const inside = flat(component.render(100));
   assert.match(inside, /Project folder/u, 'the group opened');
@@ -65,7 +66,7 @@ await test('no list of the real menu changes height on arrow keys, and none carr
       return heights;
     };
     assert.equal(heightsOf(14).size, 1, `top level at ${width} columns`);
-    for (let group = 0; group < 5; group += 1) {
+    for (let group = 0; group < 6; group += 1) {
       component.handleInput('\r');
       const lines = flat(component.render(width)).split('\n');
       assert.equal(heightsOf(12).size, 1, `group ${group} at ${width} columns`);
@@ -93,7 +94,7 @@ await test('the menu is framed by two rules and titled, with a breadcrumb inside
   assert.match(top[0] ?? '', /^─+$/u, 'a rule above');
   assert.match(top[1] ?? '', /^ Footer Dock settings$/u, 'then the title');
   assert.match(top.at(-1) ?? '', /^─+$/u, 'and a rule below');
-  for (let step = 0; step < 4; step += 1) component.handleInput('\u001b[B');
+  selectRow(component, 'Limit usage', 60);
   component.handleInput('\r');
   const inside = flat(component.render(60)).split('\n');
   assert.match(inside[1] ?? '', /^ Footer Dock settings › Limit usage$/u);

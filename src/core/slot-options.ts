@@ -1,4 +1,6 @@
 import { isLook } from './looks.js';
+import { isMeterStyle } from './meter-styles.js';
+import type { MeterStyle } from './meter-styles.js';
 import type { Look } from './looks.js';
 import { safeLabel } from './model.js';
 import { boundedText, identifier, record } from './validation.js';
@@ -10,23 +12,16 @@ export interface SlotOptions {
   click?: 'help' | 'action' | 'none';
   actionTarget?: string;
   gap?: number;
-  /** Hide this slot when a row needs this look or a narrower one. */
   hideAt?: Look;
   meterColor?: 'lavender' | 'theme';
+  meterStyle?: MeterStyle;
   animation?: boolean;
-  /** Quota only: show what is left (default) or what is used. */
   wording?: 'left' | 'used';
-  /** Compaction only: count the distance in tokens (default) or show the compaction point as a percent of the window. */
   unit?: 'tokens' | 'percent';
-  /** Cost only: the total for a day, a week, a month (the default) or this session. */
   period?: 'day' | 'week' | 'month' | 'session';
-  /** Quota only: collapse (hide the last window) at every width, not only when space is short. */
   collapse?: 'always';
-  /** Quota only: the window labels that stay visible when collapsed (default: all but the last). */
   collapsedShow?: string[];
-  /** Quota only: window labels, as the provider publishes them, that are not shown. */
   hideWindows?: string[];
-  /** Parts of the item that are switched on or off (model: provider, name; quota: meter, reset). */
   layers?: Record<string, boolean>;
 }
 
@@ -42,6 +37,10 @@ function validGap(value: unknown): number {
 }
 function meterColor(value: unknown): NonNullable<SlotOptions['meterColor']> {
   if (value !== 'lavender' && value !== 'theme') throw new Error('Invalid meter color');
+  return value;
+}
+function validMeterStyle(value: unknown): MeterStyle {
+  if (!isMeterStyle(value)) throw new Error('Meter style must be slanted, line or blocks');
   return value;
 }
 function animationEnabled(value: unknown): boolean {
@@ -93,6 +92,7 @@ const parsers = new Map<string, (item: unknown) => SlotOptions>([
   ['gap', (item) => ({ gap: validGap(item) })],
   ['hideAt', (item) => ({ hideAt: validLook(item) })],
   ['meterColor', (item) => ({ meterColor: meterColor(item) })],
+  ['meterStyle', (item) => ({ meterStyle: validMeterStyle(item) })],
   ['animation', (item) => ({ animation: animationEnabled(item) })],
   ['wording', (item) => ({ wording: validWording(item) })],
   ['unit', (item) => ({ unit: validUnit(item) })],
@@ -102,7 +102,6 @@ const parsers = new Map<string, (item: unknown) => SlotOptions>([
   ['layers', (item) => ({ layers: layerFlags(item) })],
   ['collapsedShow', (item) => ({ collapsedShow: windowLabels(item) })],
 ]);
-/** The option names a slot accepts. */
 export const SLOT_OPTION_KEYS: readonly string[] = [...parsers.keys()];
 function actionTarget(value: unknown): string {
   if (!identifier(value)) throw new Error('Invalid action target');

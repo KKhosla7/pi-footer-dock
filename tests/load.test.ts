@@ -15,6 +15,7 @@ await test('Pi loads the TypeScript entrypoint with all commands (no model call 
     assert.ok(extension);
     assert.deepEqual([...extension.commands.keys()].sort(), [
       'dock-action',
+      'dock-color',
       'dock-config',
       'dock-context',
       'dock-debug',

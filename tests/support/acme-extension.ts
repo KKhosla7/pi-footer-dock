@@ -1,13 +1,7 @@
-/**
- * A made-up extension that knows Footer Dock only through the published messages (docs/extending-footer-dock.md):
- * it uses nothing but `pi.events`. Footer Dock's tests load it next to Footer Dock to prove that the
- * document is enough.
- */
 import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { registration } from './fake-registration.js';
 
 export default function (pi: ExtensionAPI): void {
-  // biome-ignore lint/suspicious/noAssignInExpressions: ??= creates the shared log once and reuses it; it cannot be a mistyped ===.
   const log = ((globalThis as Record<string, unknown>).__acme ??= {
     clicks: [],
     settings: [],

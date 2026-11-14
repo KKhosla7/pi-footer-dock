@@ -2,11 +2,6 @@ import { facts, gap } from '../explain/blocks.js';
 import type { Explained, Explainer } from '../explain/explainer.js';
 import type { Found } from './registry.js';
 
-/**
- * The explanation of an extension's item, in Footer Dock's frame. What the extension supplied is used
- * as it is (it was cleaned and bounded on the way in); without an explanation of its own the item
- * still says what it is and who provides it.
- */
 export function extensionExplainer({ registration, item }: Found): Explainer {
   const own = item.explain;
   return {

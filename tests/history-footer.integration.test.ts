@@ -24,7 +24,6 @@ await test('the footer cost is the month across sessions once the history is rea
   const agent = process.env.PI_CODING_AGENT_DIR ?? '';
   const sessions = join(agent, 'sessions');
   await mkdir(sessions, { recursive: true });
-  // Two earlier sessions, written minutes ago by Pi's own session manager.
   const past = new Sessions(Date.now() - 600_000, sessions);
   const cwd = past.folder('earlier');
   past.log(cwd, 'earlier-a', [{ input: 10, read: 0, output: 1, total: 3 }]);

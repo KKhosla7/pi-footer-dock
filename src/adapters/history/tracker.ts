@@ -13,7 +13,6 @@ import type { History } from './scanner.js';
 const FIRST_SCAN_DELAY_MS = 300;
 const GROWTH_DELAY_MS = 1500;
 
-/** Under the user's cache folder (`XDG_CACHE_HOME` when set), like any rebuildable cache. */
 export const rollupPath = (): string =>
   join(
     process.env.XDG_CACHE_HOME ?? join(homedir(), '.cache'),
@@ -22,7 +21,6 @@ export const rollupPath = (): string =>
     'rollup.json',
   );
 
-/** The part of a snapshot's session cost that is not in any log file: a session that is not saved. */
 function unsaved(snapshot: Snapshot): PeriodCost {
   const cost = snapshot.apiCostEstimate;
   return {
@@ -32,11 +30,6 @@ function unsaved(snapshot: Snapshot): PeriodCost {
   };
 }
 
-/**
- * Cost history across sessions, kept in step with Pi's own logs: one background scan after the
- * first render, then a one-log refresh whenever the session in use grows. It never throws into
- * the footer; if the history cannot be read the footer falls back to this session's cost.
- */
 export class HistoryTracker {
   private scanner: UsageScanner | undefined;
   private history: History | undefined;
@@ -60,7 +53,6 @@ export class HistoryTracker {
       this.run((scanner) => scanner.scan(this.abort.signal));
     });
   }
-  /** The session in use wrote more to its log: read just that. */
   sessionGrew(ctx: ExtensionContext): void {
     const file = ctx.sessionManager.getSessionFile();
     if (this.stopped || !file || !this.history || this.timer) return;
@@ -68,7 +60,6 @@ export class HistoryTracker {
       this.run((scanner) => scanner.refresh(file, this.abort.signal));
     });
   }
-  /** What the snapshot gets from the history: the footer totals and the rows behind the screens. */
   fields(
     ctx: ExtensionContext,
     snapshot: Snapshot,

@@ -1,44 +1,26 @@
 import type { ExtensionAPI, ExtensionContext } from '@earendil-works/pi-coding-agent';
-import {
-  PROBLEM_MARKER,
-  QUOTA_TOGGLE,
-  actionTargets,
-  clickMode,
-  defaultFooterConfig,
-  parseFooterConfig,
-  slotOptions,
-} from './core/footer-config.js';
+import { PROBLEM_MARKER, QUOTA_TOGGLE, clickMode, slotOptions } from './core/footer-config.js';
 import type { FooterConfig } from './core/footer-config.js';
 import { UIActionRegistry } from './core/ui-actions.js';
-import { applySettings } from './core/settings.js';
-import { explainConfig } from './core/config-command.js';
 import type { Settings } from './core/settings.js';
-import type { ExtensionBus } from './adapters/ext-bus.js';
+import type { InteractionHost } from './footer-host.js';
 import type { Found } from './core/ext/registry.js';
-import type { OpenResult } from './adapters/folder-opener.js';
 import { createIconActions } from './click-actions.js';
 import { ExplainPresenter } from './explain-presenter.js';
 import { ScreenToggle } from './ui/screen-toggle.js';
+import { SessionConfig } from './session-config.js';
 import type { ProblemsHost } from './problems-controller.js';
-import { NAMES } from './core/product.js';
 import { iconTarget, parseTarget } from './core/click-targets.js';
 import type { Snapshot } from './core/model.js';
-import type { Glyphs } from './ui/glyphs.js';
 import { say } from './notify.js';
 
-const CONFIG_ENTRY = NAMES.configEntry;
 type Trace = (record: Record<string, unknown>) => void;
 
-/** Shared interaction/configuration controller; no provider package IDs or commands. */
 export class FooterInteractions {
-  /** What the footer uses: the session configuration with the global settings applied. */
-  config = defaultFooterConfig();
-  private base = this.config;
-  /** Whether the quota shows every window when the footer is narrow; per session, not saved. */
+  private readonly session: SessionConfig;
   quotaExpanded = false;
   private lastOpen = 0;
   private readonly screens = new ScreenToggle();
-  private readonly targets = actionTargets(this.config);
   private readonly actions: UIActionRegistry;
   private readonly iconActions: ReturnType<typeof createIconActions>;
   private readonly explainer = new ExplainPresenter({
@@ -49,30 +31,31 @@ export class FooterInteractions {
   });
 
   constructor(
-    private readonly pi: ExtensionAPI,
+    pi: ExtensionAPI,
     private readonly snapshot: () => Snapshot,
     private readonly trace: Trace,
-    private readonly display: {
-      redraw: () => void;
-      glyphs: () => Glyphs;
-      settings: () => Settings;
-      openFolder: (directory: string) => Promise<OpenResult>;
-      problems: ProblemsHost;
-      extensions: ExtensionBus;
-    },
+    private readonly display: InteractionHost,
   ) {
-    this.actions = new UIActionRegistry(pi.events, this.targets, trace);
+    this.session = new SessionConfig(
+      pi,
+      () => display.settings(),
+      () => {
+        this.actions.start();
+        display.redraw();
+      },
+    );
+    this.actions = new UIActionRegistry(pi.events, this.session.targets, trace);
     this.iconActions = createIconActions(pi);
   }
-  /** The configuration problems of this session (the footer marker, its screen, re-reading the file). */
   get problems(): ProblemsHost {
     return this.display.problems;
   }
+  get config(): FooterConfig {
+    return this.session.config;
+  }
   start(ctx: ExtensionContext): void {
-    this.base = this.restore(ctx);
-    this.config = applySettings(this.base, this.display.settings());
+    this.session.restore(ctx);
     this.quotaExpanded = this.display.settings().quotaExpanded === true;
-    this.updateTargets();
     this.actions.start();
   }
   stop(): void {
@@ -82,7 +65,6 @@ export class FooterInteractions {
     return clickMode(this.config, parseTarget(target).id) !== 'none';
   }
 
-  /** What the footer component needs to read from here on every draw. */
   bindings() {
     return {
       configuration: () => this.config,
@@ -92,14 +74,12 @@ export class FooterInteractions {
       extensions: this.display.extensions.registry,
     };
   }
-  /** The global settings changed (from the menu): re-apply them to the live footer. */
   settingsChanged(before: Settings): void {
     const now = this.display.settings();
-    this.config = applySettings(this.base, now);
+    this.session.reapply();
     if (now.quotaExpanded !== before.quotaExpanded) this.quotaExpanded = now.quotaExpanded === true;
     this.display.redraw();
   }
-  /** What a click does besides explaining; false when the item has no action or clicks only explain. */
   private async act(id: string, ctx: ExtensionContext): Promise<boolean> {
     if (this.display.settings().clicks === 'explain') return false;
     if (id === 'workspace') {
@@ -111,7 +91,6 @@ export class FooterInteractions {
     await this.screens.toggle(iconTarget(id), action, ctx);
     return true;
   }
-  /** Opens the project folder in the file manager (or the user's app); at most once a second. */
   async openFolder(ctx: ExtensionContext): Promise<void> {
     if (ctx.mode !== 'tui' || Date.now() - this.lastOpen < 1000) return;
     this.lastOpen = Date.now();
@@ -123,7 +102,6 @@ export class FooterInteractions {
     this.display.redraw();
   }
 
-  /** A click on a token of an item: its icon may act (open, pick); its text explains. */
   async activate(target: string, ctx: ExtensionContext): Promise<void> {
     const { id, icon } = parseTarget(target);
     if (ctx.mode !== 'tui') return;
@@ -144,7 +122,6 @@ export class FooterInteractions {
     }
     await this.screens.toggle(target, () => this.explainer.screen(id, ctx), ctx);
   }
-  /** A click on an extension's item: an event for it, or Footer Dock's explanation of it, as it declared. */
   private async activateExternal(
     { registration, item }: Found,
     click: { icon: boolean; target: string },
@@ -173,7 +150,6 @@ export class FooterInteractions {
     this.trace({ layer: 'runtime', event: 'action-result', result });
     return result;
   }
-  /** The explanation as a notice: the keyboard path, `/dock-info`. */
   explain(id: string, ctx: ExtensionContext): void {
     this.explainer.notice(id, ctx);
   }
@@ -183,47 +159,6 @@ export class FooterInteractions {
     if (id) this.explain(id, ctx);
   }
   configure(args: string, ctx: ExtensionContext): void {
-    if (ctx.mode !== 'tui') return;
-    if (!args.trim() || args.trim() === 'show') {
-      say(ctx, JSON.stringify(this.config, null, 2), 'info');
-      return;
-    }
-    try {
-      if (args.length > 16_384) throw new Error('Config too large');
-      const value: unknown = args.trim() === 'reset' ? defaultFooterConfig() : JSON.parse(args);
-      const next = parseFooterConfig(value);
-      this.pi.appendEntry(CONFIG_ENTRY, next);
-      this.base = next;
-      this.config = applySettings(next, this.display.settings());
-      this.updateTargets();
-      this.actions.start();
-      this.display.redraw();
-      say(ctx, 'Footer configuration saved for this session.', 'info');
-    } catch {
-      say(ctx, explainConfig(args), 'error');
-    }
-  }
-  private updateTargets(): void {
-    this.targets.clear();
-    this.targets.add('context'); // Existing keyboard command remains available even when its icon is hidden.
-    for (const target of actionTargets(this.config)) this.targets.add(target);
-  }
-  private restore(ctx: ExtensionContext): FooterConfig {
-    const entries = ctx.sessionManager.getBranch();
-    for (let index = entries.length - 1; index >= 0; index -= 1) {
-      const entry = entries[index];
-      if (entry?.type !== 'custom') continue;
-      if (
-        entry.customType !== CONFIG_ENTRY &&
-        !(NAMES.legacyConfigEntries as readonly string[]).includes(entry.customType)
-      )
-        continue;
-      try {
-        return parseFooterConfig(entry.data);
-      } catch {
-        /* Ignore invalid historic preferences. */
-      }
-    }
-    return defaultFooterConfig();
+    this.session.configure(args, ctx);
   }
 }

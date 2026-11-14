@@ -1,4 +1,3 @@
-/** Minimal valid Responses SSE sequence; counters are fixture data, never a live account. */
 export function emitResponses(frame: (body: object) => void): void {
   const item = {
     id: 'message-fixture',

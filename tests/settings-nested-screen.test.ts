@@ -8,7 +8,7 @@ import { fakeContext, flat, selectRow } from './support/settings-screen-fixtures
 
 initTheme();
 
-await test('"Limit windows" opens its own list: a breadcrumb, the mode, a row per window, and back out', async () => {
+await test('"Collapse windows" opens its own list: a breadcrumb, the mode, a row per window, and back out', async () => {
   const { ctx, state } = fakeContext();
   let settings: Settings = defaultSettings();
   const closed = openSettingsScreen(ctx, {
@@ -22,20 +22,24 @@ await test('"Limit windows" opens its own list: a breadcrumb, the mode, a row pe
   assert.ok(component);
   selectRow(component, 'Limit usage');
   component.handleInput('\r');
-  selectRow(component, 'Limit windows');
+  selectRow(component, 'Collapse windows');
   assert.match(
     flat(component.render(100)),
-    /Limit windows\s+when tight/u,
+    /Collapse windows\s+when tight/u,
     'the group shows the mode',
   );
   component.handleInput('\r');
   const inside = flat(component.render(100));
-  assert.match(inside, /Footer Dock settings › Limit usage › Limit windows/u, 'a full breadcrumb');
+  assert.match(
+    inside,
+    /Footer Dock settings › Limit usage › Collapse windows/u,
+    'a full breadcrumb',
+  );
   assert.equal(inside.match(/^─+$/gmu)?.length, 2, 'one frame, not three');
   for (const label of ['5h', 'week', 'month'])
-    assert.match(inside, new RegExp(`Stays when collapsed: ${label}`, 'u'));
+    assert.match(inside, new RegExp(`Keep ${label}`, 'u'));
   assert.match(inside, /Esc to go back/u);
-  selectRow(component, 'Stays when collapsed: month');
+  selectRow(component, 'Keep month');
   component.handleInput('\r');
   assert.deepEqual([...(settings.slots.quota?.collapsedShow ?? [])].sort(), [
     '5h',
@@ -45,7 +49,7 @@ await test('"Limit windows" opens its own list: a breadcrumb, the mode, a row pe
   component.handleInput('\u001b');
   const back = flat(component.render(100));
   assert.match(back, /Footer Dock settings › Limit usage$/mu, 'back in Limit usage');
-  assert.doesNotMatch(back, /Limit windows\s*$/mu);
+  assert.doesNotMatch(back, /Collapse windows\s*$/mu);
   component.handleInput('\u001b');
   component.handleInput('\u001b');
   await closed;
@@ -72,9 +76,9 @@ await test('no list of the nested menu changes height on arrow keys at any depth
     };
     selectRow(component, 'Limit usage', width);
     component.handleInput('\r');
-    selectRow(component, 'Limit windows', width);
+    selectRow(component, 'Collapse windows', width);
     component.handleInput('\r');
-    assert.equal(heights(12).size, 1, `Limit windows list at ${width} columns`);
+    assert.equal(heights(12).size, 1, `Collapse windows list at ${width} columns`);
     component.handleInput('\u001b');
     component.handleInput('\u001b');
     component.handleInput('\u001b');

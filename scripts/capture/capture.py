@@ -11,11 +11,12 @@ env = dict(os.environ, HOME=f'{work}/home', PI_CODING_AGENT_DIR=f'{work}/agent',
            PI_TELEMETRY='0', TERM='xterm-256color', COLORTERM='truecolor')
 for name in ('ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'GITHUB_TOKEN'):
     env.pop(name, None)
+GENERIC = 'example/example-coder'
 ICON = {'changed': '\uf040', 'robot': '\U000f06a9'}
 
 
-def start(cols=130, rows=34):
-    return Terminal([pi, '--no-context-files', '--model', 'example/example-coder', '--no-session'],
+def start(cols=130, rows=34, model='anthropic/claude-sonnet-5-5'):
+    return Terminal([pi, '--no-context-files', '--model', model, '--thinking', 'high', '--no-session'],
                     f'{work}/home/projects/my-app', env, cols, rows)
 
 
@@ -45,9 +46,8 @@ def click_on(term, needle):
     term.click(spot[0], spot[1])
 
 
-# Every picture comes from a fresh session, so nothing from an earlier screen is left behind.
-def scene(name, action=None, cols=130, rows=34):
-    term = start(cols, rows)
+def scene(name, action=None, cols=130, rows=34, model='anthropic/claude-sonnet-5-5'):
+    term = start(cols, rows, model)
     try:
         ask(term, 'Add validation to the login form and cover it with tests')
         if action:
@@ -82,13 +82,13 @@ scenes = {
     'footer-wide': (None, 130, 30),
     'footer-narrow': (None, 66, 30),
     'explain-cache': (command('/dock-info cache'), 130, 34),
-    'explain-limits': (command('/dock-info quota'), 130, 34),
+    'explain-limits': (command('/dock-info quota'), 130, 34, GENERIC),
     'explain-cost': (command('/dock-info cost'), 130, 34),
     'settings': (command('/dock-settings'), 130, 34),
     'changed-files': (changed_files, 130, 34),
     'diff': (diff, 130, 34),
     'model-picker': (model_picker, 130, 34),
 }
-for name, (action, cols, rows) in scenes.items():
+for name, (action, cols, rows, *model) in scenes.items():
     if only is None or name in only:
-        scene(name, action, cols, rows)
+        scene(name, action, cols, rows, *model)

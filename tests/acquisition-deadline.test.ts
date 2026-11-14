@@ -14,9 +14,7 @@ await test('acquisition deadlines bound an unresolved resolver and abort coopera
   await assert.rejects(
     withAcquisitionDeadline((incoming) => {
       signal = incoming;
-      return new Promise<never>(() => {
-        /* Deliberately unresolved public auth resolver. */
-      });
+      return new Promise<never>(() => {});
     }, 15),
     AcquisitionDeadlineError,
   );
@@ -45,14 +43,7 @@ await test('caller cancellation prevents pre-aborted work and cleans up signal l
   const before = getEventListeners(caller.signal, 'abort').length;
   assert.equal(await withAcquisitionDeadline(() => Promise.resolve(42), 1000, caller.signal), 42);
   assert.equal(getEventListeners(caller.signal, 'abort').length, before);
-  const pending = withAcquisitionDeadline(
-    () =>
-      new Promise<never>(() => {
-        /* Await caller cancellation. */
-      }),
-    1000,
-    caller.signal,
-  );
+  const pending = withAcquisitionDeadline(() => new Promise<never>(() => {}), 1000, caller.signal);
   caller.abort();
   await assert.rejects(pending, AcquisitionCancelledError);
   assert.equal(getEventListeners(caller.signal, 'abort').length, before);
@@ -75,9 +66,7 @@ await test('overdue work cannot beat its delayed timer after an event-loop pause
   await assert.rejects(
     withAcquisitionDeadline(() => {
       const until = performance.now() + 30;
-      while (performance.now() < until) {
-        /* Simulate a blocked event loop. */
-      }
+      while (performance.now() < until) continue;
       return Promise.resolve('too late');
     }, 5),
     AcquisitionDeadlineError,

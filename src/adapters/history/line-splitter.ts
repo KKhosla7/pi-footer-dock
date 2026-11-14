@@ -1,13 +1,8 @@
 export const MAX_LINE_BYTES = 4 * 1024 * 1024;
 
-/**
- * Cuts a byte stream into complete lines. A partial line stays buffered until its newline
- * arrives; a line that grows past the cap is dropped (and counted) without being buffered.
- */
 export class LineSplitter {
   private pending = Buffer.alloc(0);
   private discarding = false;
-  /** Bytes that belong to lines already handed out or dropped. */
   consumed: number;
   tooLong = 0;
 

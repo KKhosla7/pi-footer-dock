@@ -46,11 +46,14 @@ await test('wide reference adds model, thinking and quota meters without cost or
 });
 
 await test('brain and robot glyphs share the live theme accent while thinking text stays muted', () => {
-  const themed = createPaint({
-    fg: (color, text) => `\u001b[${color === 'accent' ? '36' : '90'}m${text}\u001b[39m`,
-    bold: (text) => text,
-    underline: (text) => text,
-  });
+  const themed = createPaint(
+    {
+      fg: (color, text) => `\u001b[${color === 'accent' ? '36' : '90'}m${text}\u001b[39m`,
+      bold: (text) => text,
+      underline: (text) => text,
+    },
+    () => ({ colors: { accent: 'theme' }, iconBold: false }),
+  );
   const layout = layoutFooter({ ...demoSnapshot, thinking: 'medium' }, 220, {
     ...options,
     paint: themed,

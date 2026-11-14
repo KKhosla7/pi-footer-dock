@@ -1,8 +1,3 @@
-/**
- * Makes the problem marker blink (bright, then dim) until the user has opened the problems screen.
- * Our own timer, not the terminal's blink attribute, which many terminals ignore: 1 Hz, unref'd,
- * alive only while there is something to alert about, and stopped on dispose.
- */
 export class ProblemBlink {
   bright = true;
   private timer: ReturnType<typeof setInterval> | undefined;

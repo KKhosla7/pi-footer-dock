@@ -4,15 +4,9 @@ import { ExtensionRegistry } from '../core/ext/registry.js';
 import type { Problems } from '../core/ext/validate.js';
 import { fields } from '../core/ext/clean.js';
 
-/** Redraws at most this often however much an extension sends. */
 const COALESCE_MS = 100;
 const MAX_REPORTED = 20;
 
-/**
- * The extension protocol on Pi's event bus: it listens for what extensions register, keeps it in
- * the registry, and sends the clicks and setting changes back. It holds nothing between sessions
- * and knows no extension by name.
- */
 export class ExtensionBus {
   readonly registry = new ExtensionRegistry();
   private unsubscribe: (() => void)[] = [];
@@ -22,7 +16,6 @@ export class ExtensionBus {
     private readonly changed: () => void,
   ) {}
 
-  /** Starts listening and tells every extension that Footer Dock is here (they register on hearing it). */
   start(): void {
     this.stop();
     const on = (channel: string, handle: (data: unknown) => Problems | undefined): void => {
@@ -32,9 +25,7 @@ export class ExtensionBus {
             const problems = handle(data);
             if (problems && problems.length > 0) this.reject(data, problems);
             this.touch();
-          } catch {
-            /* A message that cannot be handled is dropped; it must not reach the footer. */
-          }
+          } catch {}
         }),
       );
     };
@@ -61,11 +52,9 @@ export class ExtensionBus {
   private ready(): void {
     this.pi.events.emit(CHANNELS.ready, { v: 1 });
   }
-  /** The user clicked a token of an extension's item that asks for an event. */
   click(ext: string, item: string, token: 'icon' | 'text'): void {
     this.pi.events.emit(CHANNELS.click, { v: 1, ext, item, token });
   }
-  /** The user picked a value in an extension's settings; the extension stores it. */
   setting(ext: string, row: string, value: string): void {
     this.registry.setCurrent(ext, row, value);
     this.pi.events.emit(CHANNELS.setting, { v: 1, ext, row, value });

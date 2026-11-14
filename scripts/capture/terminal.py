@@ -2,7 +2,6 @@
 import fcntl, os, pty, select, struct, subprocess, termios, time, html
 import pyte
 
-# A soft dark palette with lavender accents (the Catppuccin Mocha colours) for the 16 ANSI colours.
 ANSI = {
     'black': '#45475a', 'red': '#f38ba8', 'green': '#a6e3a1', 'brown': '#f9e2af',
     'blue': '#89b4fa', 'magenta': '#cba6f7', 'cyan': '#94e2d5', 'white': '#bac2de',
@@ -10,8 +9,6 @@ ANSI = {
     'brightbrown': '#f9e2af', 'brightyellow': '#f9e2af', 'brightblue': '#b4befe',
     'brightmagenta': '#f5c2e7', 'brightcyan': '#94e2d5', 'brightwhite': '#cdd6f4',
 }
-# pyte turns the first 16 colours of the 256-colour table into fixed xterm values; a real terminal
-# would show its own palette there, so map them back to the names above.
 XTERM16 = {
     '000000': 'black', 'cd0000': 'red', '00cd00': 'green', 'cdcd00': 'brown', '0000ee': 'blue',
     'cd00cd': 'magenta', '00cdcd': 'cyan', 'e5e5e5': 'white', '7f7f7f': 'brightblack',
@@ -50,7 +47,6 @@ class Terminal:
             self.stream.feed(data)
 
     def answer_queries(self, data):
-        # Terminal capability questions some programmes ask at start-up.
         if b'\x1b[c' in data or b'\x1b[0c' in data:
             os.write(self.fd, b'\x1b[?62;c')
         if b'\x1b[6n' in data:
@@ -94,7 +90,7 @@ class Terminal:
         self.cols, self.rows = cols, rows
         self.screen.resize(rows, cols)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))
-        os.kill(self.pid, 28)  # SIGWINCH
+        os.kill(self.pid, 28)
         self.pump(1.2)
 
     def close(self):
@@ -103,7 +99,8 @@ class Terminal:
         except OSError:
             pass
 
-    def page(self, title=None):
+    def rows_html(self):
+        """The screen as one <div> of <i> cells per row, ready to put in a page."""
         def colour(value, default):
             if value == 'default':
                 return default
@@ -129,10 +126,14 @@ class Terminal:
                     style += 'text-decoration:underline;'
                 cells.append(f'<i style="{style}">{html.escape(c.data) if c.data.strip() else "&nbsp;"}</i>')
             rows.append('<div>' + ''.join(cells) + '</div>')
+        return ''.join(rows)
+
+    def page(self, title=None):
+        rows = self.rows_html()
         width, height = self.cols * CELL_W + 40, self.rows * CELL_H + 40
         return width, height, f"""<!doctype html><meta charset="utf-8"><style>
 html,body{{margin:0;background:{BACKGROUND}}}
 body{{padding:20px;width:{self.cols * CELL_W}px;font:{FONT}px/{CELL_H}px 'JetBrainsMono Nerd Font Mono','JetBrainsMono Nerd Font','Hack Nerd Font Mono',monospace;color:{FOREGROUND}}}
 div{{height:{CELL_H}px;white-space:pre;overflow:hidden}}
 i{{font-style:normal;display:inline-block;width:{CELL_W}px;height:{CELL_H}px;overflow:visible;vertical-align:top}}
-</style><body>{''.join(rows)}</body>"""
+</style><body>{rows}</body>"""

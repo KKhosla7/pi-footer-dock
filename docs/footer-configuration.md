@@ -14,21 +14,27 @@ Stock IDs: `workspace`, `branch`, `changes`, `ahead`, `model`, `thinking`, `cont
 
 ## Quota meters and cost
 
-The default quota group uses seven fixed-width remaining-quota segments per window, a reported percentage formatted for display, and reset countdowns separated by a muted divider. Any positive remaining quota has at least one filled cell; true zero has none. Thus 7% renders `▰▱▱▱▱▱▱ 7%`, not an exhausted-looking empty bar. The cells are a coarse visual summary; small positive percentages retain a nonzero numeric label. Filled cells are lavender (`#b4a0e5`); empty cells stay theme-dim. At 25% remaining or lower, warning color takes priority. Windows are included only when the whole formatted window fits; meters never change the two-row layout or right-edge alignment.
+The default quota group uses seven fixed-width remaining-quota segments per window, a reported percentage formatted for display, and reset countdowns separated by a muted divider. Any positive remaining quota has at least one filled cell; true zero has none. Thus 7% renders `▰▱▱▱▱▱▱ 7%`, not an exhausted-looking empty bar. The cells are a coarse visual summary; small positive percentages retain a nonzero numeric label. Filled cells use the accent colour (lavender by default, see "Colours"); empty cells stay theme-dim. At 25% remaining or lower, the warning colour takes priority. Windows are included only when the whole formatted window fits; meters never change the two-row layout or right-edge alignment.
 
 A finite 490 ms bold highlight sweeps the **already filled** cells only after a real remaining-percentage change. It does not interpolate usage, alter numeric values, or generate requests. Initial acquisition, unchanged refreshes, model/window switches and stale data do not animate; disposal cancels the timer. Quota polling remains at the existing refresh cadence, not token-by-token realtime telemetry.
 
 The stock quota group has no leading hourglass in either glyph set. Click quota or use `/dock-info quota` for exact observation age. Existing minute redraws update countdown text without triggering acquisition. Explicit custom icons (including a static hourglass) and custom quota text remain supported.
 
-To use the active theme accent or disable the meter update highlight:
+**Meter look.** The default meter draws its cells with `▰▱`, which some fonts draw badly (a thick line and a dotted line instead of slanted blocks). `meterStyle` changes the characters, never the seven cells, the fill, the colours or the animation: `slanted` (default), `line` (`━━━━━──`, drawn by the terminal itself), and `blocks` (`█████░░`, usually drawn by the terminal itself). Set it on the settings screen (Appearance › Meter look, each choice shows a sample) or with `/dock-config {"slots":{"quota":{"meterStyle":"line"}}}`.
+
+To disable the meter update highlight:
 
 ```text
-/dock-config {"slots":{"quota":{"meterColor":"theme","animation":false}}}
+/dock-config {"slots":{"quota":{"animation":false}}}
 ```
 
-Use `"lavender"` to explicitly select the default fill. Configuration replaces previous preferences; preserve your other settings when editing.
+Configuration replaces previous preferences; preserve your other settings when editing. The meter has no colour of its own: it uses the accent colour, which you change under "Colours" below.
 
 The default row includes a separate `≈$…` **API-equivalent estimate**, not a subscription bill or remaining allowance. Prices come from Pi's model registry. Each recorded assistant response uses the cost Pi recorded for it; when Pi recorded none, it is repriced from the registry's rate for its own provider/model across uncached input, cache-read, cache-write and output tokens, including long-context tiers. A model with no registry price, or a price of zero, is excluded rather than counted as free. Tool charges, regional uplifts and other fees are excluded, and registry prices can lag a provider's current prices. Click cost or use `/dock-info cost` for the sources and coverage counts. If some contributions cannot be priced, the full total stays unavailable; a safe priced portion is explicitly labelled `partial ≈$…`. With nothing priced, or with ambiguous data, the cost item is hidden. Empty sessions show nothing; positive estimates under a cent show `≈<$0.01`. Saved slot configurations are preserved; use `/dock-config reset` to adopt the current defaults (also resets other customizations).
+
+## Icon sets
+
+Footer Dock has two icon sets: the Nerd Font set (the default for most terminals) and the plain symbol set (stored as `portable` in the settings file), ordinary Unicode symbols that are one cell wide and never drawn as emoji (`⌂ Y ✎ ⇡ ◔ ▣ ∴ ≡ » ↻` for the footer's own icons). Choose with `/dock-glyphs` (this session) or Appearance › Icons (saved): `automatic`, `Nerd Font` or `plain symbols`. The row says which set automatic is using: "automatic (Nerd Font)" or "automatic (plain symbols)". Without a choice (`automatic`) Footer Dock uses the Nerd Font set, except on signals that are reliable: a terminal type of `linux` or `dumb`, or a locale that names a legacy character set such as `en_US.ISO-8859-1`. A locale of plain `C` or `POSIX` names no character set and does not count. Bold icons (Appearance › Bold icons) apply to the plain symbols only.
 
 ## Commands and persistence
 
@@ -77,10 +83,39 @@ Every slot can override:
 | `click`        | `help` (default for values), `action` (default for context), or `none`.                                    |
 | `actionTarget` | Semantic advertised target, not a provider action ID or executable command.                                |
 | `gap`          | 0–6 columns preceding the slot; suppressed when it is first in its group.                                  |
-| `meterColor`   | Quota fill: `lavender` (default) or `theme` (active accent).                                               |
+| `meterColor`   | Old option, now the accent colour: `theme` means `colors.accent` is `theme`. Use "Colours" instead.        |
+| `meterStyle`   | Quota meter cells: `slanted` (default `▰▱`), `line` (`━─`) or `blocks` (`█░`).                             |
 | `animation`    | Quota update highlight: `true` (default) or `false`.                                                       |
 | `hideAt`       | `xl`, `lg`, `md`, `sm` or `xs`: hide this slot when its row needs that look or a narrower one (see below). |
 | `layers`       | Parts of an item you can switch off, as `{"name": false}`: see "Parts of an item" below.                   |
+
+## Colours
+
+Every colour of the footer has a role, and each role can be changed. A role you leave alone keeps its default. Set them on the settings screen (`/dock-settings`, Appearance › Colours: each row shows the colour it draws, Enter opens a short picker, and "Type a colour…" takes a `#rrggbb` with a preview and its contrast on your terminal), with `/dock-color`, or in the settings file:
+
+```json
+{ "colors": { "accent": "#b4a0e5", "text": "theme" }, "iconBold": true }
+```
+
+| Role        | What it colours                                                                                   | Default                                              | Other values                      |
+| ----------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------- |
+| `accent`    | Every icon, the model name and the filled cells of the limit meter (one colour for all of them).  | `lavender`: ours, adapted to your theme and terminal | `theme` (the theme's accent), hex |
+| `text`      | Names, numbers, the branch, token counts and healthy limit percentages.                           | the theme's text colour                              | `terminal`, hex                   |
+| `muted`     | Labels, separators, empty meter cells and the unfilled part of the context bar.                   | the theme's dim colour                               | `terminal`, hex                   |
+| `highlight` | The context bar and its percentage, the changed-files count and the compaction notice.            | the theme's text colour                              | `warning` (the old yellow), hex   |
+| `warning`   | A limit at 25% or less, and extension items marked warning. A status colour: it should stand out. | the theme's warning colour                           | hex                               |
+| `error`     | A blocked limit, the problems marker and extension items marked error.                            | the theme's error colour                             | hex                               |
+| `success`   | Extension items marked success. The default footer shows none.                                    | the theme's success colour                           | hex                               |
+
+A hex colour is `#` and six hex digits, used exactly as given on every theme and in your terminal's colour mode (a 256-colour terminal gets the nearest colour). Anything else is a settings problem: Footer Dock then ignores the whole file, runs on its defaults and lists the problem, as for every other setting.
+
+**The footer reads on your terminal's real background.** The footer has no background of its own, so a Pi theme made for the other kind of background (the `light` theme on a dark terminal, or `dark` on a light one) would fade it out. Footer Dock asks your terminal for its background colour through Pi's own colour query (when Pi starts, and again when the terminal switches between light and dark) and, for every colour that comes from the theme, lightens or darkens it, keeping its hue, only as far as needed to reach a minimum contrast with that background: 4.5:1 for `text` and `highlight`, 3:1 for `muted`, `warning`, `error`, `success` and `accent`. A colour that already reads is drawn exactly as the theme draws it, so a theme that matches your terminal looks the same as before. If the terminal does not answer, nothing changes and Footer Dock follows the theme's own light or dark. A hex you typed is never changed, but `/dock-color` warns when it would be hard to read on the background it found. `/dock-color` with no arguments shows what it found. `terminal` for `text` or `muted` uses the terminal's own default colour (labels in its faint form): always readable, and it needs no query.
+
+**The default accent adapts.** It keeps our lavender hue and takes its lightness from your theme's own accent, which the theme (or, for Pi's `system` theme, your terminal's reported colours) chose to read on its background. If that would be too close to the background it is moved away until the contrast is at least 3:1 against black (dark) or white (light). It follows a theme switch at the next redraw. Pick `theme` to use the theme's accent as it is, or a hex to use your own colour.
+
+`/dock-color` with no arguments lists the roles and their current values. `/dock-color accent #aa55cc` sets one, `/dock-color accent default` clears it, `/dock-color bold off` turns off the bold the plain icons have by default (plain icon set only: Nerd Font symbols have one weight, so it is not applied to them), and `/dock-color reset` returns every colour to its default. Nothing is saved unless the whole request is valid.
+
+Warnings use their own colour so that a real warning stands out: the highlight role is for emphasis only and is calm by default. If you want the context bar yellow again, set `highlight` to `warning`.
 
 ## Parts of an item (layers)
 
@@ -139,7 +174,7 @@ The default order, first to go first (the quota's `shorten` steps are listed onc
 
 **Changing the order.** Set `shrink` to a list of step names. To keep it, add `"shrink": [...]` to the settings file (`~/.pi/agent/pi-footer-dock.json`, which must stay private to you, mode 600); a value that is not valid makes Footer Dock ignore the whole file and say so, so try the list first with `/dock-config`, which checks it and changes nothing when it is invalid. `/dock-config` replaces the configuration of the current session only (start from `/dock-config show`), and the session wins over the file. The steps you name go first, in your order; every other step keeps its default order and goes where `"..."` stands (at the end when there is no `"..."`). A name may appear as many times as the plan has it. Examples: `{"shrink":["drop:speed"]}` makes the speed the first thing to go; `{"shrink":["...","drop:cost"]}` keeps the cost until almost everything else has given way; `{"shrink":["drop:speed","...","drop:cost"]}` does both. Unknown names, a name used too often, two `"..."` and lists longer than 64 are rejected, and the project name is never a step. Versions before 0.1.3 reject a settings file that has `shrink`.
 
-Use `hideAt` to hide any slot earlier, for example `{"slots":{"cache":{"hideAt":"lg"}}}`: "hidden from `lg`" means the slot is removed once the row would have needed the `lg` look (the old five looks, `xl` fullest to `xs` most compact, still name these levels).
+Use `hideAt` to hide any slot earlier, for example `{"slots":{"cache":{"hideAt":"lg"}}}`: `lg` means the slot is removed as soon as the row cannot show everything in full, and `md`, `sm` and `xs` mean later and later as the row gets tighter (the old five looks, `xl` fullest to `xs` most compact, still name these levels). The settings screen words them "hidden when the row is a bit tight", "tight", "quite tight" and "very tight".
 
 Git slots show `1 file` / `0 files` and `1 ahead`; file changes and ahead commits are different units. Native filesystem events plus Pi lifecycle/tool hints trigger automatic single-flight Git reads, not periodic polling. No upstream is unknown, not zero. `Git unavailable` means observation/watch coverage is unavailable; `/dock-debug` reports health and numeric monitor counters without file contents or credentials. Filesystem limitations apply and no timed fallback is enabled. To retain compact icon/count formatting, use `"changes":{"text":"{icon} {changes}"}` and `"ahead":{"text":"{icon} {ahead}"}` in `slots`; unknown count placeholders render `—`. Existing custom icons, gaps and text remain session-local.
 

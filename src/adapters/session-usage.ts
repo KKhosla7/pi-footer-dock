@@ -8,7 +8,6 @@ import { registryPrices } from './registry-prices.js';
 import { UsageLedger } from '../core/usage-ledger.js';
 import type { SessionUsage } from '../core/usage-ledger.js';
 type Manager = ExtensionContext['sessionManager'];
-/** Pi's public session entries are append-only. History events/manual refresh force verification. */
 export class SessionSnapshotReader {
   private ledger = new UsageLedger();
   private session: string | undefined;
@@ -23,7 +22,6 @@ export class SessionSnapshotReader {
     this.dirty = true;
     this.ledger = new UsageLedger();
   }
-  /** `prices` is used when the ledger is rebuilt; appends keep the source it was built with. */
   read(manager: Manager, prices: PriceSource = NO_PRICES): SessionUsage {
     const session = manager.getSessionId();
     const leaf = manager.getLeafId();

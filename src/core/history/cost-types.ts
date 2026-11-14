@@ -5,5 +5,4 @@ export interface PeriodCost {
   unpriced: number;
   responses: number;
 }
-/** Totals for each period, known once the first scan of the history has finished. */
 export type HistoryCosts = Record<Period, PeriodCost>;

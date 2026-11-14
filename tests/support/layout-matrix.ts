@@ -7,7 +7,6 @@ import { portableGlyphs } from '../../src/ui/glyphs.js';
 import { layoutFooter } from '../../src/ui/layout.js';
 import { createPaint } from '../../src/ui/palette.js';
 
-/** Scenarios and widths shared by the golden matrix and the layout property tests. */
 export const paint = createPaint({
   fg: (_color, text) => text,
   bold: (text) => text,
